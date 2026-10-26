@@ -6,11 +6,11 @@ the existing React UI. The Rust/Tauri reference at `../Pebble` is kept separate.
 M0 establishes versioned storage, encrypted account restoration, typed services,
 and explicit frontend command coverage. The first M1 slice adds resumable Gmail
 mailbox backfill, paginated History sync and preference-controlled scheduling.
-The next slice supports larger messages and persistent recovery of failed
-Gmail downloads, with a retry list in account settings.
-Gmail supports multiple accounts, local search, unread counts and read/star
-changes. Privacy HTML/CID rendering, durable mutation queues, sending/drafts,
-labels CRUD, threading and attachment export remain M1 work. IMAP/SMTP are tested
+The next slices support larger messages and persistent recovery of failed
+Gmail downloads, with a retry list in account settings, plus backend privacy
+HTML/CID rendering. Gmail supports multiple accounts, local search, unread counts
+and read/star changes. Durable mutation queues, sending/drafts, labels CRUD,
+threading and attachment export remain M1 work. IMAP/SMTP are tested
 as an isolated protocol prototype and join the app in M2.
 
 ## Development
@@ -27,8 +27,8 @@ An empty profile opens a normal app and stays running. Token restoration does
 not contact the network. Once the UI loads the profile's realtime preference,
 configured Gmail accounts start syncing unless the preference is `manual`.
 Use account settings to log in. Manual sync can always be triggered explicitly.
-Until the M1 privacy renderer is available, message bodies are displayed as
-escaped plain text.
+Message bodies are escaped plain text only when no HTML part exists; HTML is
+sanitized by the backend privacy renderer before the WebView.
 
 Backfill processes the whole mailbox in pages of at most 100 messages and
 persists recovery checkpoints after each page. Each pass handles at most ten
@@ -47,6 +47,12 @@ Mail downloads to inspect failures and explicitly retry one account or all
 accounts. Automatic modes retry eligible failures with backoff; manual mode
 only processes retries as part of an explicit sync or retry action. See
 [download recovery](docs/m1-recovery.md).
+
+Message HTML is sanitized in the Go core before it reaches the WebView. Strict,
+LoadOnce, Off and TrustedSender modes control external images and stylesheets;
+trackers are reported in the privacy banner. CID inline images use the narrow
+`pebble-attachment://` protocol and cannot address arbitrary profile files. See
+[privacy rendering](docs/m1-privacy.md).
 
 ## Gmail OAuth configuration
 

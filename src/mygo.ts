@@ -139,6 +139,7 @@ export interface Message {
 
 export interface MessageRequest {
   messageId: string;
+  privacyMode?: unknown;
 }
 
 export interface MessageWithHTML {

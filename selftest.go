@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bary/pebble-go/internal/app"
 	"github.com/bary/pebble-go/internal/domain"
+	"github.com/bary/pebble-go/internal/mailmime"
 	"github.com/bary/pebble-go/internal/provider/gmail"
 	"github.com/bary/pebble-go/internal/testgmail"
 	"github.com/egoist/mygo"
+	"github.com/emersion/go-message/mail"
 )
 
 type selftestToken struct{}
@@ -21,7 +24,11 @@ func (selftestToken) Token(context.Context) (string, error) { return "demo-acces
 func prepareSelftest(runtime *app.Runtime) error {
 	fixture := testgmail.NewMock()
 	context.AfterFunc(runtime.Context, fixture.Close)
-	raw := []byte("From: sender@example.invalid\r\nTo: demo@example.invalid\r\nSubject: Pebble Go selftest\r\nMessage-ID: <selftest@example.invalid>\r\nDate: Tue, 14 Nov 2023 22:13:20 +0000\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n中文搜索 selftest message")
+	png := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130}
+	raw, err := mailmime.Build("sender@example.invalid", "Pebble Go selftest", "中文搜索 selftest message", `<p>中文搜索 selftest message</p><img src="cid:logo">`, "selftest@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, []mailmime.Attachment{{ContentID: "logo", Inline: true, MIMEType: "image/png", Data: png}})
+	if err != nil {
+		return err
+	}
 	fixture.Set("m1", raw, []string{"INBOX", "UNREAD"})
 	fixture.Set("m2", []byte("malformed local selftest message"), []string{"INBOX", "UNREAD"})
 	account := domain.Account{ID: "selftest-gmail", Email: "demo@example.invalid", DisplayName: "Selftest Gmail", Provider: "gmail", CreatedAt: 1, UpdatedAt: 1}
@@ -61,7 +68,7 @@ func waitSelftestPage(ctx context.Context, window *mygo.Window, script string, t
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "download failures rendered": false, "failed download retried through UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "download failures rendered": false, "failed download retried through UI": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -89,6 +96,9 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	checks["typed provider and search"] = err == nil && len(hits) == 1
 	cursor, err := runtime.DB.Cursor(ctx, "selftest-gmail")
 	checks["opaque cursor preserved"] = err == nil && cursor == "900719925474099312345"
+	privacyMode := json.RawMessage(`"Strict"`)
+	rendered, renderErr := (&app.MessageService{Runtime: runtime}).Rendered(ctx, app.MessageRequest{MessageID: "selftest-gmail:m1", PrivacyMode: privacyMode})
+	checks["cid attachment rendered"] = renderErr == nil && strings.Contains(rendered.Rendered.HTML, "pebble-attachment://localhost/")
 	if !waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(button => /^(设置|Settings)$/.test(button.textContent.trim())); if (!button) return false; button.click(); return true; })()`, 5*time.Second) {
 		return
 	}

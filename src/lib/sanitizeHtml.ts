@@ -277,7 +277,7 @@ export function sanitizeHtml(html: string): string {
   const sanitized = DOMPurify.sanitize(htmlWithoutCssNodes, {
     // Isolated PoC only: preserve DOMPurify's default schemes and permit just
     // the fixture's one local image. Do not allow arbitrary unknown protocols.
-    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|pebble-attachment|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
     ALLOWED_TAGS: [
       "a", "abbr", "address", "article", "b", "bdi", "bdo", "blockquote",
       "br", "caption", "center", "cite", "code", "col", "colgroup", "dd", "del",
@@ -297,7 +297,15 @@ export function sanitizeHtml(html: string): string {
     ],
     ALLOW_DATA_ATTR: false,
   });
-  return cssNodes + normalizeLinkAttributes(filterStylesheetLinks(filterInlineStyles(sanitized)));
+  const template = document.createElement("template");
+  template.innerHTML = sanitized;
+  template.content.querySelectorAll<HTMLElement>("img[src], [background]").forEach((element) => {
+    for (const attribute of ["src", "background"]) {
+      const value = element.getAttribute(attribute)?.trim() ?? "";
+      if (/^data:/i.test(value)) element.removeAttribute(attribute);
+    }
+  });
+  return cssNodes + normalizeLinkAttributes(filterStylesheetLinks(filterInlineStyles(template.innerHTML)));
 }
 
 /**

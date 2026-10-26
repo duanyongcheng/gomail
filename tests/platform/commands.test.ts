@@ -39,10 +39,11 @@ describe("MyGO command adapter", () => {
     await expect(invoke("send_email")).rejects.toThrow("NotImplemented: send_email");
     expect(await invoke("list_contacts")).toEqual([]);
   });
-  it("adapts a typed rendered message to the existing tuple contract", async () => {
+  it("adapts a typed rendered message to the existing tuple contract and preserves privacy mode", async () => {
     vi.mocked(MessageService.rendered).mockResolvedValueOnce({ message: { id: "m" }, rendered: { html: "safe" } } as never);
-    expect(await invoke("get_message_with_html", { messageId: "m" })).toEqual([{ id: "m" }, { html: "safe" }]);
-    expect(MessageService.rendered).toHaveBeenCalledWith({ messageId: "m" });
+    const request = { messageId: "m", privacyMode: "LoadOnce" };
+    expect(await invoke("get_message_with_html", request)).toEqual([{ id: "m" }, { html: "safe" }]);
+    expect(MessageService.rendered).toHaveBeenCalledWith(request);
   });
   it("routes trigger reasons and scheduler controls through typed services", async () => {
     vi.mocked(SyncService.trigger).mockClear();

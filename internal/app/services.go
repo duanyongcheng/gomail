@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"html"
 	"net/http"
 	"strings"
 	"sync"
@@ -15,6 +15,7 @@ import (
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/googleapi"
 	"github.com/bary/pebble-go/internal/oauth"
+	"github.com/bary/pebble-go/internal/privacy"
 	"github.com/bary/pebble-go/internal/provider/gmail"
 	"github.com/bary/pebble-go/internal/store"
 )
@@ -215,7 +216,8 @@ func (s *FolderService) List(ctx context.Context, a AccountRequest) ([]domain.Fo
 }
 
 type MessageRequest struct {
-	MessageID string `json:"messageId"`
+	MessageID   string          `json:"messageId"`
+	PrivacyMode json.RawMessage `json:"privacyMode,omitempty"`
 }
 type MessagesRequest struct {
 	FolderID  string `json:"folderId"`
@@ -258,7 +260,25 @@ func (s *MessageService) Get(ctx context.Context, a MessageRequest) (domain.Mess
 }
 func (s *MessageService) Rendered(ctx context.Context, a MessageRequest) (MessageWithHTML, error) {
 	m, err := s.Get(ctx, a)
-	return MessageWithHTML{Message: m, Rendered: RenderedHTML{HTML: "<pre>" + html.EscapeString(m.BodyText) + "</pre>", TrackersBlocked: []Tracker{}}}, err
+	if err != nil {
+		return MessageWithHTML{Message: m}, err
+	}
+	attachments, err := s.Runtime.DB.Attachments(ctx, m.ID)
+	if err != nil {
+		return MessageWithHTML{Message: m}, err
+	}
+	refs := make([]privacy.Attachment, 0, len(attachments))
+	for _, attachment := range attachments {
+		if attachment.ContentID != nil {
+			refs = append(refs, privacy.Attachment{ID: attachment.ID, ContentID: *attachment.ContentID})
+		}
+	}
+	rendered := privacy.Render(m.BodyHTML, m.BodyText, m.AccountID, m.ID, refs, privacy.ParseMode(a.PrivacyMode))
+	trackers := make([]Tracker, 0, len(rendered.TrackersBlocked))
+	for _, tracker := range rendered.TrackersBlocked {
+		trackers = append(trackers, Tracker{Domain: tracker.Domain, TrackerType: tracker.Type})
+	}
+	return MessageWithHTML{Message: m, Rendered: RenderedHTML{HTML: rendered.HTML, TrackersBlocked: trackers, ImagesBlocked: rendered.ImagesBlocked}}, nil
 }
 func (s *MessageService) Flags(ctx context.Context, a FlagsRequest) (Empty, error) {
 	m, err := s.Runtime.DB.Message(ctx, a.MessageID)

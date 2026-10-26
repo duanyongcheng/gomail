@@ -94,6 +94,11 @@ func main() {
 				return
 			}
 			runtime.DB = db
+			if err := desktop.RegisterAttachmentProtocol(db); err != nil {
+				slog.Error("cannot register attachment protocol")
+				mygo.App.Quit()
+				return
+			}
 			if err := runtime.Restore(); err != nil {
 				slog.Warn("saved credentials require attention; cached mail remains available")
 			}

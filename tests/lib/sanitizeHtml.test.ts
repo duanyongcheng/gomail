@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { sanitizeHtml, reapplyInlineStyles } from "../../src/lib/sanitizeHtml";
 
 describe("sanitizeHtml", () => {
+  it("preserves the local attachment protocol while dropping data URLs", () => {
+    const sanitized = sanitizeHtml('<img src="pebble-attachment://localhost/token"><img src="data:image/png;base64,abc">');
+    expect(sanitized).toContain("pebble-attachment://localhost/token");
+    expect(sanitized).not.toContain("data:image");
+  });
+
   it("preserves safe inline email styles", () => {
     const sanitized = sanitizeHtml(
       '<p style="color: red; text-align: center; margin: 8px">Hello</p>',
