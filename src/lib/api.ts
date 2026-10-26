@@ -1,0 +1,1029 @@
+import { invoke } from "@tauri-apps/api/core";
+
+// Re-export all IPC types so existing `import { Foo } from "@/lib/api"` keeps working.
+export type {
+  Account,
+  AccountProxyMode,
+  AccountProxySetting,
+  AddAccountRequest,
+  AdvancedSearchQuery,
+  AiApiMode,
+  AiConfig,
+  AiLength,
+  AiProviderType,
+  AiResult,
+  AiTone,
+  AppLogSnapshot,
+  Attachment,
+  BackupPreview,
+  ConnectionSecurity,
+  Contact,
+  ContactEmail,
+  ContactEmailInput,
+  ContactEmailLabel,
+  ContactInput,
+  ContactSuggestion,
+  ContactSuggestionSource,
+  EmailAddress,
+  Folder,
+  HttpProxyConfig,
+  ImapSyncFolderSettings,
+  ImportedBackgroundImage,
+  KanbanCard,
+  KanbanColumnType,
+  KnownContact,
+  Label,
+  Message,
+  MessageSummary,
+  NotificationStatus,
+  PendingMailOp,
+  PendingMailOpsSummary,
+  PrivacyMode,
+  RenderedHtml,
+  Rule,
+  SearchHit,
+  SnoozedMessage,
+  ThreadSummary,
+  TranslateConfig,
+  TranslateResult,
+  TrustedSender,
+  VcardImportResult,
+} from "./ipc-types";
+
+import type {
+  Account,
+  AccountProxyMode,
+  AccountProxySetting,
+  AddAccountRequest,
+  AdvancedSearchQuery,
+  AiConfig,
+  AiLength,
+  AiResult,
+  AiTone,
+  AppLogSnapshot,
+  Attachment,
+  BackupPreview,
+  ConnectionSecurity,
+  Contact,
+  ContactInput,
+  ContactSuggestion,
+  Folder,
+  HttpProxyConfig,
+  ImapSyncFolderSettings,
+  KanbanCard,
+  KanbanColumnType,
+  KnownContact,
+  Label,
+  Message,
+  MessageSummary,
+  NotificationStatus,
+  PendingMailOp,
+  PendingMailOpsSummary,
+  PrivacyMode,
+  RenderedHtml,
+  Rule,
+  SearchHit,
+  SnoozedMessage,
+  ThreadSummary,
+  TranslateConfig,
+  TranslateResult,
+  TrustedSender,
+  VcardImportResult,
+} from "./ipc-types";
+
+// ─── Account API ─────────────────────────────────────────────────────────────
+
+export async function healthCheck(): Promise<string> {
+  return invoke<string>("health_check");
+}
+
+export async function readAppLog(maxBytes: number): Promise<AppLogSnapshot> {
+  return invoke<AppLogSnapshot>("read_app_log", { maxBytes });
+}
+
+export async function getGlobalProxy(): Promise<HttpProxyConfig | null> {
+  return invoke<HttpProxyConfig | null>("get_global_proxy");
+}
+
+export async function getAccountProxy(accountId: string): Promise<HttpProxyConfig | null> {
+  return invoke<HttpProxyConfig | null>("get_account_proxy", { accountId });
+}
+
+export async function getAccountProxySetting(accountId: string): Promise<AccountProxySetting> {
+  return invoke<AccountProxySetting>("get_account_proxy_setting", { accountId });
+}
+
+export async function updateAccountProxy(
+  accountId: string,
+  proxyHost?: string,
+  proxyPort?: number,
+): Promise<void> {
+  return invoke<void>("update_account_proxy", { accountId, proxyHost, proxyPort });
+}
+
+export async function updateAccountProxySetting(
+  accountId: string,
+  mode: AccountProxyMode,
+  proxyHost?: string,
+  proxyPort?: number,
+): Promise<void> {
+  return invoke<void>("update_account_proxy_setting", { accountId, mode, proxyHost, proxyPort });
+}
+
+export async function updateGlobalProxy(
+  proxyHost?: string,
+  proxyPort?: number,
+): Promise<void> {
+  return invoke<void>("update_global_proxy", { proxyHost, proxyPort });
+}
+
+export async function completeOAuthFlow(
+  provider: string,
+  email: string,
+  displayName: string,
+  proxyHost?: string,
+  proxyPort?: number,
+  accountLabel?: string,
+): Promise<Account> {
+  return invoke<Account>("complete_oauth_flow", { provider, email, displayName, proxyHost, proxyPort, accountLabel });
+}
+
+export async function getOAuthAccountProxy(accountId: string): Promise<HttpProxyConfig | null> {
+  return invoke<HttpProxyConfig | null>("get_oauth_account_proxy", { accountId });
+}
+
+export async function getOAuthAccountProxySetting(accountId: string): Promise<AccountProxySetting> {
+  return invoke<AccountProxySetting>("get_oauth_account_proxy_setting", { accountId });
+}
+
+export async function updateOAuthAccountProxy(
+  accountId: string,
+  proxyHost?: string,
+  proxyPort?: number,
+): Promise<void> {
+  return invoke<void>("update_oauth_account_proxy", { accountId, proxyHost, proxyPort });
+}
+
+export async function updateOAuthAccountProxySetting(
+  accountId: string,
+  mode: AccountProxyMode,
+  proxyHost?: string,
+  proxyPort?: number,
+): Promise<void> {
+  return invoke<void>("update_oauth_account_proxy_setting", { accountId, mode, proxyHost, proxyPort });
+}
+
+export async function addAccount(request: AddAccountRequest): Promise<Account> {
+  return invoke<Account>("add_account", { request });
+}
+
+export async function testAccountConnection(accountId: string): Promise<string> {
+  return invoke<string>("test_account_connection", { accountId });
+}
+
+export async function testImapConnection(
+  imapHost: string,
+  imapPort: number,
+  imapSecurity: ConnectionSecurity,
+  acceptInvalidCerts?: boolean,
+  proxyHost?: string,
+  proxyPort?: number,
+  username?: string,
+  password?: string,
+  email?: string,
+  allowPlaintext?: boolean,
+): Promise<string> {
+  return invoke<string>("test_imap_connection", {
+    request: {
+      imap_host: imapHost,
+      imap_port: imapPort,
+      imap_security: imapSecurity,
+      accept_invalid_certs: acceptInvalidCerts,
+      proxy_host: proxyHost,
+      proxy_port: proxyPort,
+      username,
+      password,
+      email,
+      allow_plaintext: allowPlaintext,
+    },
+  });
+}
+
+export async function testPop3Connection(
+  pop3Host: string,
+  pop3Port: number,
+  pop3Security: ConnectionSecurity,
+  acceptInvalidCerts?: boolean,
+  proxyHost?: string,
+  proxyPort?: number,
+  username?: string,
+  password?: string,
+  allowPlaintext?: boolean,
+): Promise<string> {
+  return invoke<string>("test_pop3_connection", {
+    request: {
+      pop3_host: pop3Host,
+      pop3_port: pop3Port,
+      pop3_security: pop3Security,
+      accept_invalid_certs: acceptInvalidCerts,
+      proxy_host: proxyHost,
+      proxy_port: proxyPort,
+      username,
+      password,
+      allow_plaintext: allowPlaintext,
+    },
+  });
+}
+
+export async function listAccounts(): Promise<Account[]> {
+  return invoke<Account[]>("list_accounts");
+}
+
+/**
+ * Save the account order shown in the sidebar.
+ *
+ * The whole list goes over in display order; the backend treats it as a
+ * preference, so a list that went stale still saves.
+ */
+export async function reorderAccounts(accountIds: string[]): Promise<void> {
+  return invoke<void>("reorder_accounts", { accountIds });
+}
+
+export async function updateAccount(
+  accountId: string,
+  email: string,
+  displayName: string,
+  password?: string,
+  imapHost?: string,
+  imapPort?: number,
+  smtpHost?: string,
+  smtpPort?: number,
+  imapSecurity?: ConnectionSecurity,
+  smtpSecurity?: ConnectionSecurity,
+  acceptInvalidCerts?: boolean,
+  proxyHost?: string,
+  proxyPort?: number,
+  accountColor?: string,
+  accountLabel?: string,
+): Promise<void> {
+  return invoke<void>("update_account", {
+    accountId, email, displayName, password,
+    imapHost, imapPort, smtpHost, smtpPort, imapSecurity, smtpSecurity,
+    acceptInvalidCerts, proxyHost, proxyPort, accountColor, accountLabel,
+  });
+}
+
+export async function deleteAccount(accountId: string): Promise<void> {
+  return invoke<void>("delete_account", { accountId });
+}
+
+// ─── Folder API ──────────────────────────────────────────────────────────────
+
+export async function listFolders(accountId: string): Promise<Folder[]> {
+  return invoke<Folder[]>("list_folders", { accountId });
+}
+
+export async function getImapSyncFolders(accountId: string): Promise<ImapSyncFolderSettings> {
+  return invoke<ImapSyncFolderSettings>("get_imap_sync_folders", { accountId });
+}
+
+export async function updateImapSyncFolders(
+  accountId: string,
+  selectedRemoteIds: string[],
+): Promise<ImapSyncFolderSettings> {
+  return invoke<ImapSyncFolderSettings>("update_imap_sync_folders", {
+    accountId,
+    selectedRemoteIds,
+  });
+}
+
+// ─── Message API ─────────────────────────────────────────────────────────────
+
+export async function listMessages(
+  folderId: string,
+  limit: number,
+  offset: number,
+  folderIds?: string[],
+): Promise<MessageSummary[]> {
+  return invoke<MessageSummary[]>("list_messages", { folderId, folderIds, limit, offset });
+}
+
+export async function listStarredMessages(
+  accountId: string,
+  limit: number,
+  offset: number,
+): Promise<MessageSummary[]> {
+  return invoke<MessageSummary[]>("list_starred_messages", { accountId, limit, offset });
+}
+
+export async function getMessage(messageId: string): Promise<Message | null> {
+  return invoke<Message | null>("get_message", { messageId });
+}
+
+/** Batch-fetch multiple messages in a single IPC call. */
+export async function getMessagesBatch(messageIds: string[]): Promise<Message[]> {
+  return invoke<Message[]>("get_messages_batch", { messageIds });
+}
+
+export async function getRenderedHtml(
+  messageId: string,
+  privacyMode: PrivacyMode,
+): Promise<RenderedHtml> {
+  return invoke<RenderedHtml>("get_rendered_html", { messageId, privacyMode });
+}
+
+/** Single IPC call that returns both Message and RenderedHtml. */
+export async function getMessageWithHtml(
+  messageId: string,
+  privacyMode: PrivacyMode,
+): Promise<[Message, RenderedHtml] | null> {
+  return invoke<[Message, RenderedHtml] | null>("get_message_with_html", { messageId, privacyMode });
+}
+
+export async function updateMessageFlags(
+  messageId: string,
+  isRead?: boolean,
+  isStarred?: boolean,
+): Promise<void> {
+  return invoke<void>("update_message_flags", { messageId, isRead, isStarred });
+}
+
+// Rapid-toggle guard: archive_message is toggle-based (archive ⇄ unarchive),
+// so a double-click would flip the state back. This Set coalesces concurrent
+// calls per-message; it is NOT idempotency — a second click *after* the first
+// resolves is intentionally allowed to unarchive.
+const archivingIds = new Set<string>();
+
+export async function archiveMessage(messageId: string): Promise<string> {
+  if (archivingIds.has(messageId)) {
+    return "skipped";
+  }
+  archivingIds.add(messageId);
+  try {
+    return await invoke<string>("archive_message", { messageId });
+  } finally {
+    archivingIds.delete(messageId);
+  }
+}
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  return invoke<void>("delete_message", { messageId });
+}
+
+export async function restoreMessage(messageId: string): Promise<void> {
+  return invoke<void>("restore_message", { messageId });
+}
+
+export async function moveToFolder(messageId: string, targetFolderId: string): Promise<void> {
+  return invoke<void>("move_to_folder", { messageId, targetFolderId });
+}
+
+export async function emptyTrash(accountId: string): Promise<number> {
+  return invoke<number>("empty_trash", { accountId });
+}
+
+export async function getPendingMailOpsSummary(
+  accountId: string | null,
+): Promise<PendingMailOpsSummary> {
+  return invoke<PendingMailOpsSummary>("get_pending_mail_ops_summary", { accountId });
+}
+
+export async function listPendingMailOps(
+  accountId: string | null,
+  limit = 100,
+): Promise<PendingMailOp[]> {
+  return invoke<PendingMailOp[]>("list_pending_mail_ops", { accountId, limit });
+}
+
+export async function openDefaultMailSettings(): Promise<void> {
+  return invoke<void>("open_default_mail_settings");
+}
+
+export async function syncTitlebarTheme(theme: string): Promise<void> {
+  return invoke<void>("sync_titlebar_theme", { theme });
+}
+
+export async function dismissFailedPendingMailOps(
+  accountId: string | null,
+): Promise<number> {
+  return invoke<number>("dismiss_failed_pending_mail_ops", { accountId });
+}
+
+// ─── Trusted Senders API ────────────────────────────────────────────────────
+
+export async function listTrustedSenders(accountId: string): Promise<TrustedSender[]> {
+  return invoke<TrustedSender[]>("list_trusted_senders", { accountId });
+}
+
+export async function removeTrustedSender(accountId: string, email: string): Promise<void> {
+  return invoke<void>("remove_trusted_sender", { accountId, email });
+}
+
+export async function trustSender(accountId: string, email: string, trustType: "images" | "all"): Promise<void> {
+  return invoke<void>("trust_sender", { accountId, email, trustType });
+}
+
+export async function isTrustedSender(accountId: string, email: string): Promise<boolean> {
+  return invoke<boolean>("is_trusted_sender", { accountId, email });
+}
+
+// ─── Search API ──────────────────────────────────────────────────────────────
+
+export async function searchMessages(
+  query: string,
+  limit?: number,
+  accountId?: string,
+): Promise<SearchHit[]> {
+  // `accountId` narrows the hit list to one mailbox. Omitting it is the
+  // explicit "all accounts" view, which is the only case that may span accounts.
+  return invoke<SearchHit[]>("search_messages", {
+    query,
+    limit,
+    accountId: accountId ?? null,
+  });
+}
+
+export async function advancedSearch(
+  query: AdvancedSearchQuery,
+  limit?: number,
+): Promise<SearchHit[]> {
+  return invoke<SearchHit[]>("advanced_search", { query, limit });
+}
+
+// ─── Sync API ────────────────────────────────────────────────────────────────
+
+export async function startSync(accountId: string, pollIntervalSecs?: number): Promise<string> {
+  return invoke<string>("start_sync", { accountId, pollIntervalSecs: pollIntervalSecs ?? null });
+}
+
+export async function triggerSync(accountId: string, reason: string): Promise<void> {
+  return invoke<void>("trigger_sync", { accountId, reason });
+}
+
+export type RealtimePreference = "realtime" | "balanced" | "battery" | "manual";
+
+export async function setRealtimePreference(mode: RealtimePreference): Promise<void> {
+  return invoke<void>("set_realtime_preference", { mode });
+}
+
+export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
+  return invoke<void>("set_notifications_enabled", { enabled });
+}
+
+export async function getNotificationStatus(): Promise<NotificationStatus> {
+  return invoke<NotificationStatus>("get_notification_status");
+}
+
+export async function showTestNotification(): Promise<void> {
+  return invoke<void>("show_test_notification");
+}
+
+export async function clearNotificationAttention(): Promise<void> {
+  return invoke<void>("clear_notification_attention");
+}
+
+export async function setTrayMenuLabels(showLabel: string, hideLabel: string, quitLabel: string): Promise<void> {
+  return invoke<void>("set_tray_menu_labels", { showLabel, hideLabel, quitLabel });
+}
+
+export async function stopSync(accountId: string): Promise<void> {
+  return invoke<void>("stop_sync", { accountId });
+}
+
+// ─── Attachment API ──────────────────────────────────────────────────────────
+
+export async function listAttachments(messageId: string): Promise<Attachment[]> {
+  return invoke<Attachment[]>("list_attachments", { messageId });
+}
+
+export async function getAttachmentPath(attachmentId: string): Promise<string | null> {
+  return invoke<string | null>("get_attachment_path", { attachmentId });
+}
+
+export async function downloadAttachment(attachmentId: string, saveTo: string): Promise<string> {
+  return invoke<string>("download_attachment", { attachmentId, saveTo });
+}
+
+// ─── Kanban API ──────────────────────────────────────────────────────────────
+
+export async function moveToKanban(messageId: string, column: KanbanColumnType, position?: number): Promise<void> {
+  return invoke<void>("move_to_kanban", { messageId, column, position });
+}
+
+export async function listKanbanCards(
+  column?: KanbanColumnType,
+  accountId?: string,
+): Promise<KanbanCard[]> {
+  // `accountId` keeps the board inside one mailbox; omit it for the combined board.
+  return invoke<KanbanCard[]>("list_kanban_cards", {
+    column,
+    accountId: accountId ?? null,
+  });
+}
+
+export async function removeFromKanban(messageId: string): Promise<void> {
+  return invoke<void>("remove_from_kanban", { messageId });
+}
+
+export async function listKanbanContextNotes(): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("list_kanban_context_notes");
+}
+
+export async function setKanbanContextNote(
+  messageId: string,
+  note: string,
+): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("set_kanban_context_note", { messageId, note });
+}
+
+export async function mergeKanbanContextNotes(
+  notes: Record<string, string>,
+): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("merge_kanban_context_notes", { notes });
+}
+
+// ─── Snooze API ──────────────────────────────────────────────────────────────
+
+export async function snoozeMessage(messageId: string, until: number, returnTo: string): Promise<void> {
+  return invoke<void>("snooze_message", { messageId, until, returnTo });
+}
+
+export async function unsnoozeMessage(messageId: string): Promise<void> {
+  return invoke<void>("unsnooze_message", { messageId });
+}
+
+export async function listSnoozed(accountId?: string): Promise<SnoozedMessage[]> {
+  // `accountId` scopes the list to one mailbox; omit it for all accounts.
+  return invoke<SnoozedMessage[]>("list_snoozed", { accountId: accountId ?? null });
+}
+
+// ─── Rules API ───────────────────────────────────────────────────────────────
+
+export async function createRule(name: string, priority: number, conditions: string, actions: string): Promise<Rule> {
+  return invoke<Rule>("create_rule", { name, priority, conditions, actions });
+}
+
+export async function listRules(): Promise<Rule[]> {
+  return invoke<Rule[]>("list_rules");
+}
+
+export async function updateRule(rule: Rule): Promise<void> {
+  return invoke<void>("update_rule", { rule });
+}
+
+export async function deleteRule(ruleId: string): Promise<void> {
+  return invoke<void>("delete_rule", { ruleId });
+}
+
+// ─── Compose API ─────────────────────────────────────────────────────────────
+
+export async function sendEmail(
+  accountId: string,
+  to: string[],
+  cc: string[],
+  bcc: string[],
+  subject: string,
+  bodyText: string,
+  bodyHtml?: string,
+  inReplyTo?: string,
+  attachmentPaths?: string[],
+): Promise<void> {
+  return invoke<void>("send_email", {
+    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths,
+  });
+}
+
+export async function stageComposeAttachment(filename: string, bytes: number[]): Promise<string> {
+  return invoke<string>("stage_compose_attachment", { filename, bytes });
+}
+
+export async function cleanupStagedComposeAttachment(path: string): Promise<void> {
+  return invoke<void>("cleanup_staged_compose_attachment", { path });
+}
+
+// ─── Batch Operations ───────────────────────────────────────────────────────
+
+export async function batchArchive(messageIds: string[]): Promise<number> {
+  return invoke<number>("batch_archive", { messageIds });
+}
+
+export async function batchDelete(messageIds: string[]): Promise<number> {
+  return invoke<number>("batch_delete", { messageIds });
+}
+
+export async function batchMarkRead(messageIds: string[], isRead: boolean): Promise<number> {
+  return invoke<number>("batch_mark_read", { messageIds, isRead });
+}
+
+export async function batchStar(messageIds: string[], starred: boolean): Promise<number> {
+  return invoke<number>("batch_star", { messageIds, starred });
+}
+
+// ─── Translate API ───────────────────────────────────────────────────────────
+
+export async function translateText(text: string, fromLang: string, toLang: string): Promise<TranslateResult> {
+  return invoke<TranslateResult>("translate_text", { text, fromLang, toLang });
+}
+
+export async function getTranslateConfig(): Promise<TranslateConfig | null> {
+  return invoke<TranslateConfig | null>("get_translate_config");
+}
+
+export async function saveTranslateConfig(providerType: string, config: string, isEnabled: boolean): Promise<void> {
+  return invoke<void>("save_translate_config", { providerType, config, isEnabled });
+}
+
+export async function testTranslateConnection(config: string): Promise<string> {
+  return invoke<string>("test_translate_connection", { config });
+}
+
+/** Models the LLM endpoint lists at `GET /v1/models`. */
+export async function listTranslateModels(config: string): Promise<string[]> {
+  return invoke<string[]>("list_translate_models", { config });
+}
+
+// ─── AI assistant API ────────────────────────────────────────────────────────
+//
+// A separate command namespace from `translate_*`. The two modules keep their
+// own configuration, so changing one never affects the other; the only place
+// they meet is `aiTranslate`, which falls back to the translate engine when no
+// AI service is configured (the returned `engine` says which one answered).
+
+export async function getAiConfig(): Promise<AiConfig | null> {
+  return invoke<AiConfig | null>("ai_get_config");
+}
+
+export async function saveAiConfig(
+  providerType: string,
+  config: string,
+  isEnabled: boolean,
+): Promise<void> {
+  return invoke<void>("ai_save_config", { providerType, config, isEnabled });
+}
+
+export async function deleteAiConfig(): Promise<void> {
+  return invoke<void>("ai_delete_config");
+}
+
+export async function testAiConnection(config: string): Promise<string> {
+  return invoke<string>("ai_test_connection", { config });
+}
+
+/**
+ * Models the AI endpoint lists at `GET /v1/models`.
+ *
+ * Refused for the Generic provider, whose endpoint is a single action URL with
+ * no standard place to ask — the settings UI offers manual entry there.
+ */
+export async function listAiModels(config: string): Promise<string[]> {
+  return invoke<string[]>("ai_list_models", { config });
+}
+
+/** Summarise a message on the server: the body never makes a round trip. */
+export async function aiSummarizeMessage(
+  messageId: string,
+  targetLang: string,
+): Promise<AiResult> {
+  return invoke<AiResult>("ai_summarize_message", { messageId, targetLang });
+}
+
+export async function aiPolish(text: string, tone: AiTone): Promise<AiResult> {
+  return invoke<AiResult>("ai_polish", { text, tone });
+}
+
+export async function aiProofread(text: string): Promise<AiResult> {
+  return invoke<AiResult>("ai_proofread", { text });
+}
+
+export async function aiTranslate(
+  text: string,
+  fromLang: string,
+  toLang: string,
+): Promise<AiResult> {
+  return invoke<AiResult>("ai_translate", { text, fromLang, toLang });
+}
+
+export async function aiHelpWrite(
+  intent: string,
+  tone: AiTone,
+  length: AiLength,
+  targetLang: string,
+  context?: string,
+): Promise<AiResult> {
+  return invoke<AiResult>("ai_help_write", { intent, tone, length, targetLang, context });
+}
+
+// ─── Thread API ──────────────────────────────────────────────────────────────
+
+export async function listThreads(
+  folderId: string,
+  limit: number,
+  offset: number,
+  folderIds?: string[],
+): Promise<ThreadSummary[]> {
+  return invoke<ThreadSummary[]>("list_threads", { folderId, folderIds, limit, offset });
+}
+
+export async function listThreadMessages(threadId: string): Promise<Message[]> {
+  return invoke<Message[]>("list_thread_messages", { threadId });
+}
+
+// ─── Labels API ──────────────────────────────────────────────────────────────
+
+export async function getMessageLabels(messageId: string): Promise<Label[]> {
+  return invoke<Label[]>("get_message_labels", { messageId });
+}
+
+export async function getMessageLabelsBatch(messageIds: string[]): Promise<Record<string, Label[]>> {
+  return invoke<Record<string, Label[]>>("get_message_labels_batch", { messageIds });
+}
+
+export async function addMessageLabel(messageId: string, labelName: string): Promise<void> {
+  return invoke<void>("add_message_label", { messageId, labelName });
+}
+
+export async function removeMessageLabel(messageId: string, labelName: string): Promise<void> {
+  return invoke<void>("remove_message_label", { messageId, labelName });
+}
+
+export async function listLabels(): Promise<Label[]> {
+  return invoke<Label[]>("list_labels");
+}
+
+// ─── Cloud Sync API ─────────────────────────────────────────────────────────
+
+export async function testWebdavConnection(url: string, username: string, password: string): Promise<string> {
+  return invoke<string>("test_webdav_connection", { url, username, password });
+}
+
+export async function backupToWebdav(
+  url: string,
+  username: string,
+  password: string,
+  secretPassphrase?: string,
+): Promise<string> {
+  return invoke<string>("backup_to_webdav", { url, username, password, secretPassphrase });
+}
+
+export async function previewWebdavBackup(url: string, username: string, password: string): Promise<BackupPreview> {
+  return invoke<BackupPreview>("preview_webdav_backup", { url, username, password });
+}
+
+export async function exportBackupFile(secretPassphrase?: string): Promise<string> {
+  return invoke<string>("export_backup_file", { secretPassphrase });
+}
+
+export async function previewBackupFile(data: string): Promise<BackupPreview> {
+  return invoke<BackupPreview>("preview_backup_file", { data });
+}
+
+export async function importBackupFile(data: string, secretPassphrase?: string): Promise<string> {
+  return invoke<string>("import_backup_file", { data, secretPassphrase });
+}
+
+export async function restoreFromWebdav(
+  url: string,
+  username: string,
+  password: string,
+  secretPassphrase?: string,
+): Promise<string> {
+  return invoke<string>("restore_from_webdav", { url, username, password, secretPassphrase });
+}
+
+// ─── Auto Backup API ────────────────────────────────────────────────────────
+
+export interface AutoBackupConfig {
+  url: string;
+  username: string;
+  password: string;
+  secret_passphrase: string | null;
+  interval_minutes: number;
+  enabled: boolean;
+}
+
+export async function saveAutoBackupConfig(config: AutoBackupConfig): Promise<void> {
+  return invoke<void>("save_auto_backup_config", { config });
+}
+
+export async function loadAutoBackupConfig(): Promise<AutoBackupConfig | null> {
+  return invoke<AutoBackupConfig | null>("load_auto_backup_config");
+}
+
+export async function deleteAutoBackupConfig(): Promise<void> {
+  return invoke<void>("delete_auto_backup_config");
+}
+
+// ─── Contacts API ────────────────────────────────────────────────────────────
+
+export async function searchContacts(
+  accountId: string,
+  query: string,
+  limit?: number,
+): Promise<KnownContact[]> {
+  return invoke<KnownContact[]>("search_contacts", { accountId, query, limit });
+}
+
+export async function listContacts(
+  query?: string,
+  favoriteOnly = false,
+  limit = 50,
+  offset = 0,
+): Promise<Contact[]> {
+  return invoke<Contact[]>("list_contacts", { query, favoriteOnly, limit, offset });
+}
+
+export async function getContactByEmail(address: string): Promise<Contact | null> {
+  return invoke<Contact | null>("get_contact_by_email", { address });
+}
+
+export async function saveContact(input: ContactInput): Promise<Contact> {
+  return invoke<Contact>("save_contact", { input });
+}
+
+export async function deleteContact(
+  contactId: string,
+  suppressAddresses = false,
+): Promise<void> {
+  return invoke<void>("delete_contact", { contactId, suppressAddresses });
+}
+
+export async function setContactFavorite(
+  contactId: string,
+  isFavorite: boolean,
+): Promise<void> {
+  return invoke<void>("set_contact_favorite", { contactId, isFavorite });
+}
+
+export async function searchContactSuggestions(
+  accountId: string,
+  query: string,
+  limit = 20,
+): Promise<ContactSuggestion[]> {
+  return invoke<ContactSuggestion[]>("search_contact_suggestions", { accountId, query, limit });
+}
+
+export async function suppressContactSuggestion(address: string): Promise<void> {
+  return invoke<void>("suppress_contact_suggestion", { address });
+}
+
+export async function importContactsVcard(data: string): Promise<VcardImportResult> {
+  return invoke<VcardImportResult>("import_contacts_vcard", { data });
+}
+
+export async function exportContactsVcard(): Promise<string> {
+  return invoke<string>("export_contacts_vcard");
+}
+
+// ─── Drafts API ──────────────────────────────────────────────────────────────
+
+export async function saveDraft(args: {
+  accountId: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string;
+  inReplyTo?: string;
+  existingDraftId?: string;
+  attachmentPaths?: string[];
+}): Promise<string> {
+  return invoke("save_draft", {
+    accountId: args.accountId,
+    to: args.to,
+    cc: args.cc,
+    bcc: args.bcc,
+    subject: args.subject,
+    bodyText: args.bodyText,
+    bodyHtml: args.bodyHtml ?? null,
+    inReplyTo: args.inReplyTo ?? null,
+    existingDraftId: args.existingDraftId ?? null,
+    attachmentPaths: args.attachmentPaths ?? null,
+  });
+}
+
+export async function deleteDraft(accountId: string, draftId: string): Promise<void> {
+  return invoke("delete_draft", { accountId, draftId });
+}
+
+// ─── Folder Counts API ───────────────────────────────────────────────────────
+
+export async function getFolderUnreadCounts(accountId: string): Promise<Record<string, number>> {
+  return invoke("get_folder_unread_counts", { accountId });
+}
+
+/**
+ * Unread mail per account, keyed by account id. Uses the same scope the app
+ * icon badge counts, so the "mark all as read" affordances can trust it.
+ */
+export async function getAccountUnreadCounts(): Promise<Record<string, number>> {
+  return invoke("get_account_unread_counts");
+}
+
+/**
+ * Mark every unread message of one mailbox as read, locally and on the
+ * provider. Resolves with the number of messages that were cleared.
+ */
+export async function markAccountAllRead(accountId: string): Promise<number> {
+  return invoke<number>("mark_account_all_read", { accountId });
+}
+
+/**
+ * Mark every unread message **in the given folders** as read.
+ *
+ * `folderIds` are local folder ids, so one call can carry a single folder or
+ * the several folders a combined sidebar row stands for. The scope is the
+ * folders' own unread count, and an empty list clears nothing rather than
+ * widening to the whole mailbox.
+ */
+export async function markFolderAllRead(
+  accountId: string,
+  folderIds: string[],
+): Promise<number> {
+  return invoke<number>("mark_folder_all_read", { accountId, folderIds });
+}
+
+// ─── Autostart API ───────────────────────────────────────────────────────────
+
+/** Whether Pebble is registered to launch when the user logs in. */
+export async function getAutostartEnabled(): Promise<boolean> {
+  return invoke<boolean>("get_autostart_enabled");
+}
+
+/** Enable or disable launching Pebble when the user logs in. */
+export async function setAutostartEnabled(enabled: boolean): Promise<void> {
+  return invoke<void>("set_autostart_enabled", { enabled });
+}
+
+export interface OAuthIdentityPreview {
+  account_id: string;
+  previous_email: string;
+  identity: { subject: string; email: string; display_name: string | null };
+}
+export function previewOAuthIdentity(accountId: string): Promise<OAuthIdentityPreview> {
+  return invoke("preview_oauth_identity", { accountId });
+}
+export function applyOAuthIdentity(preview: OAuthIdentityPreview): Promise<Account> {
+  return invoke("apply_oauth_identity", { preview });
+}
+
+// --- XOAUTH2 (OAuth2 token auth for manually configured IMAP accounts) ---
+
+/**
+ * How an account currently authenticates on each protocol. Microsoft 365 can
+ * require XOAUTH2 on IMAP while still accepting a password on SMTP, so the two
+ * are reported separately.
+ */
+export interface XOAuth2Status {
+  imap_uses_token: boolean;
+  smtp_uses_token: boolean;
+  has_refresh_token: boolean;
+  expires_at: number | null;
+  expires_in_secs: number | null;
+  /** Tenant the next refresh will be sent to: a directory ID, or "common". */
+  tenant: string | null;
+  client_id: string | null;
+  has_client_secret: boolean;
+}
+
+export interface XOAuth2RefreshInput {
+  accountId: string;
+  tenant: string;
+  clientId: string;
+  clientSecret?: string;
+  /** Omit to keep the token already stored for the account. */
+  refreshToken?: string;
+}
+
+/**
+ * Store OAuth2 refresh material for an account and immediately exchange it for
+ * an access token, which is written into the IMAP password. Resolves only once
+ * the token endpoint has accepted the refresh token, so a successful call means
+ * the whole chain works.
+ *
+ * Fields left blank keep their stored value, so an account can have its tenant
+ * corrected without re-pasting an unexpired refresh token.
+ */
+export async function setXOAuth2Refresh(input: XOAuth2RefreshInput): Promise<void> {
+  return invoke<void>("set_xoauth2_refresh", {
+    accountId: input.accountId,
+    tenant: input.tenant,
+    clientId: input.clientId,
+    clientSecret: input.clientSecret || null,
+    refreshToken: input.refreshToken || null,
+  });
+}
+
+export async function getXOAuth2Status(accountId: string): Promise<XOAuth2Status> {
+  return invoke<XOAuth2Status>("get_xoauth2_status", { accountId });
+}
+
+/**
+ * Leave for good, because the user asked to.
+ *
+ * Closing the window hides it to the tray, so leaving is a separate decision
+ * that has to be stated: this is what "quit on close" calls.
+ */
+export async function quitApp(): Promise<void> {
+  return invoke<void>("quit_app");
+}
