@@ -19,30 +19,30 @@ func TestHistoryPagesReadRetriesAndFailureKeepsCursor(t *testing.T) {
 	if _, err := c.Sync(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	m.mu.Lock()
+	m.Lock()
 	m.HistoryPages = true
 	m.FailStatus = 429
-	m.mu.Unlock()
+	m.Unlock()
 	if _, err := c.Sync(context.Background()); err != nil {
 		t.Fatal("429 bounded retry/history pages", err)
 	}
-	m.mu.Lock()
+	m.Lock()
 	m.FailStatus = 401
-	m.mu.Unlock()
+	m.Unlock()
 	if _, err := c.Sync(context.Background()); err != nil {
 		t.Fatal("401 refresh retry", err)
 	}
-	m.mu.Lock()
+	m.Lock()
 	n := m.Refreshes
-	m.mu.Unlock()
+	m.Unlock()
 	if n != 1 {
 		t.Fatal("401 not refreshed", n)
 	}
 	before, _ := c.Cursor(context.Background())
 	m.ChangeHistory("900719925474099312349")
-	m.mu.Lock()
+	m.Lock()
 	m.FailMessage = "m2"
-	m.mu.Unlock()
+	m.Unlock()
 	if _, err := c.Sync(context.Background()); err == nil {
 		t.Fatal("persistent fetch failure ignored")
 	}
@@ -50,10 +50,10 @@ func TestHistoryPagesReadRetriesAndFailureKeepsCursor(t *testing.T) {
 	if after != before {
 		t.Fatal("cursor advanced", before, after)
 	}
-	m.mu.Lock()
+	m.Lock()
 	m.FailMessage = ""
 	m.PageLoop = true
-	m.mu.Unlock()
+	m.Unlock()
 	if _, err := c.Sync(context.Background()); err == nil {
 		t.Fatal("history loop ignored")
 	}
@@ -65,11 +65,11 @@ func TestRefreshFailureKeepsEncryptedToken(t *testing.T) {
 	if err := tokens.Install(&oauth2.Token{AccessToken: "old", RefreshToken: "demo-refresh", Expiry: time.Now().Add(-time.Hour)}); err != nil {
 		t.Fatal(err)
 	}
-	v := tokens.vault.(*Vault)
+	v := tokens.Vault.(*Vault)
 	before, _ := os.ReadFile(v.Path)
-	m.mu.Lock()
+	m.Lock()
 	m.RejectRefresh = true
-	m.mu.Unlock()
+	m.Unlock()
 	if _, err := tokens.Token(context.Background()); err == nil {
 		t.Fatal("invalid grant ignored")
 	}

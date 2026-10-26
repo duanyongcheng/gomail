@@ -7,7 +7,6 @@ import { logStartupTiming } from "@/lib/startupTiming";
 import "./styles/index.css";
 
 async function bootstrap() {
-  await import("./poc/harness");
   logStartupTiming("frontend entry loaded");
   await initializeProfileStorageNamespace();
   await import("@/lib/i18n");

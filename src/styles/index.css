@@ -1,6 +1,11 @@
 @import "tailwindcss" source(none);
 @source "../**/*.{ts,tsx}";
 
+/* Preserve the upstream drag markers while using MyGO's native bridge. */
+[data-tauri-drag-region] {
+  --app-region: drag;
+}
+
 :root {
   --color-sidebar-bg: #f8f7f5;
   --color-sidebar-hover: #eeedeb;

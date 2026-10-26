@@ -4,11 +4,147 @@ import { call, event } from "mygo-runtime";
 
 // ---- Types ----
 
-export interface GmailStatus {
-  mode: string;
-  connected: boolean;
-  modify: boolean;
+export interface Account {
+  id: string;
+  email: string;
+  display_name: string;
+  color: string | null;
+  provider: string;
+  account_label: string | null;
+  provider_display_name: string | null;
+  created_at: number;
+  updated_at: number;
+  sort_order: number;
+  capabilities: Capabilities;
+}
+
+export interface AccountRequest {
+  accountId: string;
+}
+
+export interface Address {
+  name: string | null;
+  address: string;
+}
+
+export interface Attachment {
+  id: string;
+  message_id: string;
+  filename: string;
+  mime_type: string;
+  size: number;
+  local_path: string | null;
+  content_id: string | null;
+  is_inline: boolean;
+}
+
+export interface Capabilities {
+  read: boolean;
+  modify_flags: boolean;
+  send: boolean;
+  html: boolean;
+}
+
+export interface CountsRequest {
+  accountId: string;
+  byFolder: boolean;
+}
+
+export interface Empty {}
+
+export interface FlagsRequest {
+  messageId: string;
+  isRead: boolean | null;
+  isStarred: boolean | null;
+}
+
+export interface Folder {
+  id: string;
+  account_id: string;
+  remote_id: string;
+  name: string;
+  folder_type: string;
+  role: string | null;
+  parent_id: string | null;
+  color: string | null;
+  is_system: boolean;
+  sort_order: number;
+}
+
+export interface Geometry {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
+
+export interface LoginRequest {
+  provider: string;
+  email: string;
+  displayName: string;
+  accountLabel: string | null;
+}
+
+export interface Message {
+  capabilities: Capabilities;
+  id: string;
+  account_id: string;
+  remote_id: string;
+  message_id_header: string | null;
+  in_reply_to: string | null;
+  references_header: string | null;
+  thread_id: string | null;
+  subject: string;
+  snippet: string;
+  from_address: string;
+  from_name: string;
+  to_list: Address[];
+  cc_list: Address[];
+  bcc_list: Address[];
+  body_text: string;
+  body_html_raw: string;
+  has_attachments: boolean;
+  is_read: boolean;
+  is_starred: boolean;
+  is_draft: boolean;
+  date: number;
+  remote_version: string | null;
+  is_deleted: boolean;
+  deleted_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface MessageRequest {
+  messageId: string;
+}
+
+export interface MessageWithHTML {
+  message: Message;
+  rendered: RenderedHTML;
+}
+
+export interface MessagesRequest {
+  folderId: string;
+  accountId: string;
+  limit: number;
+  offset: number;
+  starred: boolean;
+}
+
+export interface Namespace {
+  value: string;
+}
+
+export interface OAuthStatus {
+  configured: boolean;
   message: string;
+}
+
+export interface RenderedHTML {
+  html: string;
+  trackers_blocked: Tracker[];
+  images_blocked: number;
 }
 
 export interface SearchHit {
@@ -18,6 +154,12 @@ export interface SearchHit {
   subject: string;
   from_address: string;
   date: number;
+}
+
+export interface SearchRequest {
+  query: string;
+  accountId: string;
+  limit: number;
 }
 
 export interface SyncComplete {
@@ -32,44 +174,87 @@ export interface SyncResult {
   limited: boolean;
 }
 
+export interface Tracker {
+  domain: string;
+  tracker_type: string;
+}
+
+export interface WindowRequest {
+  action: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
+
 // ---- Services ----
 
-export const Backend = {
-  invoke(command: string, args: Record<string, unknown>): Promise<unknown> {
-    return call("Backend.Invoke", command, args);
+export const AccountService = {
+  delete(request: AccountRequest): Promise<Empty> {
+    return call("AccountService.Delete", request);
   },
-  move(x: number, y: number): Promise<void> {
-    return call("Backend.Move", x, y);
+  list(arg0: Empty): Promise<Account[]> {
+    return call("AccountService.List", arg0);
   },
-  resize(width: number, height: number): Promise<void> {
-    return call("Backend.Resize", width, height);
+  login(request: LoginRequest): Promise<Account> {
+    return call("AccountService.Login", request);
   },
-  windowAction(action: string): Promise<void> {
-    return call("Backend.WindowAction", action);
-  },
-  windowPosition(): Promise<Record<string, number>> {
-    return call("Backend.WindowPosition");
-  },
-  windowSize(): Promise<Record<string, number>> {
-    return call("Backend.WindowSize");
+  status(arg0: Empty): Promise<OAuthStatus> {
+    return call("AccountService.Status", arg0);
   },
 } as const;
 
-export const GmailService = {
-  flags(id: string, read: boolean | null, starred: boolean | null): Promise<void> {
-    return call("GmailService.Flags", id, read, starred);
+export const FolderService = {
+  list(a: AccountRequest): Promise<Folder[]> {
+    return call("FolderService.List", a);
   },
-  login(): Promise<GmailStatus> {
-    return call("GmailService.Login");
+} as const;
+
+export const MessageService = {
+  attachments(a: MessageRequest): Promise<Attachment[]> {
+    return call("MessageService.Attachments", a);
   },
-  search(q: string, account: string, limit: number): Promise<SearchHit[]> {
-    return call("GmailService.Search", q, account, limit);
+  flags(a: FlagsRequest): Promise<Empty> {
+    return call("MessageService.Flags", a);
   },
-  status(): Promise<GmailStatus> {
-    return call("GmailService.Status");
+  get(a: MessageRequest): Promise<Message> {
+    return call("MessageService.Get", a);
   },
-  sync(): Promise<SyncResult> {
-    return call("GmailService.Sync");
+  list(a: MessagesRequest): Promise<Message[]> {
+    return call("MessageService.List", a);
+  },
+  rendered(a: MessageRequest): Promise<MessageWithHTML> {
+    return call("MessageService.Rendered", a);
+  },
+  unreadCounts(a: CountsRequest): Promise<Record<string, number>> {
+    return call("MessageService.UnreadCounts", a);
+  },
+} as const;
+
+export const SearchService = {
+  search(a: SearchRequest): Promise<SearchHit[]> {
+    return call("SearchService.Search", a);
+  },
+} as const;
+
+export const SyncService = {
+  sync(a: AccountRequest): Promise<SyncResult> {
+    return call("SyncService.Sync", a);
+  },
+} as const;
+
+export const AppService = {
+  geometry(arg0: Empty): Promise<Geometry> {
+    return call("AppService.Geometry", arg0);
+  },
+  profile(arg0: Empty): Promise<Namespace> {
+    return call("AppService.Profile", arg0);
+  },
+  quit(arg0: Empty): Promise<Empty> {
+    return call("AppService.Quit", arg0);
+  },
+  windowAction(a: WindowRequest): Promise<Empty> {
+    return call("AppService.WindowAction", a);
   },
 } as const;
 

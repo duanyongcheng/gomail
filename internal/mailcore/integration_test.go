@@ -29,7 +29,7 @@ func setup(t *testing.T) (*Core, *testmail.Servers) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	data, err := os.ReadFile("../../schema.sql")
+	data, err := os.ReadFile("../testmail/schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}

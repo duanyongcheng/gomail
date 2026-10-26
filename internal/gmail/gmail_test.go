@@ -35,7 +35,7 @@ func setup(t *testing.T) (*Core, *Mock) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	schema, err := os.ReadFile("../../schema.sql")
+	schema, err := os.ReadFile("../testmail/schema.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,17 +120,17 @@ func TestEncryptedTokenAndConcurrentRefresh(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	m.mu.Lock()
+	m.Lock()
 	n := m.Refreshes
-	m.mu.Unlock()
+	m.Unlock()
 	if n != 1 {
 		t.Fatal("concurrent refresh count", n)
 	}
-	stored, err := tokens.vault.Load()
+	stored, err := tokens.Vault.Load()
 	if err != nil || stored.RefreshToken != "demo-refresh" {
 		t.Fatal(stored, err)
 	}
-	v := tokens.vault.(*Vault)
+	v := tokens.Vault.(*Vault)
 	blob, _ := os.ReadFile(v.Path)
 	if strings.Contains(string(blob), "demo-refresh") {
 		t.Fatal("plaintext token")
@@ -170,9 +170,9 @@ func TestGmailInitialHistoryLabelsFlagsAndFallback(t *testing.T) {
 	if err != nil || len(hits) != 1 {
 		t.Fatal(hits, err)
 	}
-	m.mu.Lock()
+	m.Lock()
 	m.Expired = true
-	m.mu.Unlock()
+	m.Unlock()
 	result, err = c.Sync(context.Background())
 	if err != nil || !result.Initial {
 		t.Fatal("history 404 fallback", result, err)

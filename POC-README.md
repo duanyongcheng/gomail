@@ -1,4 +1,8 @@
-# Gmail OAuth/API slice reproduction
+# Historical Gmail OAuth/API slice reproduction
+
+This document records the original isolated PoC. Current Pebble-Go startup,
+OAuth configuration, profiles and checks are documented in `README.md`.
+The old environment switches below are not supported by the current app.
 
 This is an isolated Go + MyGO WebView prototype. It does not modify the Pebble repo, installed app, existing profile, keyring or mailbox.
 

@@ -48,8 +48,7 @@ export function useMessageLoader(messageId: string | null, privacyMode: PrivacyM
         renderedKeyRef.current = initialRenderKey;
         setRendered({ ...html, html: sanitizeHtml(html.html) });
 
-        const gmailCapabilities = (window as typeof window & { __gmailCapabilities?: { skipAutomaticRead?: boolean } }).__gmailCapabilities;
-        if (!cancelled && !msg.is_read && !gmailCapabilities?.skipAutomaticRead) {
+        if (!cancelled && !msg.is_read && msg.capabilities?.modify_flags !== false) {
           flagsMutation.mutate({ messageId: messageId!, isRead: true });
         }
       } catch (err) {

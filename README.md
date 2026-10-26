@@ -1,71 +1,139 @@
 # Pebble Go
 
-Pebble Go is the independent Go + MyGO implementation of Pebble. The original
-Rust/Tauri project remains at `../Pebble` and is not modified by this project.
+Pebble Go is the independent Go + MyGO WebView implementation of Pebble, using
+the existing React UI. The Rust/Tauri reference at `../Pebble` is kept separate.
 
-## Current scope
-
-- MyGO WebView desktop shell.
-- Existing Pebble React UI copied into this independent project.
-- Gmail OAuth/API provider with PKCE, encrypted isolated tokens, initial sync,
-  History sync, labels, read/star flags and SQLite cache/search.
-- Demo mode uses a local Gmail API fixture and starts without network access.
-- Live Gmail mode is explicit and requires a Desktop OAuth client JSON path.
-- Gmail send/delete/archive are disabled in this first milestone.
+M0 establishes versioned storage, encrypted account restoration, typed services,
+and explicit frontend command coverage. Gmail supports multiple accounts, a
+bounded recent cache (100 messages), History sync, local search, and read/star
+changes. Full mailbox backfill, durable mutation queues, sending, labels CRUD,
+HTML rendering and attachment export are scheduled for M1. IMAP/SMTP are tested
+as an isolated protocol prototype and join the app in M2.
 
 ## Development
 
-Requirements: Go 1.27+, Bun, and the platform WebView dependencies.
+Requirements: Go 1.27.3, Bun, Node for Vite/Vitest, and platform WebView support.
 
-```bash
-GOTOOLCHAIN=go1.27.3 go version
+```sh
 bun install
 bun run generate
 bun run dev
 ```
 
-Build the packaged app:
+An empty profile opens a normal app and stays running. Startup does not open an
+OAuth browser, refresh tokens, or synchronize mail. Use the account settings to
+log in and the manual sync control to synchronize. Automatic scheduling starts
+in M1. Until the M1 privacy renderer is available, message bodies are displayed
+as escaped plain text.
 
-```bash
-bun run build
+## Gmail OAuth configuration
+
+Copy `.env.example` to a local `.env` and set your Google Desktop client values:
+
+```dotenv
+GOOGLE_CLIENT_ID=your-desktop-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-desktop-client-secret
 ```
 
-## Real Gmail mode
+Bun loads `.env` during development. `bun run build` injects these local values
+using `MYGO_LDFLAGS -X`. Process environment values override packaged defaults;
+an explicitly empty process value disables a packaged value. Microsoft client
+variables are reserved for M2. Without a Google client ID, the login button says
+“未配置” and no authorization request is made.
 
-The default mode is a local fixture. To use a real Gmail account in this
-isolated project, explicitly set:
+Gmail requests `gmail.modify` plus `openid email profile`. Google authorization
+opens in the system browser with PKCE and a one-shot loopback callback. User
+consent and real Google account verification are manual steps; automated checks
+use local fixtures only. No send or permanent-delete action is implemented.
 
-```bash
-export PEBBLE_GMAIL_LIVE=1
-export PEBBLE_GMAIL_OAUTH_CONFIG=/absolute/path/client_secret_desktop.json
-# Optional, broad Gmail scope for read/star/label changes:
-# export PEBBLE_GMAIL_ALLOW_MODIFY=1
-bun run dev
+OAuth tokens are encrypted in `accounts.auth_data` with the Pebble v1
+AES-256-GCM envelope, bound to account identity. The DEK uses the independent
+`dev.bary.pebble.go` keyring service. Refresh uses compare-and-swap persistence.
+A locked keyring or missing DEK preserves the ciphertext and requires attention;
+there is no plaintext fallback. The old Pebble keyring is never read.
+
+Do not put OAuth values, tokens, profiles, or mailbox data in Git. `.env` files
+are ignored; `.env.example` contains placeholders only.
+
+## Profiles and storage
+
+The application identifier is `dev.bary.pebble.go` and its name is `Pebble Go`.
+Profile directory precedence matches the old app:
+
+1. `PEBBLE_PROFILE_DIR` (relative values resolve beside the executable).
+2. The first line of `pebble-profile.txt` beside the executable.
+3. A `pebble-profile` directory beside the executable.
+4. MyGO's application user-data directory.
+
+A persistent `profile-id` isolates frontend preferences even if a profile is
+moved. The database is `pebble.sqlite`; attachment content is stored under
+`attachments/` and referenced by relative `attachments.local_path`. Logs rotate
+under `logs/` and contain operation statuses, not credential or mail payloads.
+
+`internal/store` uses `database/sql` + `modernc.org/sqlite`, one writer and four
+read-only connections, WAL, foreign keys and a 15-second busy timeout. Legacy
+migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21.
+An unversioned PoC database is rejected instead of being silently rewritten.
+Old live-profile import remains M6 work: use a separate Pebble-Go profile.
+
+## Checks and local desktop selftest
+
+```sh
+bun run test
+bun run check
+bun run build -skip-dmg -skip-notarize
 ```
 
-Then click **Google 登录** and complete authorization in the system browser.
-Do not put OAuth JSON, tokens or mailbox data into Git. The project uses its
-own MyGO app identifier, data directory and token namespace; it does not read
-the old Pebble profile or keyring.
+`check` runs Go tests/vet/race, MyGO vet, binding generation, TypeScript,
+Vitest, frontend build and CGO-free compilation for darwin/amd64,
+linux/amd64+arm64 and windows/amd64+arm64. It prints the temporary directory
+containing detailed logs and compile artifacts. Cross-compilation does not
+claim Windows/Linux runtime validation.
 
-## Architecture
+All 130 upstream test files are present. Seven upstream-only suites are
+excluded with individual reasons in `tests/skipped.json`: six Rust/Tauri config
+suites and the separate public website suite. The remaining upstream tests run
+alongside Pebble-Go adapter tests.
+
+The explicit desktop selftest uses a synthetic local Gmail server, writes a
+JSON report and then exits. It does not contact Google or use the keyring:
+
+```sh
+CGO_ENABLED=0 go build -o /tmp/pebble-go-selftest .
+PEBBLE_SELFTEST=1 \
+PEBBLE_PROFILE_DIR=/tmp/pebble-go-test-profile \
+PEBBLE_SELFTEST_DIR=/tmp/pebble-go-test-results \
+/tmp/pebble-go-selftest
+```
+
+Use a dedicated temporary profile for selftest. Without `PEBBLE_SELFTEST=1`, the
+fixture and automatic exit are disabled.
+
+## Architecture and compatibility
 
 ```text
-React + TypeScript + Vite
-  -> generated MyGO bindings / platform adapter
-  -> MyGO desktop shell
-  -> Go Gmail service and application core
-  -> SQLite cache / FTS5 / encrypted token vault
+React / src/lib/api.ts
+  -> explicit typed command table / src/lib/platform/
+  -> generated MyGO bindings
+  -> application services / internal/app
+  -> provider interfaces / internal/domain
+  -> Gmail provider / internal/provider/gmail
+  -> repositories / internal/store, crypto, oauth
 ```
 
-`internal/gmail` owns OAuth, token refresh, Gmail REST and History sync.
-`internal/mailcore` currently contains shared MIME/search/storage helpers used by
-the first vertical slice. The next step is to split stable domain contracts
-from prototype compatibility code before adding more providers.
+There is no generic backend dispatcher. Each of the 145 invoke commands in the
+copied frontend is listed in [docs/parity.md](docs/parity.md). Implemented
+commands call generated services, optional startup stubs return explicit safe
+values, action stubs throw `NotImplemented` with the command name, and unknown
+commands fail.
 
-## Relationship to old Pebble
+To regenerate the independent Rust v20 schema oracle without changing the
+reference checkout:
 
-This project is intentionally independent. It does not migrate or write the
-old Pebble profile yet. Keep the old Rust/Tauri app available until data
-migration, HTML privacy rendering, provider parity and offline operation
-contracts are complete.
+```sh
+python3 scripts/generate_legacy_golden.py ../Pebble
+```
+
+The generator creates a temporary Cargo project with a path dependency on the
+reference `pebble-store`, opens a synthetic database and records the normalized
+schema in `internal/store/testdata/legacy_v20.json`. It does not open profiles.

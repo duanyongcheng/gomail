@@ -85,6 +85,8 @@ export interface MessageSummary {
  * @rust pebble-core/src/types.rs → Message
  */
 export interface Message extends MessageSummary {
+  /** Effective capability of this message's account in Pebble Go. */
+  capabilities?: { modify_flags: boolean };
   body_text: string;
   body_html_raw: string;
 }

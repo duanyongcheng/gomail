@@ -1,0 +1,271 @@
+{
+  "version": 20,
+  "source": "Pebble/crates/pebble-store/src/migrations.rs",
+  "source_sha256": "442a80d2c9dea502590b93e2fef1a991e8d9bdcea71c9ac1975dc0bbb630a619",
+  "objects": [
+    {
+      "type": "index",
+      "name": "idx_attachments_message",
+      "table": "attachments",
+      "sql": "CREATE INDEX idx_attachments_message ON attachments(message_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_contact_emails_contact",
+      "table": "contact_emails",
+      "sql": "CREATE INDEX idx_contact_emails_contact ON contact_emails(contact_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_contact_emails_one_primary",
+      "table": "contact_emails",
+      "sql": "CREATE UNIQUE INDEX idx_contact_emails_one_primary ON contact_emails(contact_id) WHERE is_primary = 1"
+    },
+    {
+      "type": "index",
+      "name": "idx_folders_account",
+      "table": "folders",
+      "sql": "CREATE INDEX idx_folders_account ON folders(account_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_folders_account_remote",
+      "table": "folders",
+      "sql": "CREATE UNIQUE INDEX idx_folders_account_remote ON folders(account_id, remote_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_message_folders_folder_id",
+      "table": "message_folders",
+      "sql": "CREATE INDEX idx_message_folders_folder_id ON message_folders(folder_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_account",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_account ON messages(account_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_account_remote",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_account_remote ON messages(account_id, remote_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_account_starred",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_account_starred ON messages(account_id, is_starred) WHERE is_starred = 1 AND is_deleted = 0"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_date",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_date ON messages(date)"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_message_id_header",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_message_id_header ON messages(message_id_header)"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_thread",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_thread ON messages(thread_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_messages_thread_date",
+      "table": "messages",
+      "sql": "CREATE INDEX idx_messages_thread_date ON messages(thread_id, date) WHERE thread_id IS NOT NULL AND is_deleted = 0"
+    },
+    {
+      "type": "index",
+      "name": "idx_mf_folder_message",
+      "table": "message_folders",
+      "sql": "CREATE INDEX idx_mf_folder_message ON message_folders(folder_id, message_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pending_mail_ops_account_status",
+      "table": "pending_mail_ops",
+      "sql": "CREATE INDEX idx_pending_mail_ops_account_status ON pending_mail_ops(account_id, status, updated_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pending_mail_ops_retry",
+      "table": "pending_mail_ops",
+      "sql": "CREATE INDEX idx_pending_mail_ops_retry ON pending_mail_ops(status, next_retry_at, updated_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_snoozed_unsnoozed_at",
+      "table": "snoozed_messages",
+      "sql": "CREATE INDEX idx_snoozed_unsnoozed_at ON snoozed_messages(unsnoozed_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_sync_failures_folder",
+      "table": "sync_failures",
+      "sql": "CREATE INDEX idx_sync_failures_folder ON sync_failures(account_id, folder_id)"
+    },
+    {
+      "type": "table",
+      "name": "accounts",
+      "table": "accounts",
+      "sql": "CREATE TABLE accounts ( id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT NOT NULL DEFAULT '', color TEXT, provider TEXT NOT NULL CHECK(provider IN ('imap', 'pop3', 'gmail', 'outlook')), auth_data BLOB, sync_state TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL , account_label TEXT, provider_display_name TEXT, oauth_subject TEXT, sort_order INTEGER NOT NULL DEFAULT 0)"
+    },
+    {
+      "type": "table",
+      "name": "ai_config",
+      "table": "ai_config",
+      "sql": "CREATE TABLE ai_config ( id TEXT PRIMARY KEY DEFAULT 'active', provider_type TEXT NOT NULL CHECK(provider_type IN ('openai_compatible', 'generic')), config TEXT NOT NULL DEFAULT '{}', is_enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "attachments",
+      "table": "attachments",
+      "sql": "CREATE TABLE attachments ( id TEXT PRIMARY KEY, message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, filename TEXT NOT NULL DEFAULT '', mime_type TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL DEFAULT 0, local_path TEXT, content_id TEXT, is_inline INTEGER NOT NULL DEFAULT 0 )"
+    },
+    {
+      "type": "table",
+      "name": "contact_emails",
+      "table": "contact_emails",
+      "sql": "CREATE TABLE contact_emails ( id TEXT PRIMARY KEY, contact_id TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE, address TEXT NOT NULL, normalized_address TEXT NOT NULL COLLATE NOCASE, label TEXT NOT NULL DEFAULT 'other' CHECK(label IN ('work', 'personal', 'other')), is_primary INTEGER NOT NULL DEFAULT 0 CHECK(is_primary IN (0, 1)), created_at INTEGER NOT NULL, UNIQUE(normalized_address) )"
+    },
+    {
+      "type": "table",
+      "name": "contact_suggestion_suppressions",
+      "table": "contact_suggestion_suppressions",
+      "sql": "CREATE TABLE contact_suggestion_suppressions ( normalized_address TEXT PRIMARY KEY COLLATE NOCASE, created_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "contacts",
+      "table": "contacts",
+      "sql": "CREATE TABLE contacts ( id TEXT PRIMARY KEY, display_name TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', is_favorite INTEGER NOT NULL DEFAULT 0 CHECK(is_favorite IN (0, 1)), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "folder_sync_state",
+      "table": "folder_sync_state",
+      "sql": "CREATE TABLE folder_sync_state ( account_id TEXT NOT NULL, folder_id TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (account_id, folder_id), FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE, FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE )"
+    },
+    {
+      "type": "table",
+      "name": "folders",
+      "table": "folders",
+      "sql": "CREATE TABLE folders ( id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, remote_id TEXT NOT NULL, name TEXT NOT NULL, folder_type TEXT NOT NULL CHECK(folder_type IN ('folder', 'label', 'category')), role TEXT CHECK(role IN ('inbox', 'sent', 'drafts', 'trash', 'archive', 'spam')), parent_id TEXT, color TEXT, is_system INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0 )"
+    },
+    {
+      "type": "table",
+      "name": "kanban_cards",
+      "table": "kanban_cards",
+      "sql": "CREATE TABLE kanban_cards ( message_id TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE, column_name TEXT NOT NULL CHECK(column_name IN ('todo', 'waiting', 'done')), position INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "labels",
+      "table": "labels",
+      "sql": "CREATE TABLE labels ( id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#808080', is_system INTEGER NOT NULL DEFAULT 0, rule_id TEXT )"
+    },
+    {
+      "type": "table",
+      "name": "message_folders",
+      "table": "message_folders",
+      "sql": "CREATE TABLE message_folders ( message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, folder_id TEXT NOT NULL REFERENCES folders(id) ON DELETE CASCADE, PRIMARY KEY (message_id, folder_id) )"
+    },
+    {
+      "type": "table",
+      "name": "message_labels",
+      "table": "message_labels",
+      "sql": "CREATE TABLE message_labels ( message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE, label_id TEXT NOT NULL REFERENCES labels(id) ON DELETE CASCADE, PRIMARY KEY (message_id, label_id) )"
+    },
+    {
+      "type": "table",
+      "name": "messages",
+      "table": "messages",
+      "sql": "CREATE TABLE messages ( id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, remote_id TEXT NOT NULL, message_id_header TEXT, in_reply_to TEXT, references_header TEXT, thread_id TEXT, subject TEXT NOT NULL DEFAULT '', snippet TEXT NOT NULL DEFAULT '', from_address TEXT NOT NULL DEFAULT '', from_name TEXT NOT NULL DEFAULT '', to_list TEXT NOT NULL DEFAULT '[]', cc_list TEXT NOT NULL DEFAULT '[]', bcc_list TEXT NOT NULL DEFAULT '[]', body_text TEXT NOT NULL DEFAULT '', body_html_raw TEXT NOT NULL DEFAULT '', has_attachments INTEGER NOT NULL DEFAULT 0, is_read INTEGER NOT NULL DEFAULT 0, is_starred INTEGER NOT NULL DEFAULT 0, is_draft INTEGER NOT NULL DEFAULT 0, date INTEGER NOT NULL, raw_headers TEXT, remote_version TEXT, is_deleted INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "pending_mail_ops",
+      "table": "pending_mail_ops",
+      "sql": "CREATE TABLE pending_mail_ops ( id TEXT PRIMARY KEY, account_id TEXT NOT NULL, message_id TEXT NOT NULL, op_type TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('pending', 'in_progress', 'failed', 'done')), attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL , next_retry_at INTEGER)"
+    },
+    {
+      "type": "table",
+      "name": "rules",
+      "table": "rules",
+      "sql": "CREATE TABLE rules ( id TEXT PRIMARY KEY, name TEXT NOT NULL, priority INTEGER NOT NULL DEFAULT 0, conditions TEXT NOT NULL DEFAULT '{}', actions TEXT NOT NULL DEFAULT '[]', is_enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "search_pending",
+      "table": "search_pending",
+      "sql": "CREATE TABLE search_pending ( message_id TEXT PRIMARY KEY, operation TEXT NOT NULL CHECK(operation IN ('index', 'remove')), created_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "secure_user_data",
+      "table": "secure_user_data",
+      "sql": "CREATE TABLE secure_user_data ( key TEXT PRIMARY KEY, value BLOB NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "snoozed_messages",
+      "table": "snoozed_messages",
+      "sql": "CREATE TABLE snoozed_messages ( message_id TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE, snoozed_at INTEGER NOT NULL, unsnoozed_at INTEGER NOT NULL, return_to TEXT NOT NULL DEFAULT 'inbox' )"
+    },
+    {
+      "type": "table",
+      "name": "sync_failures",
+      "table": "sync_failures",
+      "sql": "CREATE TABLE sync_failures ( account_id TEXT NOT NULL, folder_id TEXT NOT NULL, remote_id TEXT NOT NULL, provider TEXT NOT NULL, reason TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL, PRIMARY KEY (account_id, folder_id, remote_id), FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE, FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE CASCADE )"
+    },
+    {
+      "type": "table",
+      "name": "translate_config",
+      "table": "translate_config",
+      "sql": "CREATE TABLE translate_config ( id TEXT PRIMARY KEY DEFAULT 'active', provider_type TEXT NOT NULL CHECK(provider_type IN ('deeplx', 'deepl', 'generic_api', 'llm')), config TEXT NOT NULL DEFAULT '{}', is_enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL )"
+    },
+    {
+      "type": "table",
+      "name": "trusted_senders",
+      "table": "trusted_senders",
+      "sql": "CREATE TABLE trusted_senders ( account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE, email TEXT NOT NULL, trust_type TEXT NOT NULL CHECK(trust_type IN ('images', 'all')), created_at INTEGER NOT NULL, PRIMARY KEY (account_id, email) )"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_message_folders_imap_uid_unique_insert",
+      "table": "message_folders",
+      "sql": "CREATE TRIGGER trg_message_folders_imap_uid_unique_insert BEFORE INSERT ON message_folders WHEN COALESCE(( SELECT account.provider FROM messages message JOIN accounts account ON account.id = message.account_id WHERE message.id = NEW.message_id ), '') = 'imap' AND COALESCE((SELECT is_deleted FROM messages WHERE id = NEW.message_id), 1) = 0 AND COALESCE((SELECT remote_id FROM messages WHERE id = NEW.message_id), '') != '' AND EXISTS ( SELECT 1 FROM message_folders relation JOIN messages existing ON existing.id = relation.message_id WHERE relation.folder_id = NEW.folder_id AND existing.id != NEW.message_id AND existing.is_deleted = 0 AND existing.account_id = (SELECT account_id FROM messages WHERE id = NEW.message_id) AND existing.remote_id = (SELECT remote_id FROM messages WHERE id = NEW.message_id) ) BEGIN SELECT RAISE(ABORT, 'duplicate live IMAP UID in folder'); END"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_message_folders_imap_uid_unique_update",
+      "table": "message_folders",
+      "sql": "CREATE TRIGGER trg_message_folders_imap_uid_unique_update BEFORE UPDATE OF message_id, folder_id ON message_folders WHEN COALESCE(( SELECT account.provider FROM messages message JOIN accounts account ON account.id = message.account_id WHERE message.id = NEW.message_id ), '') = 'imap' AND COALESCE((SELECT is_deleted FROM messages WHERE id = NEW.message_id), 1) = 0 AND COALESCE((SELECT remote_id FROM messages WHERE id = NEW.message_id), '') != '' AND EXISTS ( SELECT 1 FROM message_folders relation JOIN messages existing ON existing.id = relation.message_id WHERE relation.folder_id = NEW.folder_id AND existing.id != NEW.message_id AND existing.is_deleted = 0 AND existing.account_id = (SELECT account_id FROM messages WHERE id = NEW.message_id) AND existing.remote_id = (SELECT remote_id FROM messages WHERE id = NEW.message_id) ) BEGIN SELECT RAISE(ABORT, 'duplicate live IMAP UID in folder'); END"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_messages_imap_uid_unique_update",
+      "table": "messages",
+      "sql": "CREATE TRIGGER trg_messages_imap_uid_unique_update BEFORE UPDATE OF account_id, remote_id, is_deleted ON messages WHEN NEW.is_deleted = 0 AND NEW.remote_id != '' AND COALESCE((SELECT provider FROM accounts WHERE id = NEW.account_id), '') = 'imap' AND EXISTS ( SELECT 1 FROM message_folders own_relation JOIN message_folders other_relation ON other_relation.folder_id = own_relation.folder_id AND other_relation.message_id != OLD.id JOIN messages existing ON existing.id = other_relation.message_id WHERE own_relation.message_id = OLD.id AND existing.is_deleted = 0 AND existing.account_id = NEW.account_id AND existing.remote_id = NEW.remote_id ) BEGIN SELECT RAISE(ABORT, 'duplicate live IMAP UID in folder'); END"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_messages_non_imap_remote_unique_insert",
+      "table": "messages",
+      "sql": "CREATE TRIGGER trg_messages_non_imap_remote_unique_insert BEFORE INSERT ON messages WHEN NEW.is_deleted = 0 AND NEW.remote_id != '' AND COALESCE((SELECT provider FROM accounts WHERE id = NEW.account_id), '') != 'imap' AND EXISTS ( SELECT 1 FROM messages existing WHERE existing.account_id = NEW.account_id AND existing.remote_id = NEW.remote_id AND existing.is_deleted = 0 ) BEGIN SELECT RAISE(ABORT, 'duplicate live non-IMAP remote_id'); END"
+    },
+    {
+      "type": "trigger",
+      "name": "trg_messages_non_imap_remote_unique_update",
+      "table": "messages",
+      "sql": "CREATE TRIGGER trg_messages_non_imap_remote_unique_update BEFORE UPDATE OF account_id, remote_id, is_deleted ON messages WHEN NEW.is_deleted = 0 AND NEW.remote_id != '' AND COALESCE((SELECT provider FROM accounts WHERE id = NEW.account_id), '') != 'imap' AND EXISTS ( SELECT 1 FROM messages existing WHERE existing.id != OLD.id AND existing.account_id = NEW.account_id AND existing.remote_id = NEW.remote_id AND existing.is_deleted = 0 ) BEGIN SELECT RAISE(ABORT, 'duplicate live non-IMAP remote_id'); END"
+    }
+  ]
+}

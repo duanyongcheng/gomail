@@ -1,4 +1,3 @@
-import GmailPanel from "../poc/GmailPanel";
 import TitleBar from "../components/TitleBar";
 import WindowResizeHandles from "../components/WindowResizeHandles";
 import SenderIdentityNotice from "../components/SenderIdentityNotice";
@@ -136,7 +135,6 @@ export default function Layout() {
       <AppBackground image={backgroundImage} />
       <WindowResizeHandles />
       <TitleBar />
-      <GmailPanel />
       <SenderIdentityNotice />
       <div className="flex flex-1 min-h-0 app-shell-content">
         <Sidebar />
