@@ -237,6 +237,7 @@ func checkLegacySchema(t *testing.T, db *sql.DB) {
 	rows, err := db.Query(`SELECT type,name,tbl_name,sql FROM sqlite_master
  WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL
  AND tbl_name NOT LIKE 'message_search%' AND name NOT LIKE 'trg_message_search_%'
+ AND tbl_name != 'gmail_backfill_pending'
  ORDER BY type,name`)
 	if err != nil {
 		t.Fatal(err)

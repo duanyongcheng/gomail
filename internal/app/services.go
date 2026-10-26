@@ -25,6 +25,10 @@ type Runtime struct {
 	Keyring     crypto.Keyring
 	OpenBrowser func(string) error
 	OnSync      func(SyncComplete)
+	OnProgress  func(domain.SyncProgress)
+	OnNewMail   func(domain.NewMail)
+	OnRealtime  func(RealtimeStatus)
+	Scheduler   *Scheduler
 	mu          sync.RWMutex
 	providers   map[string]domain.Transport
 	crypto      *crypto.Service
@@ -36,7 +40,9 @@ type SyncComplete struct {
 }
 
 func New(ctx context.Context, db *store.DB, keyring crypto.Keyring, open func(string) error) *Runtime {
-	return &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}}
+	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}}
+	r.Scheduler = newScheduler(r)
+	return r
 }
 func httpClient() *http.Client {
 	return &http.Client{Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -190,6 +196,9 @@ type staticToken struct{ value string }
 func (t staticToken) Token(context.Context) (string, error) { return t.value, nil }
 func (s *AccountService) Delete(ctx context.Context, request AccountRequest) (Empty, error) {
 	r := s.Runtime
+	r.Scheduler.control.Lock()
+	defer r.Scheduler.control.Unlock()
+	r.Scheduler.stop(request.AccountID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	err := r.DB.DeleteAccount(ctx, request.AccountID)
@@ -289,17 +298,39 @@ func (s *SearchService) Search(ctx context.Context, a SearchRequest) ([]domain.S
 type SyncService struct{ Runtime *Runtime }
 
 func (s *SyncService) Sync(ctx context.Context, a AccountRequest) (domain.SyncResult, error) {
-	p, err := s.Runtime.provider(a.AccountID)
+	return s.Runtime.Scheduler.Trigger(ctx, a.AccountID, "manual")
+}
+
+func (r *Runtime) performSync(ctx context.Context, account string) (domain.SyncResult, error) {
+	p, err := r.provider(account)
 	if err != nil {
 		return domain.SyncResult{}, err
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stop := context.AfterFunc(s.Runtime.Context, cancel)
-	defer stop()
-	result, err := p.Sync(ctx)
-	if err == nil && s.Runtime.OnSync != nil {
-		s.Runtime.OnSync(SyncComplete{AccountID: a.AccountID, Count: result.Count})
+	if r.OnProgress != nil {
+		r.OnProgress(domain.SyncProgress{AccountID: account, Status: "started", Phase: "sync"})
+	}
+	var result domain.SyncResult
+	if provider, ok := p.(domain.ProgressTransport); ok {
+		result, err = provider.SyncWithProgress(ctx, r.OnProgress)
+	} else {
+		result, err = p.Sync(ctx)
+	}
+	// NewMessages only contains pages already committed, including when a
+	// later page failed. Replaying a checkpoint will not announce them twice.
+	if r.OnNewMail != nil {
+		for _, message := range result.NewMessages {
+			r.OnNewMail(message)
+		}
+	}
+	if r.OnProgress != nil {
+		status, message := "completed", ""
+		if err != nil && ctx.Err() == nil {
+			status, message = "error", "Gmail sync failed; cached mail is available"
+		}
+		r.OnProgress(domain.SyncProgress{AccountID: account, Status: status, Phase: "sync", Count: result.Count, Message: message})
+	}
+	if err == nil && r.OnSync != nil {
+		r.OnSync(SyncComplete{AccountID: account, Count: result.Count})
 	}
 	return result, err
 }

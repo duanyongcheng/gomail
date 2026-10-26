@@ -93,17 +93,40 @@ type SearchHit struct {
 	Date        int64   `json:"date"`
 }
 
-type SyncResult struct {
+type SyncProgress struct {
+	AccountID string `json:"account_id"`
+	Status    string `json:"status"`
+	Phase     string `json:"phase"`
 	Count     int    `json:"count"`
-	HistoryID string `json:"history_id"`
-	Initial   bool   `json:"initial"`
-	Limited   bool   `json:"limited"`
+	Message   string `json:"message"`
+}
+
+type NewMail struct {
+	AccountID  string   `json:"account_id"`
+	MessageID  string   `json:"message_id"`
+	FolderIDs  []string `json:"folder_ids"`
+	ThreadID   *string  `json:"thread_id"`
+	Subject    string   `json:"subject"`
+	From       string   `json:"from"`
+	ReceivedAt int64    `json:"received_at"`
+}
+
+type SyncResult struct {
+	NewMessages []NewMail `json:"-"`
+	Count       int       `json:"count"`
+	HistoryID   string    `json:"history_id"`
+	Initial     bool      `json:"initial"`
+	Limited     bool      `json:"limited"`
 }
 
 type Transport interface {
 	Capabilities() Capabilities
 	Sync(context.Context) (SyncResult, error)
 	Flags(context.Context, string, *bool, *bool) error
+}
+
+type ProgressTransport interface {
+	SyncWithProgress(context.Context, func(SyncProgress)) (SyncResult, error)
 }
 
 type FolderProvider interface {

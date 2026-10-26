@@ -4,7 +4,7 @@
 
 Implemented entries call generated MyGO bindings. Startup stubs return explicit safe empty values for optional UI startup reads/preferences; they do not claim those features are implemented. Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.
 
-`trigger_sync` performs a sync only for `reason="manual"` in M0. Focus, reconnect and polling triggers remain disabled until the M1 scheduler.
+Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints.
 
 | Command | Status | Milestone |
 |---|---|---|
@@ -124,14 +124,14 @@ Implemented entries call generated MyGO bindings. Startup stubs return explicit 
 | `set_email_signature` | not-implemented | M3 |
 | `set_kanban_context_note` | not-implemented | M3 |
 | `set_notifications_enabled` | startup-stub | M4 |
-| `set_realtime_preference` | startup-stub | M1 |
+| `set_realtime_preference` | implemented | M1 |
 | `set_tray_menu_labels` | startup-stub | M4 |
 | `set_xoauth2_refresh` | not-implemented | M2 |
 | `show_test_notification` | not-implemented | M4 |
 | `snooze_message` | not-implemented | M3 |
 | `stage_compose_attachment` | not-implemented | M1 |
-| `start_sync` | startup-stub | M1 |
-| `stop_sync` | startup-stub | M1 |
+| `start_sync` | implemented | M1 |
+| `stop_sync` | implemented | M1 |
 | `suppress_contact_suggestion` | not-implemented | M3 |
 | `sync_titlebar_theme` | startup-stub | M4 |
 | `take_pending_mailto_urls` | startup-stub | M4 |
@@ -141,7 +141,7 @@ Implemented entries call generated MyGO bindings. Startup stubs return explicit 
 | `test_translate_connection` | not-implemented | M5 |
 | `test_webdav_connection` | not-implemented | M5 |
 | `translate_text` | not-implemented | M5 |
-| `trigger_sync` | implemented | M0 |
+| `trigger_sync` | implemented | M1 |
 | `trust_sender` | not-implemented | M1 |
 | `unsnooze_message` | not-implemented | M3 |
 | `update_account` | not-implemented | M3 |

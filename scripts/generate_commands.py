@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Refresh the explicit M0 command manifest and parity documentation."""
+"""Refresh the explicit command manifest and parity documentation."""
 import re
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 implemented = set(re.findall(r'^  ([a-z_]+): implemented', (root / 'src/lib/platform/commands.ts').read_text(), re.M))
+m1_commands = {'start_sync', 'stop_sync', 'set_realtime_preference', 'trigger_sync'}
 names = set()
 for path in (root / 'src').rglob('*.ts*'):
     if 'platform' in path.parts or 'poc' in path.parts:
@@ -13,7 +14,7 @@ for path in (root / 'src').rglob('*.ts*'):
 arrays = set('list_kanban_cards get_message_labels list_labels list_contacts search_contacts search_contact_suggestions list_email_templates list_rules list_pending_mail_ops list_snoozed list_trusted_senders list_threads take_pending_mailto_urls'.split())
 nulls = set('get_contact_by_email ai_get_config get_translate_config load_auto_backup_config get_global_proxy get_account_proxy get_oauth_account_proxy get_xoauth2_status'.split())
 objects = set('get_message_labels_batch list_kanban_context_notes'.split())
-noops = set('set_realtime_preference set_notifications_enabled set_tray_menu_labels sync_titlebar_theme clear_notification_attention stop_sync'.split())
+noops = set('set_notifications_enabled set_tray_menu_labels sync_titlebar_theme clear_notification_attention'.split())
 strings = set('get_email_signature migrate_email_signature_if_absent'.split())
 special = {
     'get_pending_mail_ops_summary': '{ pending_count: 0, in_progress_count: 0, failed_count: 0, total_active_count: 0, last_error: null, updated_at: null }',
@@ -22,7 +23,6 @@ special = {
     'get_notification_status': '{ enabled: false, attention_active: false, platform: "unknown", app_id: null }',
     'get_account_proxy_setting': '{ mode: "inherit", proxy: null }',
     'get_oauth_account_proxy_setting': '{ mode: "inherit", proxy: null }',
-    'start_sync': '"Manual sync is available; scheduling arrives in M1"',
 }
 
 def milestone(name):
@@ -44,7 +44,7 @@ for name in sorted(names):
     target = milestone(name)
     status = 'implemented' if name in implemented else 'not-implemented'
     if name in implemented:
-        target = 'M0'
+        target = 'M1' if name in m1_commands else 'M0'
     else:
         value = None
         if name in arrays: value = '[]'
@@ -68,7 +68,8 @@ source.extend(['} as const;', 'export type CommandName = keyof typeof commands;'
     'Implemented entries call generated MyGO bindings. Startup stubs return explicit safe empty values '
     'for optional UI startup reads/preferences; they do not claim those features are implemented. '
     'Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.\n\n'
-    '`trigger_sync` performs a sync only for `reason="manual"` in M0. Focus, reconnect and polling '
-    'triggers remain disabled until the M1 scheduler.\n\n'
+    'Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied '
+    'before automatic requests start; manual mode permits only explicit manual triggers. '
+    'Full scans and History pagination resume from committed checkpoints.\n\n'
     '| Command | Status | Milestone |\n|---|---|---|\n' + '\n'.join(rows) + '\n')
 print(f'{len(names)} commands, {len(implemented)} implemented; parity and manifest refreshed')

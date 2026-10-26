@@ -9,12 +9,16 @@ import (
 
 	"github.com/bary/pebble-go/internal/app"
 	"github.com/bary/pebble-go/internal/desktop"
+	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/profile"
 	"github.com/bary/pebble-go/internal/store"
 	"github.com/egoist/mygo"
 )
 
 var syncComplete = mygo.NewEvent[app.SyncComplete]("mail:sync-complete")
+var syncProgress = mygo.NewEvent[domain.SyncProgress]("mail:sync-progress")
+var newMail = mygo.NewEvent[domain.NewMail]("mail:new")
+var realtimeStatus = mygo.NewEvent[app.RealtimeStatus]("mail:realtime-status")
 
 func main() {
 	mygo.App.SetName("Pebble Go")
@@ -22,6 +26,9 @@ func main() {
 	defer cancel()
 	runtime := app.New(ctx, nil, desktop.Keyring{}, mygo.Shell.OpenExternal)
 	runtime.OnSync = func(event app.SyncComplete) { _ = syncComplete.Broadcast(event) }
+	runtime.OnProgress = func(event domain.SyncProgress) { _ = syncProgress.Broadcast(event) }
+	runtime.OnNewMail = func(event domain.NewMail) { _ = newMail.Broadcast(event) }
+	runtime.OnRealtime = func(event app.RealtimeStatus) { _ = realtimeStatus.Broadcast(event) }
 	windowService := &desktop.AppService{}
 	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, windowService)
 	var workers sync.WaitGroup
@@ -32,6 +39,7 @@ func main() {
 	mygo.App.OnQuit(func() {
 		cancel()
 		workers.Wait()
+		runtime.Scheduler.Close()
 		if db != nil {
 			_ = db.Close()
 		}
@@ -105,6 +113,9 @@ func main() {
 				}
 				window := mygo.NewWindow(mygo.WindowOptions{Title: "Pebble Go", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f8f7f5"})
 				windowService.Window.Store(window)
+				window.OnFocus(func() { runtime.Scheduler.Foreground(true) })
+				window.OnBlur(func() { runtime.Scheduler.Foreground(false) })
+				window.OnHide(func() { runtime.Scheduler.Foreground(false) })
 				window.OnClose(func(e *mygo.CloseEvent) {
 					if !quitting {
 						e.PreventDefault()

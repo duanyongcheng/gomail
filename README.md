@@ -4,10 +4,11 @@ Pebble Go is the independent Go + MyGO WebView implementation of Pebble, using
 the existing React UI. The Rust/Tauri reference at `../Pebble` is kept separate.
 
 M0 establishes versioned storage, encrypted account restoration, typed services,
-and explicit frontend command coverage. Gmail supports multiple accounts, a
-bounded recent cache (100 messages), History sync, local search, and read/star
-changes. Full mailbox backfill, durable mutation queues, sending, labels CRUD,
-HTML rendering and attachment export are scheduled for M1. IMAP/SMTP are tested
+and explicit frontend command coverage. The first M1 slice adds resumable Gmail
+mailbox backfill, paginated History sync and preference-controlled scheduling.
+Gmail supports multiple accounts, local search, unread counts and read/star
+changes. Privacy HTML/CID rendering, durable mutation queues, sending/drafts,
+labels CRUD, threading and attachment export remain M1 work. IMAP/SMTP are tested
 as an isolated protocol prototype and join the app in M2.
 
 ## Development
@@ -20,11 +21,22 @@ bun run generate
 bun run dev
 ```
 
-An empty profile opens a normal app and stays running. Startup does not open an
-OAuth browser, refresh tokens, or synchronize mail. Use the account settings to
-log in and the manual sync control to synchronize. Automatic scheduling starts
-in M1. Until the M1 privacy renderer is available, message bodies are displayed
-as escaped plain text.
+An empty profile opens a normal app and stays running. Token restoration does
+not contact the network. Once the UI loads the profile's realtime preference,
+configured Gmail accounts start syncing unless the preference is `manual`.
+Use account settings to log in. Manual sync can always be triggered explicitly.
+Until the M1 privacy renderer is available, message bodies are displayed as
+escaped plain text.
+
+Backfill processes the whole mailbox in pages of at most 100 messages and
+persists recovery checkpoints after each page. Each pass handles at most ten
+pages; unfinished work continues after one second, including an explicitly
+requested manual backfill. Stop cancels the current request. Realtime polling
+uses 10 seconds while recently active, 30 seconds while idle and 120 seconds in
+the background, with failure backoff up to five minutes. Balanced and battery
+preferences use 30- and 60-second foreground intervals. Manual mode stops
+scheduled polling and ignores focus/reconnect triggers. See
+[the sync contracts and limitations](docs/m1-sync.md).
 
 ## Gmail OAuth configuration
 
@@ -72,7 +84,8 @@ under `logs/` and contain operation statuses, not credential or mail payloads.
 
 `internal/store` uses `database/sql` + `modernc.org/sqlite`, one writer and four
 read-only connections, WAL, foreign keys and a 15-second busy timeout. Legacy
-migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21.
+migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21
+and the account-scoped backfill reconciliation table in v22.
 An unversioned PoC database is rejected instead of being silently rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 

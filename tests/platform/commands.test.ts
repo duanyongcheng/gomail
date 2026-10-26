@@ -8,7 +8,7 @@ vi.mock("@/mygo", () => ({
   FolderService: { list: vi.fn() },
   MessageService: { list: vi.fn(), get: vi.fn(), rendered: vi.fn(), flags: vi.fn(), attachments: vi.fn(), unreadCounts: vi.fn() },
   SearchService: { search: vi.fn() },
-  SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }) },
+  SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
 import { MessageService, SyncService } from "@/mygo";
 import { invoke } from "../../src/lib/platform/core";
@@ -44,12 +44,17 @@ describe("MyGO command adapter", () => {
     expect(await invoke("get_message_with_html", { messageId: "m" })).toEqual([{ id: "m" }, { html: "safe" }]);
     expect(MessageService.rendered).toHaveBeenCalledWith({ messageId: "m" });
   });
-  it("only starts network sync for explicit user requests", async () => {
-    vi.mocked(SyncService.sync).mockClear();
-    await invoke("trigger_sync", { accountId: "a", reason: "window_focus" });
-    await invoke("trigger_sync", { accountId: "a", reason: "network_online" });
-    expect(SyncService.sync).not.toHaveBeenCalled();
-    await invoke("trigger_sync", { accountId: "a", reason: "manual" });
-    expect(SyncService.sync).toHaveBeenCalledWith({ accountId: "a", reason: "manual" });
+  it("routes trigger reasons and scheduler controls through typed services", async () => {
+    vi.mocked(SyncService.trigger).mockClear();
+    for (const reason of ["window_focus", "network_online", "manual"]) {
+      await invoke("trigger_sync", { accountId: "a", reason });
+      expect(SyncService.trigger).toHaveBeenLastCalledWith({ accountId: "a", reason });
+    }
+    expect(await invoke("start_sync", { accountId: "a", pollIntervalSecs: 30 })).toBe("a");
+    expect(SyncService.start).toHaveBeenCalledWith({ accountId: "a", pollIntervalSecs: 30 });
+    await invoke("stop_sync", { accountId: "a" });
+    expect(SyncService.stop).toHaveBeenCalledWith({ accountId: "a" });
+    await invoke("set_realtime_preference", { mode: "manual" });
+    expect(SyncService.preference).toHaveBeenCalledWith({ mode: "manual" });
   });
 });

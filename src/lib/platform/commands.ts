@@ -2,7 +2,7 @@ import { AccountService, AppService, FolderService, MessageService, SearchServic
 import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
-function implemented<A, R>(run: (args: A) => Promise<R>): Entry<A, R> { return { status: "implemented", milestone: "M0", run }; }
+function implemented<A, R>(run: (args: A) => Promise<R>, milestone = "M0"): Entry<A, R> { return { status: "implemented", milestone, run }; }
 export function startup<R>(value: R, milestone: string): Entry<Record<string, unknown>, R> {
   return { status: "startup-stub", milestone, run: async () => structuredClone(value) };
 }
@@ -31,9 +31,10 @@ export const implementedCommands = {
   get_profile_storage_namespace: implemented(async () => (await AppService.profile({})).value),
   quit_app: implemented(() => AppService.quit({})),
   health_check: implemented(async () => "Pebble Go"),
+  start_sync: implemented(async (a: AccountRequest & { pollIntervalSecs?: number | null }) => (await SyncService.start({ accountId: a.accountId, pollIntervalSecs: a.pollIntervalSecs ?? null })).value, "M1"),
+  stop_sync: implemented(async (a: AccountRequest) => { await SyncService.stop(a); }, "M1"),
+  set_realtime_preference: implemented(async (a: { mode: "realtime" | "balanced" | "battery" | "manual" }) => { await SyncService.preference(a); }, "M1"),
   trigger_sync: implemented(async (a: AccountRequest & { reason?: string }) => {
-    // Automatic polling/focus/reconnect behavior arrives with the M1 scheduler.
-    // M0 issues network requests only for an explicit manual sync.
-    if (a.reason === "manual") await SyncService.sync(a);
-  }),
+    await SyncService.trigger({ accountId: a.accountId, reason: a.reason ?? "manual" });
+  }, "M1"),
 };

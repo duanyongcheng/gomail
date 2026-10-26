@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -25,8 +26,13 @@ type Mock struct {
 	Refreshes         int
 	RejectRefresh     bool
 	HistoryPages      bool
+	HistoryRefs       []Ref
+	HistoryPageSize   int
+	RequestURIs       []string
 	FailMessage       string
 	ExpectedChallenge string
+	PageSize          int
+	OmitFromList      map[string]bool
 	Requests          []string
 }
 
@@ -56,6 +62,7 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Requests = append(m.Requests, r.Method+" "+r.URL.Path)
+	m.RequestURIs = append(m.RequestURIs, r.URL.RequestURI())
 	w.Header().Set("Content-Type", "application/json")
 	if r.URL.Path == "/authorize" {
 		q := r.URL.Query()
@@ -109,15 +116,29 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 	case "/messages":
 		ids := make([]string, 0, len(m.Messages))
 		for id := range m.Messages {
-			ids = append(ids, id)
+			if !m.OmitFromList[id] {
+				ids = append(ids, id)
+			}
 		}
 		sort.Strings(ids)
 		page := r.URL.Query().Get("pageToken")
 		start := 0
 		if page != "" {
-			start = 1
+			var err error
+			start, err = strconv.Atoi(page)
+			if err != nil || start < 0 || start > len(ids) {
+				w.WriteHeader(400)
+				return
+			}
 		}
-		end := start + 1
+		size := m.PageSize
+		if size <= 0 {
+			size = 1
+		}
+		if requested, err := strconv.Atoi(r.URL.Query().Get("maxResults")); err == nil && requested < size {
+			size = requested
+		}
+		end := start + size
 		if end > len(ids) {
 			end = len(ids)
 		}
@@ -126,8 +147,11 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 			refs = append(refs, Ref{ID: id})
 		}
 		next := ""
-		if end < len(ids) || m.PageLoop {
-			next = "page-2"
+		if end < len(ids) {
+			next = strconv.Itoa(end)
+		}
+		if m.PageLoop {
+			next = "1"
 		}
 		_ = json.NewEncoder(w).Encode(ListPage{Messages: refs, Next: next})
 	case "/history":
@@ -138,6 +162,26 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		entry := HistoryEntry{Messages: []Ref{{ID: "m1"}, {ID: "m2"}}}
 		next := ""
+		if m.HistoryRefs != nil {
+			start := 0
+			if token := r.URL.Query().Get("pageToken"); token != "" {
+				var err error
+				start, err = strconv.Atoi(token)
+				if err != nil || start < 0 || start > len(m.HistoryRefs) {
+					w.WriteHeader(400)
+					return
+				}
+			}
+			size := m.HistoryPageSize
+			if size <= 0 {
+				size = 100
+			}
+			end := min(start+size, len(m.HistoryRefs))
+			entry.Messages = m.HistoryRefs[start:end]
+			if end < len(m.HistoryRefs) {
+				next = strconv.Itoa(end)
+			}
+		}
 		if m.HistoryPages && r.URL.Query().Get("pageToken") == "" {
 			entry = HistoryEntry{Messages: []Ref{{ID: "m1"}}}
 			next = "history-2"

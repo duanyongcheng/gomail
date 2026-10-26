@@ -179,12 +179,15 @@ type CachedMessage struct {
 	Attachments []domain.Attachment
 }
 type Snapshot struct {
-	AccountID string
-	Email     string
-	Folders   []domain.Folder
-	Messages  []CachedMessage
-	Removed   []string
-	Cursor    *string
+	AccountID          string
+	Email              string
+	Folders            []domain.Folder
+	Messages           []CachedMessage
+	Removed            []string
+	Cursor             *string
+	Checkpoint         *GmailCheckpoint
+	ResetBackfill      bool
+	ProcessedRemoteIDs []string
 }
 
 // CommitSnapshot atomically updates the cache, FTS triggers, memberships, and
@@ -291,6 +294,28 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 				if _, err := tx.ExecContext(ctx, "INSERT INTO attachments(id,message_id,filename,mime_type,size,local_path,content_id,is_inline) VALUES(?,?,?,?,?,?,?,?)", a.ID, m.ID, a.Filename, a.MIMEType, a.Size, a.LocalPath, a.ContentID, a.Inline); err != nil {
 					return err
 				}
+			}
+		}
+		if s.ResetBackfill {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM gmail_backfill_pending WHERE account_id=?", s.AccountID); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "INSERT INTO gmail_backfill_pending(account_id,remote_id) SELECT account_id,remote_id FROM messages WHERE account_id=? AND is_deleted=0", s.AccountID); err != nil {
+				return err
+			}
+		}
+		for _, id := range s.ProcessedRemoteIDs {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM gmail_backfill_pending WHERE account_id=? AND remote_id=?", s.AccountID, id); err != nil {
+				return err
+			}
+		}
+		if s.Checkpoint != nil {
+			raw, err := json.Marshal(s.Checkpoint)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `UPDATE accounts SET sync_state=json_set(COALESCE(NULLIF(sync_state,''),'{}'),'$.gmail_checkpoint',json(?)) WHERE id=?`, string(raw), s.AccountID); err != nil {
+				return err
 			}
 		}
 		if s.Cursor != nil {

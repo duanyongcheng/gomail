@@ -144,11 +144,17 @@ func (a *API) request(ctx context.Context, method, path string, query url.Values
 		}
 		resp, err := a.HTTP.Do(req)
 		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			return errors.New("Gmail network request failed")
 		}
 		payload, readErr := io.ReadAll(io.LimitReader(resp.Body, (4<<20)+1))
 		_ = resp.Body.Close()
 		if readErr != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			return errors.New("Gmail response read failed")
 		}
 		if len(payload) > 4<<20 {

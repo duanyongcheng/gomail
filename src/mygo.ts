@@ -136,8 +136,31 @@ export interface Namespace {
   value: string;
 }
 
+export interface NewMail {
+  account_id: string;
+  message_id: string;
+  folder_ids: string[];
+  thread_id: string | null;
+  subject: string;
+  from: string;
+  received_at: number;
+}
+
 export interface OAuthStatus {
   configured: boolean;
+  message: string;
+}
+
+export interface RealtimePreferenceRequest {
+  mode: string;
+}
+
+export interface RealtimeStatus {
+  account_id: string;
+  mode: string;
+  provider: string;
+  last_success_at: number | null;
+  next_retry_at: number | null;
   message: string;
 }
 
@@ -162,9 +185,22 @@ export interface SearchRequest {
   limit: number;
 }
 
+export interface StartSyncRequest {
+  accountId: string;
+  pollIntervalSecs: number | null;
+}
+
 export interface SyncComplete {
   account_id: string;
   count: number;
+}
+
+export interface SyncProgress {
+  account_id: string;
+  status: string;
+  phase: string;
+  count: number;
+  message: string;
 }
 
 export interface SyncResult {
@@ -174,9 +210,18 @@ export interface SyncResult {
   limited: boolean;
 }
 
+export interface SyncStarted {
+  value: string;
+}
+
 export interface Tracker {
   domain: string;
   tracker_type: string;
+}
+
+export interface TriggerSyncRequest {
+  accountId: string;
+  reason: string;
 }
 
 export interface WindowRequest {
@@ -238,8 +283,20 @@ export const SearchService = {
 } as const;
 
 export const SyncService = {
+  preference(request: RealtimePreferenceRequest): Promise<Empty> {
+    return call("SyncService.Preference", request);
+  },
+  start(request: StartSyncRequest): Promise<SyncStarted> {
+    return call("SyncService.Start", request);
+  },
+  stop(request: AccountRequest): Promise<Empty> {
+    return call("SyncService.Stop", request);
+  },
   sync(a: AccountRequest): Promise<SyncResult> {
     return call("SyncService.Sync", a);
+  },
+  trigger(request: TriggerSyncRequest): Promise<SyncResult> {
+    return call("SyncService.Trigger", request);
   },
 } as const;
 
@@ -263,4 +320,7 @@ export const AppService = {
 /** Events sent by the Go side. Subscribe with `events.name.on(listener)`. */
 export const events = {
   mailSyncComplete: event<SyncComplete>("mail:sync-complete"),
+  mailSyncProgress: event<SyncProgress>("mail:sync-progress"),
+  mailNew: event<NewMail>("mail:new"),
+  mailRealtimeStatus: event<RealtimeStatus>("mail:realtime-status"),
 } as const;

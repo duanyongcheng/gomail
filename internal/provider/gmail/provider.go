@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -15,9 +14,6 @@ import (
 	"github.com/bary/pebble-go/internal/mailmime"
 	"github.com/bary/pebble-go/internal/store"
 )
-
-const initialLimit = 100
-const changeLimit = 200
 
 type Provider struct {
 	DB        *store.DB
@@ -94,152 +90,12 @@ func (p *Provider) fetch(ctx context.Context, id string) (store.CachedMessage, e
 	return cached, nil
 }
 
-func (p *Provider) Sync(ctx context.Context) (domain.SyncResult, error) {
-	p.gate.Lock()
-	defer p.gate.Unlock()
-	cursor, err := p.DB.Cursor(ctx, p.AccountID)
-	if err != nil {
-		return domain.SyncResult{}, err
-	}
-	profile, err := p.API.Profile(ctx)
-	if err != nil {
-		return domain.SyncResult{}, err
-	}
-	if err := validateHistory(profile.HistoryID); err != nil {
-		return domain.SyncResult{}, err
-	}
-	labels, err := p.API.Labels(ctx)
-	if err != nil {
-		return domain.SyncResult{}, err
-	}
-	initial := cursor == ""
-	limited := false
-	target := profile.HistoryID
-	ids := map[string]bool{}
-	if !initial {
-		page := ""
-		seen := map[string]bool{}
-		for i := 0; i < 20; i++ {
-			history, e := p.API.History(ctx, cursor, page)
-			var httpErr *googleapi.HTTPError
-			if errors.As(e, &httpErr) && httpErr.Status == 404 {
-				initial = true
-				ids = map[string]bool{}
-				break
-			}
-			if e != nil {
-				return domain.SyncResult{}, e
-			}
-			for _, entry := range history.Entries {
-				for _, m := range entry.Messages {
-					ids[m.ID] = true
-				}
-				for _, m := range entry.Added {
-					ids[m.Message.ID] = true
-				}
-				for _, m := range entry.Deleted {
-					ids[m.Message.ID] = true
-				}
-				for _, m := range entry.LabelsAdded {
-					ids[m.Message.ID] = true
-				}
-				for _, m := range entry.LabelsRemoved {
-					ids[m.Message.ID] = true
-				}
-			}
-			if len(ids) > changeLimit {
-				return domain.SyncResult{}, errors.New("Gmail change limit exceeded; cursor unchanged")
-			}
-			if history.Next == "" {
-				if err := validateHistory(history.HistoryID); err != nil {
-					return domain.SyncResult{}, err
-				}
-				target = history.HistoryID
-				break
-			}
-			if seen[history.Next] || i == 19 {
-				return domain.SyncResult{}, errors.New("Gmail history page loop or limit")
-			}
-			seen[history.Next] = true
-			page = history.Next
-		}
-	}
-	if initial {
-		page := ""
-		seen := map[string]bool{}
-		for i := 0; i < 20; i++ {
-			list, e := p.API.List(ctx, page, initialLimit-len(ids))
-			if e != nil {
-				return domain.SyncResult{}, e
-			}
-			for _, m := range list.Messages {
-				if len(ids) >= initialLimit {
-					limited = true
-					break
-				}
-				ids[m.ID] = true
-			}
-			if list.Next == "" {
-				break
-			}
-			if len(ids) >= initialLimit {
-				limited = true
-				break
-			}
-			if seen[list.Next] || i == 19 {
-				return domain.SyncResult{}, errors.New("Gmail message page loop or limit")
-			}
-			seen[list.Next] = true
-			page = list.Next
-		}
-		known, e := p.DB.KnownRemoteIDs(ctx, p.AccountID)
-		if e != nil {
-			return domain.SyncResult{}, e
-		}
-		for _, id := range known {
-			ids[id] = true
-		}
-		if len(ids) > changeLimit {
-			return domain.SyncResult{}, errors.New("Gmail cache reconciliation limit exceeded")
-		}
-	}
-	snapshot := store.Snapshot{AccountID: p.AccountID, Email: profile.Email, Cursor: &target, Messages: []store.CachedMessage{}}
-	for _, label := range labels {
-		var role *string
-		roles := map[string]string{"INBOX": "inbox", "SENT": "sent", "DRAFT": "drafts", "TRASH": "trash", "SPAM": "spam"}
-		if value, ok := roles[label.ID]; ok {
-			role = &value
-		}
-		snapshot.Folders = append(snapshot.Folders, domain.Folder{ID: store.ScopedID(p.AccountID, "label:"+label.ID), AccountID: p.AccountID, RemoteID: label.ID, Name: label.Name, FolderType: "label", Role: role, IsSystem: label.Type == "system"})
-	}
-	ordered := make([]string, 0, len(ids))
-	for id := range ids {
-		if id != "" {
-			ordered = append(ordered, id)
-		}
-	}
-	sort.Strings(ordered)
-	for _, id := range ordered {
-		message, e := p.fetch(ctx, id)
-		var httpErr *googleapi.HTTPError
-		if errors.As(e, &httpErr) && httpErr.Status == 404 {
-			snapshot.Removed = append(snapshot.Removed, store.ScopedID(p.AccountID, id))
-			continue
-		}
-		if e != nil {
-			return domain.SyncResult{}, e
-		}
-		snapshot.Messages = append(snapshot.Messages, message)
-	}
-	if err := p.DB.CommitSnapshot(ctx, snapshot); err != nil {
-		return domain.SyncResult{}, err
-	}
-	return domain.SyncResult{Count: len(snapshot.Messages), HistoryID: target, Initial: initial, Limited: limited}, nil
-}
-
 func (p *Provider) Flags(ctx context.Context, id string, read, star *bool) error {
 	p.gate.Lock()
 	defer p.gate.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	m, err := p.DB.Message(ctx, id)
 	if err != nil {
 		return err
