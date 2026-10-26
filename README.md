@@ -6,6 +6,8 @@ the existing React UI. The Rust/Tauri reference at `../Pebble` is kept separate.
 M0 establishes versioned storage, encrypted account restoration, typed services,
 and explicit frontend command coverage. The first M1 slice adds resumable Gmail
 mailbox backfill, paginated History sync and preference-controlled scheduling.
+The next slice supports larger messages and persistent recovery of failed
+Gmail downloads, with a retry list in account settings.
 Gmail supports multiple accounts, local search, unread counts and read/star
 changes. Privacy HTML/CID rendering, durable mutation queues, sending/drafts,
 labels CRUD, threading and attachment export remain M1 work. IMAP/SMTP are tested
@@ -37,6 +39,14 @@ the background, with failure backoff up to five minutes. Balanced and battery
 preferences use 30- and 60-second foreground intervals. Manual mode stops
 scheduled polling and ignores focus/reconnect triggers. See
 [the sync contracts and limitations](docs/m1-sync.md).
+
+Gmail accepts raw messages and total decoded MIME content up to 50 MiB. A
+malformed or oversized message is saved for retry while other mail continues
+syncing; existing cached content stays available. Open Settings → Accounts →
+Mail downloads to inspect failures and explicitly retry one account or all
+accounts. Automatic modes retry eligible failures with backoff; manual mode
+only processes retries as part of an explicit sync or retry action. See
+[download recovery](docs/m1-recovery.md).
 
 ## Gmail OAuth configuration
 
@@ -85,7 +95,8 @@ under `logs/` and contain operation statuses, not credential or mail payloads.
 `internal/store` uses `database/sql` + `modernc.org/sqlite`, one writer and four
 read-only connections, WAL, foreign keys and a 15-second busy timeout. Legacy
 migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21
-and the account-scoped backfill reconciliation table in v22.
+and the account-scoped backfill reconciliation table in v22. Version 23 adds
+persistent Gmail message download failures and retry timing.
 An unversioned PoC database is rejected instead of being silently rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 
@@ -108,8 +119,9 @@ excluded with individual reasons in `tests/skipped.json`: six Rust/Tauri config
 suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
-The explicit desktop selftest uses a synthetic local Gmail server, writes a
-JSON report and then exits. It does not contact Google or use the keyring:
+The explicit desktop selftest uses a synthetic local Gmail server, verifies the
+inbox and a failed-download retry through the settings UI, writes a JSON report
+and screenshots, then exits. It does not contact Google or use the keyring:
 
 ```sh
 CGO_ENABLED=0 go build -o /tmp/pebble-go-selftest .

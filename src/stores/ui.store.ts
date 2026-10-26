@@ -33,6 +33,7 @@ export interface RealtimeStatus {
   account_id: string;
   mode: RealtimeMode;
   provider: string;
+  deferred_count?: number;
   last_success_at?: number | null;
   next_retry_at?: number | null;
   message?: string | null;

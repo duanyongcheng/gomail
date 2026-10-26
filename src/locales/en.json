@@ -1,4 +1,27 @@
 {
+  "downloads": {
+    "title": "Mail downloads",
+    "description": "Messages that could not be downloaded are saved for retry. Other mail continues syncing.",
+    "account": "Download account",
+    "allAccounts": "All Gmail accounts",
+    "retry": "Retry failed downloads",
+    "retrying": "Retrying…",
+    "loadFailed": "Could not load failed downloads.",
+    "retryFailed": "Could not retry downloads. Check your connection and account sign-in, then try again.",
+    "retryDone": "Retry finished.",
+    "empty": "No failed downloads",
+    "pending": "{{count}} messages waiting for download",
+    "pending_one": "{{count}} message waiting for download",
+    "pending_other": "{{count}} messages waiting for download",
+    "unavailableSubject": "Message details unavailable",
+    "tooLarge": "Message exceeds the 50 MiB download limit.",
+    "invalidContent": "The message could not be decoded.",
+    "attempts": "Attempts: {{count}}",
+    "queued": "Queued for retry",
+    "nextRetry": "Eligible for retry: {{time}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "common": {
     "loading": "Loading...",
     "noMessages": "No messages",

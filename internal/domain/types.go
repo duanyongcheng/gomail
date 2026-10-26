@@ -93,6 +93,23 @@ type SearchHit struct {
 	Date        int64   `json:"date"`
 }
 
+type DownloadFailure struct {
+	AccountID        string `json:"account_id"`
+	RemoteID         string `json:"remote_id"`
+	AccountEmail     string `json:"account_email"`
+	Subject          string `json:"subject"`
+	Kind             string `json:"kind"`
+	Attempts         int    `json:"attempts"`
+	NextRetryAt      int64  `json:"next_retry_at"`
+	UpdatedAt        int64  `json:"updated_at"`
+	NotifyOnRecovery bool   `json:"-"`
+}
+
+type DownloadFailuresPage struct {
+	Items []DownloadFailure `json:"items"`
+	Total int               `json:"total"`
+}
+
 type SyncProgress struct {
 	AccountID string `json:"account_id"`
 	Status    string `json:"status"`
@@ -112,11 +129,12 @@ type NewMail struct {
 }
 
 type SyncResult struct {
-	NewMessages []NewMail `json:"-"`
-	Count       int       `json:"count"`
-	HistoryID   string    `json:"history_id"`
-	Initial     bool      `json:"initial"`
-	Limited     bool      `json:"limited"`
+	DeferredCount int       `json:"deferred_count"`
+	NewMessages   []NewMail `json:"-"`
+	Count         int       `json:"count"`
+	HistoryID     string    `json:"history_id"`
+	Initial       bool      `json:"initial"`
+	Limited       bool      `json:"limited"`
 }
 
 type Transport interface {

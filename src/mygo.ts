@@ -50,6 +50,28 @@ export interface CountsRequest {
   byFolder: boolean;
 }
 
+export interface DownloadFailure {
+  account_id: string;
+  remote_id: string;
+  account_email: string;
+  subject: string;
+  kind: string;
+  attempts: number;
+  next_retry_at: number;
+  updated_at: number;
+}
+
+export interface DownloadFailuresPage {
+  items: DownloadFailure[];
+  total: number;
+}
+
+export interface DownloadFailuresRequest {
+  accountId: string;
+  limit: number;
+  offset: number;
+}
+
 export interface Empty {}
 
 export interface FlagsRequest {
@@ -161,6 +183,7 @@ export interface RealtimeStatus {
   provider: string;
   last_success_at: number | null;
   next_retry_at: number | null;
+  deferred_count: number;
   message: string;
 }
 
@@ -204,6 +227,7 @@ export interface SyncProgress {
 }
 
 export interface SyncResult {
+  deferred_count: number;
   count: number;
   history_id: string;
   initial: boolean;
@@ -283,8 +307,18 @@ export const SearchService = {
 } as const;
 
 export const SyncService = {
+  downloadFailures(request: DownloadFailuresRequest): Promise<DownloadFailuresPage> {
+    return call("SyncService.DownloadFailures", request);
+  },
   preference(request: RealtimePreferenceRequest): Promise<Empty> {
     return call("SyncService.Preference", request);
+  },
+  /**
+   * Mark eligibility before triggering; if a shared pass has already completed
+   * its final queue check, arrange another pass before returning to manual mode.
+   */
+  retryDownloads(request: AccountRequest): Promise<Empty> {
+    return call("SyncService.RetryDownloads", request);
   },
   start(request: StartSyncRequest): Promise<SyncStarted> {
     return call("SyncService.Start", request);

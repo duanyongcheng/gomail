@@ -14,6 +14,15 @@ import (
 )
 
 const APIBase = "https://gmail.googleapis.com/gmail/v1/users/me"
+const MaxRawMessageBytes = 50 << 20
+const defaultResponseLimit = 4 << 20
+const rawResponseLimit = ((MaxRawMessageBytes+2)/3)*4 + (1 << 20)
+
+// ContentError identifies bounded message content failures, without retaining
+// remote payloads or parser errors that could include message contents.
+type ContentError struct{ Kind string }
+
+func (e *ContentError) Error() string { return "Gmail message content unavailable: " + e.Kind }
 
 type TokenSource interface {
 	Token(context.Context) (string, error)
@@ -117,6 +126,10 @@ type HistoryPage struct {
 }
 
 func (a *API) request(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return a.requestWithLimit(ctx, method, path, query, body, out, defaultResponseLimit)
+}
+
+func (a *API) requestWithLimit(ctx context.Context, method, path string, query url.Values, body any, out any, limit int64) error {
 	endpoint, err := url.Parse(a.Base + path)
 	if err != nil {
 		return err
@@ -149,7 +162,15 @@ func (a *API) request(ctx context.Context, method, path string, query url.Values
 			}
 			return errors.New("Gmail network request failed")
 		}
-		payload, readErr := io.ReadAll(io.LimitReader(resp.Body, (4<<20)+1))
+		responseLimit := limit
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			responseLimit = defaultResponseLimit
+		}
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 && resp.ContentLength > responseLimit {
+			_ = resp.Body.Close()
+			return &ContentError{Kind: "too_large"}
+		}
+		payload, readErr := io.ReadAll(io.LimitReader(resp.Body, responseLimit+1))
 		_ = resp.Body.Close()
 		if readErr != nil {
 			if ctx.Err() != nil {
@@ -157,8 +178,8 @@ func (a *API) request(ctx context.Context, method, path string, query url.Values
 			}
 			return errors.New("Gmail response read failed")
 		}
-		if len(payload) > 4<<20 {
-			return errors.New("Gmail response exceeds prototype limit")
+		if int64(len(payload)) > responseLimit && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return &ContentError{Kind: "too_large"}
 		}
 		if method == http.MethodGet && resp.StatusCode == 401 && attempt == 0 {
 			if tokens, ok := a.Tokens.(interface{ Invalidate(string) }); ok {
@@ -185,7 +206,7 @@ func (a *API) request(ctx context.Context, method, path string, query url.Values
 			return nil
 		}
 		if json.Unmarshal(payload, out) != nil {
-			return errors.New("Gmail response JSON invalid")
+			return &ContentError{Kind: "invalid_content"}
 		}
 		return nil
 	}
@@ -217,9 +238,9 @@ func (a *API) List(ctx context.Context, page string, max int) (ListPage, error) 
 }
 func (a *API) Message(ctx context.Context, id string) (Message, error) {
 	var m Message
-	err := a.request(ctx, "GET", "/messages/"+url.PathEscape(id), url.Values{"format": {"raw"}}, nil, &m)
+	err := a.requestWithLimit(ctx, "GET", "/messages/"+url.PathEscape(id), url.Values{"format": {"raw"}}, nil, &m, rawResponseLimit)
 	if err == nil && (m.ID != id || m.Raw == "") {
-		err = errors.New("Gmail message response incomplete")
+		err = &ContentError{Kind: "invalid_content"}
 	}
 	return m, err
 }

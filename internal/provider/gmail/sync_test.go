@@ -3,7 +3,6 @@ package gmail_test
 import (
 	"context"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/url"
@@ -50,20 +49,17 @@ func TestFullBackfillResumesFailedPageAfterDatabaseReopen(t *testing.T) {
 	addMessages(t, mock, 250)
 	mock.PageSize = 100
 	mock.Lock()
-	valid := mock.Messages["bulk0100"]
-	bad := valid
-	bad.Raw = base64.RawURLEncoding.EncodeToString([]byte("malformed"))
-	mock.Messages["bulk0100"] = bad
+	mock.FailMessage = "bulk0100"
 	mock.Unlock()
 	if _, err := p.Sync(t.Context()); err == nil {
-		t.Fatal("malformed page accepted")
+		t.Fatal("transient page failure accepted")
 	}
 	state, err := db.GmailState(t.Context(), "a")
 	if err != nil || state.Cursor != "" || state.Checkpoint.PageToken != "100" || countCached(t, db) != 100 {
 		t.Fatal("failed page advanced recovery boundary", state, err)
 	}
 	mock.Lock()
-	mock.Messages["bulk0100"] = valid
+	mock.FailMessage = ""
 	mock.RequestURIs = nil
 	mock.Unlock()
 	if err := db.Close(); err != nil {
@@ -184,10 +180,7 @@ func TestHistoryPagesResumeAndAnnounceOnlyCommittedNewMail(t *testing.T) {
 	refs := addMessages(t, mock, 250)
 	mock.Lock()
 	mock.HistoryRefs = refs
-	valid := mock.Messages["bulk0100"]
-	bad := valid
-	bad.Raw = "invalid"
-	mock.Messages["bulk0100"] = bad
+	mock.FailMessage = "bulk0100"
 	mock.HistoryID = "900719925474099399999"
 	mock.Unlock()
 	result, err := p.Sync(t.Context())
@@ -199,7 +192,7 @@ func TestHistoryPagesResumeAndAnnounceOnlyCommittedNewMail(t *testing.T) {
 		t.Fatal("failed history page advanced cursor", state, err)
 	}
 	mock.Lock()
-	mock.Messages["bulk0100"] = valid
+	mock.FailMessage = ""
 	mock.Unlock()
 	p = gmail.New(db, mock.API(source), "a")
 	result, err = p.Sync(t.Context())

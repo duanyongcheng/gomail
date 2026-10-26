@@ -27,10 +27,12 @@ Absence from a message list alone never deletes cached mail.
 The scan captures a baseline History ID before its first page. Once the scan
 and reconciliation finish, History catches changes from that baseline,
 including changes made while scanning. History pages commit independently;
-the cursor advances after the final page. A failed page retains its incoming
-checkpoint. Earlier committed pages remain usable and safe to replay. History
-404 and expired continuation tokens restart a bounded scan with a fresh
-baseline. Repeated page tokens fail with the previous recovery boundary intact.
+the cursor advances after the final page. A transient failure retains its
+incoming page checkpoint. Earlier committed pages and bounded prefixes remain
+usable and safe to replay. Content failures follow the durable recovery rules
+linked below. History 404 and expired continuation tokens restart a bounded
+scan with a fresh baseline. Repeated page tokens fail with the previous
+recovery boundary intact.
 
 No historical mail announcements are emitted during a full scan or its catchup.
 For ordinary incremental sync, new unread Inbox messages appear in `mail:new`
@@ -79,10 +81,11 @@ checkpoint rollback with FTS, account isolation and cascade cleanup. Virtual
 clock tests cover polling, coalescing, backoff, cancellation, manual continuation
 and preference transitions without depending on real-time sleeps.
 
-The existing MIME parser still enforces a 2 MiB raw-message limit, and Gmail
-JSON responses have a 4 MiB limit. Unsupported or malformed messages fail the
-current page and preserve its recovery boundary; they can block further
-progress until addressed. Pagination has a 10,000-token safety limit per scan
-or History traversal. Large-message handling and poison-message recovery need
-further M1 work. All automated Gmail checks use local servers; real-account
-consent, refresh and long-running sync are separate manual acceptance.
+The later [download recovery slice](m1-recovery.md) raises Gmail's raw and total
+decoded MIME allowance to 50 MiB and records content failures for bounded
+retries. A malformed or oversized message no longer blocks the mailbox;
+transient errors retain the page checkpoint. Large pages can commit bounded
+prefixes before the final page checkpoint. Pagination retains its 10,000-token
+safety limit per scan or History traversal. All automated Gmail checks use local
+servers; real-account consent, refresh and long-running sync are separate
+manual acceptance.

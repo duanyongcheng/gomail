@@ -11,10 +11,21 @@ import (
 	"github.com/emersion/go-message/mail"
 )
 
+var ErrMessageTooLarge = errors.New("message exceeds size limit")
+
 func Parse(raw []byte) (Message, error) {
+	return ParseWithLimit(raw, MaxMessageBytes)
+}
+
+// ParseWithLimit bounds both the wire message and total decoded MIME data.
+// Protocol prototypes retain Parse's smaller default limit.
+func ParseWithLimit(raw []byte, limit int) (Message, error) {
 	var out Message
-	if len(raw) > MaxMessageBytes {
-		return out, errors.New("message exceeds PoC size limit")
+	if limit <= 0 {
+		return out, errors.New("invalid MIME size limit")
+	}
+	if len(raw) > limit {
+		return out, ErrMessageTooLarge
 	}
 	r, err := mail.CreateReader(bytes.NewReader(raw))
 	if err != nil {
@@ -48,6 +59,9 @@ func Parse(raw []byte) (Message, error) {
 	}
 	out.Date = date.Unix()
 	out.Attachments = []Attachment{}
+	var textBody, htmlBody strings.Builder
+	decoded := 0
+	parts := 0
 	for {
 		part, e := r.NextPart()
 		if e == io.EOF {
@@ -56,12 +70,17 @@ func Parse(raw []byte) (Message, error) {
 		if e != nil {
 			return out, e
 		}
-		data, e := io.ReadAll(io.LimitReader(part.Body, MaxMessageBytes+1))
+		parts++
+		if parts > 1000 {
+			return out, errors.New("MIME part limit exceeded")
+		}
+		data, e := io.ReadAll(io.LimitReader(part.Body, int64(limit-decoded)+1))
 		if e != nil {
 			return out, e
 		}
-		if len(data) > MaxMessageBytes {
-			return out, errors.New("decoded MIME part exceeds limit")
+		decoded += len(data)
+		if decoded > limit {
+			return out, ErrMessageTooLarge
 		}
 		switch h := part.Header.(type) {
 		case *mail.InlineHeader:
@@ -70,9 +89,9 @@ func Parse(raw []byte) (Message, error) {
 				return out, e
 			}
 			if typ == "text/plain" {
-				out.BodyText += string(data)
+				textBody.Write(data)
 			} else if typ == "text/html" {
-				out.BodyHTML += string(data)
+				htmlBody.Write(data)
 			} else {
 				out.Attachments = append(out.Attachments, Attachment{MIMEType: typ, ContentID: strings.Trim(h.Get("Content-ID"), "<>"), Inline: true, Data: data})
 			}
@@ -88,9 +107,13 @@ func Parse(raw []byte) (Message, error) {
 			out.Attachments = append(out.Attachments, Attachment{Filename: filename, MIMEType: typ, ContentID: strings.Trim(h.Get("Content-ID"), "<>"), Data: data})
 		}
 	}
-	text := []rune(out.BodyText)
-	if len(text) > 150 {
-		text = text[:150]
+	out.BodyText, out.BodyHTML = textBody.String(), htmlBody.String()
+	text := make([]rune, 0, 150)
+	for _, r := range out.BodyText {
+		if len(text) == 150 {
+			break
+		}
+		text = append(text, r)
 	}
 	out.Snippet = string(text)
 	return out, nil

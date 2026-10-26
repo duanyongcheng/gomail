@@ -1,4 +1,27 @@
 {
+  "downloads": {
+    "title": "邮件下载",
+    "description": "下载失败的邮件会保存下来供后续重试，其他邮件仍会继续同步。",
+    "account": "下载账户",
+    "allAccounts": "所有 Gmail 账户",
+    "retry": "重试下载失败的邮件",
+    "retrying": "正在重试…",
+    "loadFailed": "无法加载下载失败的邮件。",
+    "retryFailed": "无法重试下载，请检查网络连接和账户登录状态后重试。",
+    "retryDone": "重试完成。",
+    "empty": "没有下载失败的邮件",
+    "pending": "{{count}} 封邮件等待下载",
+    "pending_one": "{{count}} 封邮件等待下载",
+    "pending_other": "{{count}} 封邮件等待下载",
+    "unavailableSubject": "邮件详情暂不可用",
+    "tooLarge": "邮件超过 50 MiB 下载上限。",
+    "invalidContent": "无法解析这封邮件的内容。",
+    "attempts": "尝试次数：{{count}}",
+    "queued": "已加入重试队列",
+    "nextRetry": "可再次重试时间：{{time}}",
+    "previous": "上一页",
+    "next": "下一页"
+  },
   "common": {
     "loading": "加载中...",
     "noMessages": "暂无邮件",

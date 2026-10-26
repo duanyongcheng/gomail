@@ -188,6 +188,8 @@ type Snapshot struct {
 	Checkpoint         *GmailCheckpoint
 	ResetBackfill      bool
 	ProcessedRemoteIDs []string
+	RecoveredRemoteIDs []string
+	Failures           []MessageFailure
 }
 
 // CommitSnapshot atomically updates the cache, FTS triggers, memberships, and
@@ -308,6 +310,9 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 			if _, err := tx.ExecContext(ctx, "DELETE FROM gmail_backfill_pending WHERE account_id=? AND remote_id=?", s.AccountID, id); err != nil {
 				return err
 			}
+		}
+		if err := saveMessageFailures(ctx, tx, s); err != nil {
+			return err
 		}
 		if s.Checkpoint != nil {
 			raw, err := json.Marshal(s.Checkpoint)

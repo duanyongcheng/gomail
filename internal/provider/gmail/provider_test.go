@@ -55,9 +55,11 @@ func TestFetchFailureRollsBackCacheAndOpaqueCursor(t *testing.T) {
 		t.Fatal(err)
 	}
 	mock.ChangeHistory("900719925474099312399")
-	mock.Set("m2", []byte("malformed raw mail"), []string{"INBOX"})
+	mock.Lock()
+	mock.FailMessage = "m2"
+	mock.Unlock()
 	if _, err := provider.Sync(t.Context()); err == nil {
-		t.Fatal("bad MIME accepted")
+		t.Fatal("remote fetch failure accepted")
 	}
 	after, err := db.Cursor(t.Context(), "a")
 	if err != nil || before != after {

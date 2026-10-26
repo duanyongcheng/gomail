@@ -30,12 +30,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => {
+    t: (key: string, fallback?: string, options?: Record<string, unknown>) => {
       const labels: Record<string, string> = {
         "status.syncNow": "Sync now",
         "status.stopSync": "Stop sync",
       };
-      return labels[key] ?? fallback ?? key;
+      return (labels[key] ?? fallback ?? key).replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options?.[name] ?? ""));
     },
   }),
 }));
@@ -86,6 +86,7 @@ describe("StatusBar realtime mail events", () => {
     vi.clearAllMocks();
     mocks.listeners.clear();
     mocks.uiState.syncStatus = "idle";
+    mocks.uiState.realtimeStatusByAccount = {};
     mocks.mailState.activeAccountId = "account-1";
   });
 
@@ -133,6 +134,16 @@ describe("StatusBar realtime mail events", () => {
     // Without this the badge only catches up on the 30s poll, or right after the
     // mail is read.
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["account-unread-counts"] });
+  });
+
+  it("shows a translated download count while preserving sync errors", () => {
+    const status = { account_id: "account-1", mode: "polling", provider: "gmail", deferred_count: 2, message: "" };
+    mocks.uiState.realtimeStatusByAccount = { "account-1": status };
+    const view = render(<StatusBar />);
+    expect(document.body.textContent).toContain("2 messages waiting for download");
+    status.message = "Connection requires attention";
+    view.rerender(<StatusBar />);
+    expect(document.body.textContent).toContain("Connection requires attention");
   });
 
   it("shows manual mode when backend reports background sync is stopped", () => {

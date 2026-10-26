@@ -7,6 +7,8 @@ import {
   updateOAuthAccountProxySetting,
 } from "../../../src/lib/api";
 
+vi.mock("../../../src/features/settings/MailDownloadFailures", () => ({ default: () => null }));
+
 vi.mock("react-i18next", () => ({
   initReactI18next: {
     type: "3rdParty",

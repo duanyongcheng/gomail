@@ -2,9 +2,9 @@ package gmail
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"sort"
+	"time"
 
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/googleapi"
@@ -65,7 +65,35 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 	}
 	result.Initial = checkpoint.SuppressNotifications
 	result.HistoryID = state.Cursor
-	counted := map[string]bool{}
+	defer func() {
+		if ctx.Err() != nil {
+			return
+		}
+		total, due, countErr := p.DB.MessageFailureCounts(ctx, p.AccountID, time.Now().Unix())
+		result.DeferredCount = total
+		if countErr != nil && err == nil {
+			err = countErr
+		}
+		if err == nil && due > 0 {
+			result.Limited = true
+		}
+	}()
+	batch := &pageBatch{provider: p, ctx: ctx, folders: folders, result: &result, counted: map[string]bool{}}
+	batch.reset()
+	ready, err := p.DB.ReadyMessageFailures(ctx, p.AccountID, time.Now().Unix(), retriesPerPass)
+	if err != nil {
+		return result, err
+	}
+	for _, failure := range ready {
+		if err := batch.fetch(failure.RemoteID, failure.NotifyOnRecovery, true); err != nil {
+			return result, err
+		}
+	}
+	if len(ready) > 0 {
+		if err := batch.flush(nil, nil); err != nil {
+			return result, err
+		}
+	}
 	for page := 0; page < pagesPerPass; page++ {
 		if err := ctx.Err(); err != nil {
 			return result, err
@@ -73,7 +101,7 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 		if err := validateHistory(checkpoint.HistoryID); err != nil {
 			return result, err
 		}
-		snapshot := store.Snapshot{AccountID: p.AccountID, Folders: folders}
+		var cursor *string
 		next := *checkpoint
 		var ids []string
 		switch checkpoint.Phase {
@@ -108,7 +136,7 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 			}
 			if len(ids) == 0 {
 				next = store.GmailCheckpoint{Phase: "history", HistoryID: checkpoint.HistoryID, SuppressNotifications: true}
-				snapshot.Cursor = &next.HistoryID
+				cursor = &next.HistoryID
 			}
 		case "history":
 			history, e := p.API.History(ctx, checkpoint.HistoryID, checkpoint.PageToken)
@@ -147,7 +175,7 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 			}
 			if history.Next == "" {
 				next = store.GmailCheckpoint{Phase: "complete", HistoryID: history.HistoryID}
-				snapshot.Cursor = &next.HistoryID
+				cursor = &next.HistoryID
 			}
 		default:
 			return result, errors.New("invalid Gmail sync checkpoint phase")
@@ -166,38 +194,13 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 			ids = append(ids, id)
 		}
 		sort.Strings(ids)
-		newMail := []domain.NewMail{}
 		for _, id := range ids {
-			message, e := p.fetch(ctx, id)
-			if isHTTP(e, 404) {
-				snapshot.Removed = append(snapshot.Removed, store.ScopedID(p.AccountID, id))
-			} else if e != nil {
-				return result, e
-			} else {
-				if checkpoint.Phase == "history" && !checkpoint.SuppressNotifications && !message.Message.IsRead && !message.Message.IsDraft && uniqueInbox(message, p.AccountID) {
-					_, e := p.DB.Message(ctx, message.Message.ID)
-					if errors.Is(e, sql.ErrNoRows) {
-						m := message.Message
-						newMail = append(newMail, domain.NewMail{AccountID: p.AccountID, MessageID: m.ID, FolderIDs: message.FolderIDs, ThreadID: m.ThreadID, Subject: m.Subject, From: m.FromAddress, ReceivedAt: m.Date})
-					} else if e != nil {
-						return result, e
-					}
-				}
-				snapshot.Messages = append(snapshot.Messages, message)
+			if err := batch.fetch(id, checkpoint.Phase == "history" && !checkpoint.SuppressNotifications, false); err != nil {
+				return result, err
 			}
-			snapshot.ProcessedRemoteIDs = append(snapshot.ProcessedRemoteIDs, id)
 		}
-		snapshot.Checkpoint = &next
-		if err := p.DB.CommitSnapshot(ctx, snapshot); err != nil {
+		if err := batch.flush(&next, cursor); err != nil {
 			return result, err
-		}
-		for _, cached := range snapshot.Messages {
-			counted[cached.Message.ID] = true
-		}
-		result.Count = len(counted)
-		result.NewMessages = append(result.NewMessages, newMail...)
-		if snapshot.Cursor != nil {
-			result.HistoryID = *snapshot.Cursor
 		}
 		if progress != nil {
 			progress(domain.SyncProgress{AccountID: p.AccountID, Status: "progress", Phase: checkpoint.Phase, Count: result.Count})

@@ -48,16 +48,23 @@ func (p *Provider) fetch(ctx context.Context, id string) (store.CachedMessage, e
 	if err != nil {
 		return store.CachedMessage{}, err
 	}
+	if len(remote.Raw) > ((googleapi.MaxRawMessageBytes+2)/3)*4 {
+		return store.CachedMessage{}, &googleapi.ContentError{Kind: "too_large"}
+	}
 	raw, err := base64.RawURLEncoding.DecodeString(remote.Raw)
 	if err != nil {
 		raw, err = base64.URLEncoding.DecodeString(remote.Raw)
 	}
 	if err != nil {
-		return store.CachedMessage{}, errors.New("invalid Gmail RAW encoding")
+		return store.CachedMessage{}, &googleapi.ContentError{Kind: "invalid_content"}
 	}
-	parsed, err := mailmime.Parse(raw)
+	parsed, err := mailmime.ParseWithLimit(raw, googleapi.MaxRawMessageBytes)
 	if err != nil {
-		return store.CachedMessage{}, err
+		kind := "invalid_content"
+		if errors.Is(err, mailmime.ErrMessageTooLarge) {
+			kind = "too_large"
+		}
+		return store.CachedMessage{}, &googleapi.ContentError{Kind: kind}
 	}
 	m := domain.Message{ID: store.ScopedID(p.AccountID, id), AccountID: p.AccountID, RemoteID: id, MessageIDHeader: &parsed.MessageID, ThreadID: &remote.ThreadID, Subject: parsed.Subject, Snippet: parsed.Snippet, FromAddress: parsed.From.Address, To: []domain.Address{}, CC: []domain.Address{}, BCC: []domain.Address{}, BodyText: parsed.BodyText, BodyHTML: parsed.BodyHTML, IsRead: true, Date: parsed.Date, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()}
 	if parsed.From.Name != nil {

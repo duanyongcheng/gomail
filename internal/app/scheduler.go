@@ -15,6 +15,7 @@ type RealtimeStatus struct {
 	Provider      string `json:"provider"`
 	LastSuccessAt *int64 `json:"last_success_at"`
 	NextRetryAt   *int64 `json:"next_retry_at"`
+	DeferredCount int    `json:"deferred_count"`
 	Message       string `json:"message"`
 }
 
@@ -358,7 +359,7 @@ func (s *Scheduler) run(w *syncWorker) {
 		if w.continuing {
 			w.nextAt = w.lastFinished.Add(time.Second)
 		}
-		status := RealtimeStatus{AccountID: w.account, Provider: "gmail", Mode: "polling"}
+		status := RealtimeStatus{AccountID: w.account, Provider: "gmail", Mode: "polling", DeferredCount: result.DeferredCount}
 		if !w.lastSuccess.IsZero() {
 			value := w.lastSuccess.Unix()
 			status.LastSuccessAt = &value

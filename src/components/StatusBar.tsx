@@ -342,6 +342,9 @@ function getRealtimeStatusText(
   if (status.message) {
     return status.message;
   }
+  if (status.deferred_count && status.deferred_count > 0) {
+    return t("downloads.pending", "{{count}} messages waiting for download", { count: status.deferred_count });
+  }
 
   switch (status.mode) {
     case "realtime":

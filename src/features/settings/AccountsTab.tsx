@@ -1,4 +1,5 @@
 import { accountLabel } from "@/lib/accountIdentity";
+import MailDownloadFailures from "./MailDownloadFailures";
 import OAuthIdentityPanel from "./OAuthIdentityPanel";
 import XOAuth2Panel from "./XOAuth2Panel";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -458,6 +459,10 @@ export default function AccountsTab() {
         </div>
       )}
 
+      {accounts.some((account) => account.provider === "gmail") && (
+        <MailDownloadFailures accounts={accounts.filter((account) => account.provider === "gmail")} />
+      )}
+
       {/* Test result */}
       {testResult && (
         <div
@@ -519,6 +524,9 @@ function getAccountRealtimeStatusText(
 
   if (status.message) {
     return status.message;
+  }
+  if (status.deferred_count && status.deferred_count > 0) {
+    return t("downloads.pending", "{{count}} messages waiting for download", { count: status.deferred_count });
   }
 
   switch (status.mode) {
