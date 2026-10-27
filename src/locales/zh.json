@@ -424,6 +424,7 @@
     "title": "附件",
     "download": "下载",
     "downloading": "下载中...",
+    "saveAs": "另存为…",
     "noAttachments": "无附件",
     "downloadFailed": "下载附件失败",
     "downloadFailedWithReason": "下载附件失败：{{reason}}"

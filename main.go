@@ -20,6 +20,7 @@ var syncProgress = mygo.NewEvent[domain.SyncProgress]("mail:sync-progress")
 var newMail = mygo.NewEvent[domain.NewMail]("mail:new")
 var realtimeStatus = mygo.NewEvent[app.RealtimeStatus]("mail:realtime-status")
 var pendingOpsChanged = mygo.NewEvent[struct{}]("mail:pending-ops-changed")
+var attachmentProgress = mygo.NewEvent[app.AttachmentProgress]("attachment:download-progress")
 
 func main() {
 	mygo.App.SetName("Pebble Go")
@@ -31,8 +32,10 @@ func main() {
 	runtime.OnNewMail = func(event domain.NewMail) { _ = newMail.Broadcast(event) }
 	runtime.OnRealtime = func(event app.RealtimeStatus) { _ = realtimeStatus.Broadcast(event) }
 	runtime.OnPendingOpsChanged = func() { _ = pendingOpsChanged.Broadcast(struct{}{}) }
+	runtime.OnAttachmentProgress = func(event app.AttachmentProgress) { _ = attachmentProgress.Broadcast(event) }
 	windowService := &desktop.AppService{}
-	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, windowService)
+	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
+	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, fileService, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog

@@ -1,4 +1,4 @@
-import { AccountService, AppService, FolderService, MessageService, PendingOpsService, SearchService, SyncService } from "@/mygo";
+import { AccountService, AppService, AttachmentService, FolderService, MessageService, PendingOpsService, SearchService, SyncService } from "@/mygo";
 import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
@@ -43,6 +43,8 @@ export const implementedCommands = {
   list_pending_mail_ops: implemented((a: { accountId: string | null; limit?: number }) => PendingOpsService.list({ accountId: a.accountId ?? "", limit: a.limit ?? 100 }), "M1"),
   dismiss_failed_pending_mail_ops: implemented((a: { accountId: string | null }) => PendingOpsService.dismiss({ accountId: a.accountId ?? "", limit: 100 }), "M1"),
   list_attachments: implemented((a: MessageRequest) => MessageService.attachments(a)),
+  get_attachment_path: implemented((a: { attachmentId: string }) => AttachmentService.path(a), "M1"),
+  download_attachment: implemented((a: { attachmentId: string; saveTo: string }) => AttachmentService.download(a), "M1"),
   search_messages: implemented((a: Partial<SearchRequest>) => SearchService.search({ query: a.query ?? "", accountId: a.accountId ?? "", limit: a.limit ?? 50 })),
   get_folder_unread_counts: implemented((a: AccountRequest) => MessageService.unreadCounts({ accountId: a.accountId, byFolder: true })),
   get_account_unread_counts: implemented(() => MessageService.unreadCounts({ accountId: "", byFolder: false })),

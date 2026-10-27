@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
-import { File, FileText, Image, FileArchive, Film, Music, Download, Loader, Check } from "lucide-react";
+import { File, FileText, Image, FileArchive, Film, Music, Download, Save, Loader, Check } from "lucide-react";
 import { listAttachments, downloadAttachment } from "@/lib/api";
 import type { Attachment } from "@/lib/api";
 import { sanitizeFilename } from "@/lib/sanitizeFilename";
+import { saveAttachmentAs } from "@/lib/platform/attachments";
 import { useToastStore } from "@/stores/toast.store";
 
 interface Props {
@@ -41,8 +42,19 @@ function getErrorMessage(err: unknown): string | null {
   return null;
 }
 
-export default function AttachmentList({ messageId, variant = "bar" }: Props) {
+export default function AttachmentList(props: Props) {
+  // A message change owns fresh state, including any asynchronous save result.
+  return <MessageAttachments key={props.messageId} {...props} />;
+}
+
+function MessageAttachments({ messageId, variant = "bar" }: Props) {
   const { t } = useTranslation();
+  const busy = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -55,7 +67,9 @@ export default function AttachmentList({ messageId, variant = "bar" }: Props) {
       "attachment:download-progress",
       (event) => {
         const { attachment_id, bytes_copied, total_bytes } = event.payload;
-        const pct = total_bytes > 0 ? Math.round((bytes_copied / total_bytes) * 100) : 0;
+        if (!busy.current || !mounted.current) return;
+        const pct = total_bytes > 0 && bytes_copied < total_bytes
+          ? Math.min(99, Math.round((bytes_copied / total_bytes) * 100)) : 100;
         setDownloadProgress((prev) => ({ ...prev, [attachment_id]: pct }));
       },
     );
@@ -84,18 +98,28 @@ export default function AttachmentList({ messageId, variant = "bar" }: Props) {
     };
   }, [messageId]);
 
-  async function handleDownload(attachment: Attachment) {
+  async function handleDownload(attachment: Attachment, saveAs = false) {
+    if (busy.current) return;
+    busy.current = true;
     setDownloadingId(attachment.id);
     try {
-      const { downloadDir } = await import("@tauri-apps/api/path");
-      const dir = await downloadDir();
-      const safeName = sanitizeFilename(attachment.filename);
-      const savePath = `${dir}/${safeName}`;
-      const downloadedPath = await downloadAttachment(attachment.id, savePath);
-      setDownloadedPaths((prev) => ({ ...prev, [attachment.id]: downloadedPath }));
-      setDownloadProgress((prev) => { const next = { ...prev }; delete next[attachment.id]; return next; });
+      let downloadedPath: string | null;
+      if (saveAs) {
+        downloadedPath = await saveAttachmentAs(attachment.id);
+      } else {
+        const { downloadDir } = await import("@tauri-apps/api/path");
+        const dir = await downloadDir();
+        const safeName = sanitizeFilename(attachment.filename);
+        // Match the platform directory separator (including Windows paths).
+        const separator = dir.includes("\\") ? "\\" : "/";
+        const savePath = `${dir.replace(/[/\\]+$/, "")}${separator}${safeName}`;
+        downloadedPath = await downloadAttachment(attachment.id, savePath);
+      }
+      if (downloadedPath && mounted.current) {
+        setDownloadedPaths((prev) => ({ ...prev, [attachment.id]: downloadedPath }));
+      }
     } catch (err) {
-      console.error("Failed to download attachment:", err);
+      if (!mounted.current) return;
       const reason = getErrorMessage(err);
       useToastStore.getState().addToast({
         message: reason
@@ -104,7 +128,11 @@ export default function AttachmentList({ messageId, variant = "bar" }: Props) {
         type: "error",
       });
     } finally {
-      setDownloadingId(null);
+      busy.current = false;
+      if (mounted.current) {
+        setDownloadingId(null);
+        setDownloadProgress({});
+      }
     }
   }
 
@@ -136,7 +164,7 @@ export default function AttachmentList({ messageId, variant = "bar" }: Props) {
                   <button
                     className="attachment-list-download"
                     onClick={() => handleDownload(attachment)}
-                    disabled={isDownloading}
+                    disabled={downloadingId !== null}
                     aria-label={t("attachments.download") + ": " + attachment.filename}
                     title={isDownloading ? t("attachments.downloading") : downloadedPaths[attachment.id] ? downloadedPaths[attachment.id] : t("attachments.download")}
                     style={{ opacity: isDownloading ? 0.5 : 1 }}
@@ -148,6 +176,15 @@ export default function AttachmentList({ messageId, variant = "bar" }: Props) {
                     ) : (
                       <Download size={14} />
                     )}
+                  </button>
+                  <button
+                    className="attachment-list-download"
+                    onClick={() => handleDownload(attachment, true)}
+                    disabled={downloadingId !== null}
+                    aria-label={t("attachments.saveAs") + ": " + attachment.filename}
+                    title={t("attachments.saveAs")}
+                  >
+                    <Save size={14} />
                   </button>
                 </div>
               </div>

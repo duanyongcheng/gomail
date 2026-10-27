@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/mygo", () => ({
   AccountService: { list: vi.fn(), login: vi.fn(), delete: vi.fn() },
   AppService: { profile: vi.fn(), quit: vi.fn() },
+  AttachmentService: { path: vi.fn(), download: vi.fn() },
+  FileService: { downloads: vi.fn(), saveAttachment: vi.fn() },
   FolderService: { list: vi.fn() },
   MessageService: {
     list: vi.fn(), get: vi.fn(), rendered: vi.fn(), flags: vi.fn(), attachments: vi.fn(), unreadCounts: vi.fn(),
@@ -17,7 +19,9 @@ vi.mock("@/mygo", () => ({
   SearchService: { search: vi.fn() },
   SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
-import { MessageService, PendingOpsService, SyncService } from "@/mygo";
+import { AttachmentService, FileService, MessageService, PendingOpsService, SyncService } from "@/mygo";
+import { downloadDir } from "../../src/lib/platform/path";
+import { saveAttachmentAs } from "../../src/lib/platform/attachments";
 import { invoke } from "../../src/lib/platform/core";
 import { commands } from "../../src/lib/platform/manifest";
 
@@ -68,6 +72,21 @@ describe("MyGO command adapter", () => {
     await invoke("dismiss_failed_pending_mail_ops", { accountId: "a" });
     expect(PendingOpsService.dismiss).toHaveBeenCalledWith({ accountId: "a", limit: 100 });
     await expect(invoke("empty_trash", { accountId: "a" })).rejects.toThrow("Permanent delete");
+  });
+
+  it("routes attachment commands, Downloads and nullable save dialog results", async () => {
+    vi.mocked(AttachmentService.path).mockResolvedValueOnce(null);
+    expect(await invoke("get_attachment_path", { attachmentId: "att" })).toBeNull();
+    expect(AttachmentService.path).toHaveBeenCalledWith({ attachmentId: "att" });
+    vi.mocked(AttachmentService.download).mockResolvedValueOnce("/Downloads/report (1).txt");
+    const request = { attachmentId: "att", saveTo: "/Downloads/report.txt" };
+    expect(await invoke("download_attachment", request)).toBe("/Downloads/report (1).txt");
+    expect(AttachmentService.download).toHaveBeenCalledWith(request);
+    vi.mocked(FileService.downloads).mockResolvedValueOnce("/Downloads");
+    expect(await downloadDir()).toBe("/Downloads");
+    vi.mocked(FileService.saveAttachment).mockResolvedValueOnce(null);
+    expect(await saveAttachmentAs("att")).toBeNull();
+    expect(FileService.saveAttachment).toHaveBeenCalledWith({ attachmentId: "att" });
   });
 
   it("routes trigger reasons and scheduler controls through typed services", async () => {

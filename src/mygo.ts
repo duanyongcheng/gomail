@@ -47,6 +47,16 @@ export interface Attachment {
   is_inline: boolean;
 }
 
+export interface AttachmentProgress {
+  attachment_id: string;
+  bytes_copied: number;
+  total_bytes: number;
+}
+
+export interface AttachmentRequest {
+  attachmentId: string;
+}
+
 export interface BatchRequest {
   messageIds: string[];
   isRead?: boolean;
@@ -63,6 +73,11 @@ export interface Capabilities {
 export interface CountsRequest {
   accountId: string;
   byFolder: boolean;
+}
+
+export interface DownloadAttachmentRequest {
+  attachmentId: string;
+  saveTo: string;
 }
 
 export interface DownloadFailure {
@@ -441,6 +456,36 @@ export const PendingOpsService = {
   },
 } as const;
 
+export const AttachmentService = {
+  download(request: DownloadAttachmentRequest): Promise<string> {
+    return call("AttachmentService.Download", request);
+  },
+  /**
+   * Path preserves the legacy nullable result without returning stale/missing
+   * paths. Downloads must still use OpenAttachment rather than reopen this path.
+   */
+  path(request: AttachmentRequest): Promise<string | null> {
+    return call("AttachmentService.Path", request);
+  },
+} as const;
+
+/**
+ * FileService owns only native directory/dialog adaptation. Attachment lookup,
+ * constrained reads and copying remain in the framework-independent core.
+ */
+export const FileService = {
+  downloads(arg0: Empty): Promise<string> {
+    return call("FileService.Downloads", arg0);
+  },
+  /**
+   * SaveAttachment returns null on dialog cancellation; it never opens files in
+   * their associated app. Even a dialog-confirmed existing target is not replaced.
+   */
+  saveAttachment(request: AttachmentRequest): Promise<string | null> {
+    return call("FileService.SaveAttachment", request);
+  },
+} as const;
+
 export const AppService = {
   geometry(arg0: Empty): Promise<Geometry> {
     return call("AppService.Geometry", arg0);
@@ -465,4 +510,5 @@ export const events = {
   mailNew: event<NewMail>("mail:new"),
   mailRealtimeStatus: event<RealtimeStatus>("mail:realtime-status"),
   mailPendingOpsChanged: event<{}>("mail:pending-ops-changed"),
+  attachmentDownloadProgress: event<AttachmentProgress>("attachment:download-progress"),
 } as const;

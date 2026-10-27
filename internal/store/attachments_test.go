@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,6 +33,54 @@ func TestAttachmentFileRequiresAccountMessageAndStaysInsideProfile(t *testing.T)
 	}
 	if _, err := db.AttachmentFile(t.Context(), "a", "other", "a:m:attachment:0"); err == nil {
 		t.Fatal("cross-message attachment accepted")
+	}
+}
+
+func TestOpenAttachmentRejectsTraversalSymlinksAndNonRegularFiles(t *testing.T) {
+	db := openStore(t)
+	ctx := t.Context()
+	if err := db.SaveAccount(ctx, domain.Account{ID: "a", Email: "a", Provider: "gmail"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.CommitSnapshot(ctx, Snapshot{AccountID: "a", Messages: []CachedMessage{{Message: domain.Message{ID: "m", AccountID: "a", RemoteID: "r"}, Attachments: []domain.Attachment{{ID: "att", MessageID: "m", Data: []byte("ok")}}}}}); err != nil {
+		t.Fatal(err)
+	}
+	file, err := db.AttachmentFile(ctx, "a", "m", "att")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"../secret", "pebble.sqlite", file.Path, "attachments/../pebble.sqlite", "attachments/directory"} {
+		if _, err := db.write.ExecContext(ctx, "UPDATE attachments SET local_path=? WHERE id='att'", path); err != nil {
+			t.Fatal(err)
+		}
+		if f, _, err := db.OpenAttachment(ctx, "a", "m", "att"); err == nil {
+			_ = f.Close()
+			t.Fatalf("opened unsafe source %q", path)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(filepath.Dir(file.Path), "directory"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if f, _, err := db.OpenAttachment(ctx, "a", "m", "att"); err == nil {
+		_ = f.Close()
+		t.Fatal("opened directory")
+	}
+	outside := filepath.Join(t.TempDir(), "secret")
+	if err := os.WriteFile(outside, []byte("secret"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for i, target := range []string{outside, "../pebble.sqlite"} {
+		name := fmt.Sprintf("link%d", i)
+		if err := os.Symlink(target, filepath.Join(filepath.Dir(file.Path), name)); err != nil {
+			t.Skip("symlink unavailable:", err)
+		}
+		if _, err := db.write.ExecContext(ctx, "UPDATE attachments SET local_path=? WHERE id='att'", "attachments/"+name); err != nil {
+			t.Fatal(err)
+		}
+		if f, _, err := db.OpenAttachment(ctx, "a", "m", "att"); err == nil {
+			_ = f.Close()
+			t.Fatal("opened source symlink outside attachments")
+		}
 	}
 }
 

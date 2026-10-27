@@ -21,20 +21,21 @@ import (
 )
 
 type Runtime struct {
-	DB                  *store.DB
-	Context             context.Context
-	Keyring             crypto.Keyring
-	OpenBrowser         func(string) error
-	OnSync              func(SyncComplete)
-	OnProgress          func(domain.SyncProgress)
-	OnNewMail           func(domain.NewMail)
-	OnRealtime          func(RealtimeStatus)
-	OnPendingOpsChanged func()
-	pendingWake         chan struct{}
-	Scheduler           *Scheduler
-	mu                  sync.RWMutex
-	providers           map[string]domain.Transport
-	crypto              *crypto.Service
+	DB                   *store.DB
+	Context              context.Context
+	Keyring              crypto.Keyring
+	OpenBrowser          func(string) error
+	OnSync               func(SyncComplete)
+	OnProgress           func(domain.SyncProgress)
+	OnNewMail            func(domain.NewMail)
+	OnRealtime           func(RealtimeStatus)
+	OnPendingOpsChanged  func()
+	OnAttachmentProgress func(AttachmentProgress)
+	pendingWake          chan struct{}
+	Scheduler            *Scheduler
+	mu                   sync.RWMutex
+	providers            map[string]domain.Transport
+	crypto               *crypto.Service
 }
 
 type SyncComplete struct {

@@ -424,6 +424,7 @@
     "title": "Attachments",
     "download": "Download",
     "downloading": "Downloading...",
+    "saveAs": "Save as…",
     "noAttachments": "No attachments",
     "downloadFailed": "Failed to download attachment",
     "downloadFailedWithReason": "Failed to download attachment: {{reason}}"

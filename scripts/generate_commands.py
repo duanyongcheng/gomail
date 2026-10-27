@@ -9,7 +9,8 @@ m1_commands = {'start_sync', 'stop_sync', 'set_realtime_preference', 'trigger_sy
     'archive_message', 'delete_message', 'restore_message', 'move_to_folder',
     'batch_archive', 'batch_delete', 'batch_mark_read', 'batch_star',
     'mark_account_all_read', 'mark_folder_all_read', 'empty_trash',
-    'get_pending_mail_ops_summary', 'list_pending_mail_ops', 'dismiss_failed_pending_mail_ops', 'get_messages_batch'}
+    'get_pending_mail_ops_summary', 'list_pending_mail_ops', 'dismiss_failed_pending_mail_ops', 'get_messages_batch',
+    'get_attachment_path', 'download_attachment'}
 names = set()
 for path in (root / 'src').rglob('*.ts*'):
     if 'platform' in path.parts or 'poc' in path.parts:

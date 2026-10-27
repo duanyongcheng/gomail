@@ -10,8 +10,9 @@ The next slices support larger messages and persistent recovery of failed
 Gmail downloads, with a retry list in account settings, plus backend privacy
 HTML/CID rendering. Gmail supports multiple accounts, local search, unread counts
 and read/star changes. Mail mutations now use a durable remote-write queue, so
-offline changes survive restart and retry with backoff. Sending/drafts, labels
-CRUD, threading and attachment export remain M1 work. IMAP/SMTP are tested
+offline changes survive restart and retry with backoff. Cached attachments can
+be downloaded or saved through the native Save As dialog. Sending/drafts, labels
+CRUD and threading remain M1 work. IMAP/SMTP are tested
 as an isolated protocol prototype and join the app in M2.
 
 ## Development
@@ -54,6 +55,12 @@ LoadOnce, Off and TrustedSender modes control external images and stylesheets;
 trackers are reported in the privacy banner. CID inline images use the narrow
 `pebble-attachment://` protocol and cannot address arbitrary profile files. See
 [privacy rendering](docs/m1-privacy.md).
+
+The message attachment footer offers Download (system Downloads directory) and
+Save As (native file chooser). Existing files are preserved using numbered
+filenames, with progress and the actual saved path shown in the UI. Export and
+CID reads share a symlink-contained cache opener; failed copies are cleaned up.
+See [attachment export](docs/m1-attachment-export.md).
 
 Flags, archive/restore, trash, moves, batch actions and mark-all-read commit
 locally and enqueue a remote write in one transaction. A background worker
@@ -133,8 +140,8 @@ suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox and a failed-download retry through the settings UI, writes a JSON report
-and screenshots, then exits. It does not contact Google or use the keyring:
+inbox, attachment export and a failed-download retry through the settings UI,
+writes a JSON report and screenshots, then exits. It does not contact Google or use the keyring:
 
 ```sh
 CGO_ENABLED=0 go build -o /tmp/pebble-go-selftest .

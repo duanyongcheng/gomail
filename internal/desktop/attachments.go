@@ -2,7 +2,6 @@ package desktop
 
 import (
 	"net/http"
-	"os"
 	"path"
 	"strconv"
 	"time"
@@ -32,12 +31,7 @@ func AttachmentHandler(db *store.DB) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		file, err := db.AttachmentFile(r.Context(), accountID, messageID, attachmentID)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		handle, err := os.Open(file.Path)
+		handle, file, err := db.OpenAttachment(r.Context(), accountID, messageID, attachmentID)
 		if err != nil {
 			http.NotFound(w, r)
 			return

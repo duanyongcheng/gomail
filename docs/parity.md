@@ -41,14 +41,14 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `delete_message` | implemented | M1 |
 | `delete_rule` | not-implemented | M3 |
 | `dismiss_failed_pending_mail_ops` | implemented | M1 |
-| `download_attachment` | not-implemented | M1 |
+| `download_attachment` | implemented | M1 |
 | `empty_trash` | implemented | M1 |
 | `export_backup_file` | not-implemented | M5 |
 | `export_contacts_vcard` | not-implemented | M3 |
 | `get_account_proxy` | startup-stub | M2 |
 | `get_account_proxy_setting` | startup-stub | M2 |
 | `get_account_unread_counts` | implemented | M0 |
-| `get_attachment_path` | not-implemented | M1 |
+| `get_attachment_path` | implemented | M1 |
 | `get_autostart_enabled` | startup-stub | M4 |
 | `get_contact_by_email` | startup-stub | M3 |
 | `get_email_signature` | startup-stub | M3 |

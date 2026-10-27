@@ -1,1 +1,3 @@
-export const downloadDir = (): Promise<string> => Promise.reject(new Error("NotImplemented: download_attachment (M1)"));
+import { FileService } from "@/mygo";
+
+export const downloadDir = (): Promise<string> => FileService.downloads({});
