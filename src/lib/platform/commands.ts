@@ -1,4 +1,4 @@
-import { AccountService, AppService, FolderService, MessageService, SearchService, SyncService } from "@/mygo";
+import { AccountService, AppService, FolderService, MessageService, PendingOpsService, SearchService, SyncService } from "@/mygo";
 import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
@@ -24,6 +24,24 @@ export const implementedCommands = {
   get_message_with_html: implemented(async (a: MessageRequest) => { const result = await MessageService.rendered(a); return [result.message, result.rendered] as const; }),
   get_rendered_html: implemented(async (a: MessageRequest) => (await MessageService.rendered(a)).rendered),
   update_message_flags: implemented((a: FlagsRequest) => MessageService.flags({ messageId: a.messageId, isRead: a.isRead ?? null, isStarred: a.isStarred ?? null })),
+  archive_message: implemented((a: { messageId: string }) => MessageService.archive(a), "M1"),
+  delete_message: implemented((a: { messageId: string }) => MessageService.delete(a), "M1"),
+  restore_message: implemented((a: { messageId: string }) => MessageService.restore(a), "M1"),
+  move_to_folder: implemented((a: { messageId: string; targetFolderId: string }) => MessageService.move(a), "M1"),
+  batch_archive: implemented((a: { messageIds: string[] }) => MessageService.batchArchive({ messageIds: a.messageIds }), "M1"),
+  batch_delete: implemented((a: { messageIds: string[] }) => MessageService.batchDelete({ messageIds: a.messageIds }), "M1"),
+  batch_mark_read: implemented((a: { messageIds: string[]; isRead: boolean }) => MessageService.batchFlags({ messageIds: a.messageIds, isRead: a.isRead }), "M1"),
+  batch_star: implemented((a: { messageIds: string[]; starred: boolean }) => MessageService.batchFlags({ messageIds: a.messageIds, starred: a.starred }), "M1"),
+  mark_account_all_read: implemented((a: AccountRequest) => MessageService.markAccountAllRead(a), "M1"),
+  mark_folder_all_read: implemented((a: { accountId: string; folderIds: string[] }) => MessageService.markFolderAllRead(a), "M1"),
+  empty_trash: implemented(async () => { throw new Error("Permanent delete is not available with Gmail modify access"); }, "M1"),
+  get_messages_batch: implemented(async (a: { messageIds: string[] }) => {
+    const messages = await Promise.all(a.messageIds.map((messageId) => MessageService.get({ messageId })));
+    return messages.filter(Boolean);
+  }, "M1"),
+  get_pending_mail_ops_summary: implemented((a: { accountId: string | null }) => PendingOpsService.summary({ accountId: a.accountId ?? "", limit: 100 }), "M1"),
+  list_pending_mail_ops: implemented((a: { accountId: string | null; limit?: number }) => PendingOpsService.list({ accountId: a.accountId ?? "", limit: a.limit ?? 100 }), "M1"),
+  dismiss_failed_pending_mail_ops: implemented((a: { accountId: string | null }) => PendingOpsService.dismiss({ accountId: a.accountId ?? "", limit: 100 }), "M1"),
   list_attachments: implemented((a: MessageRequest) => MessageService.attachments(a)),
   search_messages: implemented((a: Partial<SearchRequest>) => SearchService.search({ query: a.query ?? "", accountId: a.accountId ?? "", limit: a.limit ?? 50 })),
   get_folder_unread_counts: implemented((a: AccountRequest) => MessageService.unreadCounts({ accountId: a.accountId, byFolder: true })),

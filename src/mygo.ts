@@ -27,6 +27,15 @@ export interface Address {
   address: string;
 }
 
+export interface AllReadRequest {
+  accountId: string;
+  folderIds: string[];
+}
+
+export interface ArchiveRequest {
+  messageId: string;
+}
+
 export interface Attachment {
   id: string;
   message_id: string;
@@ -36,6 +45,12 @@ export interface Attachment {
   local_path: string | null;
   content_id: string | null;
   is_inline: boolean;
+}
+
+export interface BatchRequest {
+  messageIds: string[];
+  isRead?: boolean;
+  starred?: boolean;
 }
 
 export interface Capabilities {
@@ -155,6 +170,11 @@ export interface MessagesRequest {
   starred: boolean;
 }
 
+export interface MoveRequest {
+  messageId: string;
+  targetFolderId: string;
+}
+
 export interface Namespace {
   value: string;
 }
@@ -172,6 +192,33 @@ export interface NewMail {
 export interface OAuthStatus {
   configured: boolean;
   message: string;
+}
+
+export interface PendingMailOp {
+  id: string;
+  account_id: string;
+  message_id: string;
+  op_type: string;
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  created_at: number;
+  updated_at: number;
+  next_retry_at: number | null;
+}
+
+export interface PendingMailOpsSummary {
+  pending_count: number;
+  in_progress_count: number;
+  failed_count: number;
+  total_active_count: number;
+  last_error: string | null;
+  updated_at: number | null;
+}
+
+export interface PendingOpsRequest {
+  accountId: string;
+  limit: number;
 }
 
 export interface RealtimePreferenceRequest {
@@ -281,8 +328,35 @@ export const FolderService = {
 } as const;
 
 export const MessageService = {
+  /**
+   * Archive keeps upstream's toggle semantics: a message already in the inbox is
+   * archived, one outside it is restored.
+   */
+  archive(request: ArchiveRequest): Promise<string> {
+    return call("MessageService.Archive", request);
+  },
   attachments(a: MessageRequest): Promise<Attachment[]> {
     return call("MessageService.Attachments", a);
+  },
+  /**
+   * BatchArchive and BatchDelete queue one row per message in a single
+   * transaction, so a partial failure cannot leave the selection half applied.
+   */
+  batchArchive(request: BatchRequest): Promise<number> {
+    return call("MessageService.BatchArchive", request);
+  },
+  batchDelete(request: BatchRequest): Promise<number> {
+    return call("MessageService.BatchDelete", request);
+  },
+  batchFlags(request: BatchRequest): Promise<number> {
+    return call("MessageService.BatchFlags", request);
+  },
+  delete(request: ArchiveRequest): Promise<Empty> {
+    return call("MessageService.Delete", request);
+  },
+  /** Gmail modify scope cannot permanently delete mail. */
+  deletePermanent(arg0: ArchiveRequest): Promise<Empty> {
+    return call("MessageService.DeletePermanent", arg0);
   },
   flags(a: FlagsRequest): Promise<Empty> {
     return call("MessageService.Flags", a);
@@ -293,8 +367,27 @@ export const MessageService = {
   list(a: MessagesRequest): Promise<Message[]> {
     return call("MessageService.List", a);
   },
+  markAccountAllRead(request: AccountRequest): Promise<number> {
+    return call("MessageService.MarkAccountAllRead", request);
+  },
+  markFolderAllRead(request: AllReadRequest): Promise<number> {
+    return call("MessageService.MarkFolderAllRead", request);
+  },
+  move(request: MoveRequest): Promise<Empty> {
+    return call("MessageService.Move", request);
+  },
+  /**
+   * QueueFlags applies the local flag and persists the remote write atomically.
+   * Offline mail stays readable and the change survives restart.
+   */
+  queueFlags(request: FlagsRequest): Promise<Empty> {
+    return call("MessageService.QueueFlags", request);
+  },
   rendered(a: MessageRequest): Promise<MessageWithHTML> {
     return call("MessageService.Rendered", a);
+  },
+  restore(request: ArchiveRequest): Promise<Empty> {
+    return call("MessageService.Restore", request);
   },
   unreadCounts(a: CountsRequest): Promise<Record<string, number>> {
     return call("MessageService.UnreadCounts", a);
@@ -335,6 +428,19 @@ export const SyncService = {
   },
 } as const;
 
+/** PendingOpsService exposes the durable queue to the existing settings UI. */
+export const PendingOpsService = {
+  dismiss(request: PendingOpsRequest): Promise<number> {
+    return call("PendingOpsService.Dismiss", request);
+  },
+  list(request: PendingOpsRequest): Promise<PendingMailOp[]> {
+    return call("PendingOpsService.List", request);
+  },
+  summary(request: PendingOpsRequest): Promise<PendingMailOpsSummary> {
+    return call("PendingOpsService.Summary", request);
+  },
+} as const;
+
 export const AppService = {
   geometry(arg0: Empty): Promise<Geometry> {
     return call("AppService.Geometry", arg0);
@@ -358,4 +464,5 @@ export const events = {
   mailSyncProgress: event<SyncProgress>("mail:sync-progress"),
   mailNew: event<NewMail>("mail:new"),
   mailRealtimeStatus: event<RealtimeStatus>("mail:realtime-status"),
+  mailPendingOpsChanged: event<{}>("mail:pending-ops-changed"),
 } as const;

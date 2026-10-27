@@ -103,6 +103,9 @@ export default function PendingOpsTab() {
       delete_permanent: "Delete permanently",
       update_flags: "Update flags",
       move_to_folder: "Move to folder",
+      batch_archive: "Batch archive",
+      batch_delete: "Batch delete",
+      mark_read: "Mark as read",
       send: "Send",
     };
     return t(key, fallbacks[opType] ?? opType);
@@ -117,9 +120,16 @@ export default function PendingOpsTab() {
     await Promise.all([summaryQuery.refetch(), opsQuery.refetch()]);
   }
 
+  const [dismissError, setDismissError] = useState<string | null>(null);
+
   async function dismissFailed() {
-    await dismissFailedPendingMailOps(selectedAccountId);
-    await refresh();
+    setDismissError(null);
+    try {
+      await dismissFailedPendingMailOps(selectedAccountId);
+      await refresh();
+    } catch {
+      setDismissError(t("pendingOps.dismissFailedError", "Could not dismiss failed writes. Try again."));
+    }
   }
 
   const summary = summaryQuery.data ?? {
@@ -270,6 +280,12 @@ export default function PendingOpsTab() {
         <Metric label={t("pendingOps.active", "Active")} value={summary.total_active_count} />
       </div>
 
+      {dismissError && (
+        <div role="alert" style={{ marginBottom: "14px", fontSize: "12px", color: "var(--color-warning, #d97706)" }}>
+          {dismissError}
+        </div>
+      )}
+
       {summary.last_error && (
         <div
           role="alert"
@@ -336,6 +352,7 @@ export default function PendingOpsTab() {
                 <th style={tableHeaderStyle}>{t("pendingOps.message", "Message")}</th>
                 <th style={tableHeaderStyle}>{t("pendingOps.account", "Account")}</th>
                 <th style={tableHeaderStyle}>{t("pendingOps.updated", "Updated")}</th>
+                <th style={tableHeaderStyle}>{t("pendingOps.nextRetry", "Next retry")}</th>
                 <th style={tableHeaderStyle}>{t("pendingOps.lastError", "Last error")}</th>
               </tr>
             </thead>
@@ -368,6 +385,7 @@ export default function PendingOpsTab() {
                     </td>
                     <td style={tableCellStyle}>{accountLabel(op.account_id)}</td>
                     <td style={tableCellStyle}>{formatTimestamp(op.updated_at)}</td>
+                    <td style={tableCellStyle}>{op.next_retry_at ? formatTimestamp(op.next_retry_at) : "-"}</td>
                     <td style={{ ...tableCellStyle, color: op.last_error ? "var(--color-warning, #d97706)" : "var(--color-text-secondary)" }}>
                       {op.last_error ?? "-"}
                     </td>

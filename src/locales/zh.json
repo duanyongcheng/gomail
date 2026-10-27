@@ -376,6 +376,8 @@
       "move_to_folder": "移动到文件夹",
       "send": "发送"
     },
+    "nextRetry": "下次重试",
+    "dismissFailedError": "无法清除失败记录，请重试。",
     "dismissFailed": "清除失败项"
   },
   "about": {

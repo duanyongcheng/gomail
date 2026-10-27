@@ -9,8 +9,9 @@ mailbox backfill, paginated History sync and preference-controlled scheduling.
 The next slices support larger messages and persistent recovery of failed
 Gmail downloads, with a retry list in account settings, plus backend privacy
 HTML/CID rendering. Gmail supports multiple accounts, local search, unread counts
-and read/star changes. Durable mutation queues, sending/drafts, labels CRUD,
-threading and attachment export remain M1 work. IMAP/SMTP are tested
+and read/star changes. Mail mutations now use a durable remote-write queue, so
+offline changes survive restart and retry with backoff. Sending/drafts, labels
+CRUD, threading and attachment export remain M1 work. IMAP/SMTP are tested
 as an isolated protocol prototype and join the app in M2.
 
 ## Development
@@ -53,6 +54,12 @@ LoadOnce, Off and TrustedSender modes control external images and stylesheets;
 trackers are reported in the privacy banner. CID inline images use the narrow
 `pebble-attachment://` protocol and cannot address arbitrary profile files. See
 [privacy rendering](docs/m1-privacy.md).
+
+Flags, archive/restore, trash, moves, batch actions and mark-all-read commit
+locally and enqueue a remote write in one transaction. A background worker
+replays the queue with backoff; Settings → Remote Writes shows the queue, next
+retry and failures, and can dismiss them. Permanent delete is unavailable with
+`gmail.modify`. See [remote operations](docs/m1-remote-ops.md).
 
 ## Gmail OAuth configuration
 

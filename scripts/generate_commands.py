@@ -5,19 +5,22 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 implemented = set(re.findall(r'^  ([a-z_]+): implemented', (root / 'src/lib/platform/commands.ts').read_text(), re.M))
-m1_commands = {'start_sync', 'stop_sync', 'set_realtime_preference', 'trigger_sync'}
+m1_commands = {'start_sync', 'stop_sync', 'set_realtime_preference', 'trigger_sync',
+    'archive_message', 'delete_message', 'restore_message', 'move_to_folder',
+    'batch_archive', 'batch_delete', 'batch_mark_read', 'batch_star',
+    'mark_account_all_read', 'mark_folder_all_read', 'empty_trash',
+    'get_pending_mail_ops_summary', 'list_pending_mail_ops', 'dismiss_failed_pending_mail_ops', 'get_messages_batch'}
 names = set()
 for path in (root / 'src').rglob('*.ts*'):
     if 'platform' in path.parts or 'poc' in path.parts:
         continue
     names.update(re.findall(r'\binvoke(?:<[^;]*?>)?\(\s*["\']([^"\']+)', path.read_text()))
-arrays = set('list_kanban_cards get_message_labels list_labels list_contacts search_contacts search_contact_suggestions list_email_templates list_rules list_pending_mail_ops list_snoozed list_trusted_senders list_threads take_pending_mailto_urls'.split())
+arrays = set('list_kanban_cards get_message_labels list_labels list_contacts search_contacts search_contact_suggestions list_email_templates list_rules list_snoozed list_trusted_senders list_threads take_pending_mailto_urls'.split())
 nulls = set('get_contact_by_email ai_get_config get_translate_config load_auto_backup_config get_global_proxy get_account_proxy get_oauth_account_proxy get_xoauth2_status'.split())
 objects = set('get_message_labels_batch list_kanban_context_notes'.split())
 noops = set('set_notifications_enabled set_tray_menu_labels sync_titlebar_theme clear_notification_attention'.split())
 strings = set('get_email_signature migrate_email_signature_if_absent'.split())
 special = {
-    'get_pending_mail_ops_summary': '{ pending_count: 0, in_progress_count: 0, failed_count: 0, total_active_count: 0, last_error: null, updated_at: null }',
     'get_autostart_enabled': 'false',
     'is_trusted_sender': 'false',
     'get_notification_status': '{ enabled: false, attention_active: false, platform: "unknown", app_id: null }',
@@ -70,6 +73,7 @@ source.extend(['} as const;', 'export type CommandName = keyof typeof commands;'
     'Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.\n\n'
     'Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied '
     'before automatic requests start; manual mode permits only explicit manual triggers. '
-    'Full scans and History pagination resume from committed checkpoints.\n\n'
+    'Full scans and History pagination resume from committed checkpoints. '
+    'Mail mutations and remote-write settings commands use the durable pending-op queue.\n\n'
     '| Command | Status | Milestone |\n|---|---|---|\n' + '\n'.join(rows) + '\n')
 print(f'{len(names)} commands, {len(implemented)} implemented; parity and manifest refreshed')

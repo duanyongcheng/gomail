@@ -4,7 +4,7 @@
 
 Implemented entries call generated MyGO bindings. Startup stubs return explicit safe empty values for optional UI startup reads/preferences; they do not claim those features are implemented. Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.
 
-Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints.
+Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue.
 
 | Command | Status | Milestone |
 |---|---|---|
@@ -22,12 +22,12 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `ai_test_connection` | not-implemented | M5 |
 | `ai_translate` | not-implemented | M5 |
 | `apply_oauth_identity` | not-implemented | M1 |
-| `archive_message` | not-implemented | M1 |
+| `archive_message` | implemented | M1 |
 | `backup_to_webdav` | not-implemented | M5 |
-| `batch_archive` | not-implemented | M1 |
-| `batch_delete` | not-implemented | M1 |
-| `batch_mark_read` | not-implemented | M1 |
-| `batch_star` | not-implemented | M1 |
+| `batch_archive` | implemented | M1 |
+| `batch_delete` | implemented | M1 |
+| `batch_mark_read` | implemented | M1 |
+| `batch_star` | implemented | M1 |
 | `cleanup_staged_compose_attachment` | not-implemented | M1 |
 | `clear_notification_attention` | startup-stub | M4 |
 | `complete_oauth_flow` | implemented | M0 |
@@ -38,11 +38,11 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `delete_contact` | not-implemented | M3 |
 | `delete_draft` | not-implemented | M1 |
 | `delete_email_template` | not-implemented | M3 |
-| `delete_message` | not-implemented | M1 |
+| `delete_message` | implemented | M1 |
 | `delete_rule` | not-implemented | M3 |
-| `dismiss_failed_pending_mail_ops` | not-implemented | M1 |
+| `dismiss_failed_pending_mail_ops` | implemented | M1 |
 | `download_attachment` | not-implemented | M1 |
-| `empty_trash` | not-implemented | M1 |
+| `empty_trash` | implemented | M1 |
 | `export_backup_file` | not-implemented | M5 |
 | `export_contacts_vcard` | not-implemented | M3 |
 | `get_account_proxy` | startup-stub | M2 |
@@ -59,11 +59,11 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `get_message_labels` | startup-stub | M3 |
 | `get_message_labels_batch` | startup-stub | M3 |
 | `get_message_with_html` | implemented | M0 |
-| `get_messages_batch` | not-implemented | M1 |
+| `get_messages_batch` | implemented | M1 |
 | `get_notification_status` | startup-stub | M4 |
 | `get_oauth_account_proxy` | startup-stub | M2 |
 | `get_oauth_account_proxy_setting` | startup-stub | M2 |
-| `get_pending_mail_ops_summary` | startup-stub | M1 |
+| `get_pending_mail_ops_summary` | implemented | M1 |
 | `get_profile_storage_namespace` | implemented | M0 |
 | `get_rendered_html` | implemented | M0 |
 | `get_translate_config` | startup-stub | M5 |
@@ -82,7 +82,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `list_kanban_context_notes` | startup-stub | M3 |
 | `list_labels` | startup-stub | M3 |
 | `list_messages` | implemented | M0 |
-| `list_pending_mail_ops` | startup-stub | M1 |
+| `list_pending_mail_ops` | implemented | M1 |
 | `list_rules` | startup-stub | M3 |
 | `list_snoozed` | startup-stub | M3 |
 | `list_starred_messages` | implemented | M0 |
@@ -91,11 +91,11 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `list_translate_models` | not-implemented | M5 |
 | `list_trusted_senders` | startup-stub | M3 |
 | `load_auto_backup_config` | startup-stub | M5 |
-| `mark_account_all_read` | not-implemented | M1 |
-| `mark_folder_all_read` | not-implemented | M1 |
+| `mark_account_all_read` | implemented | M1 |
+| `mark_folder_all_read` | implemented | M1 |
 | `merge_kanban_context_notes` | not-implemented | M3 |
 | `migrate_email_signature_if_absent` | startup-stub | M3 |
-| `move_to_folder` | not-implemented | M1 |
+| `move_to_folder` | implemented | M1 |
 | `move_to_kanban` | not-implemented | M3 |
 | `open_default_mail_settings` | not-implemented | M4 |
 | `open_external_url` | not-implemented | M4 |
@@ -109,7 +109,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `remove_trusted_sender` | not-implemented | M3 |
 | `reorder_accounts` | not-implemented | M3 |
 | `restore_from_webdav` | not-implemented | M5 |
-| `restore_message` | not-implemented | M1 |
+| `restore_message` | implemented | M1 |
 | `save_auto_backup_config` | not-implemented | M5 |
 | `save_contact` | not-implemented | M3 |
 | `save_draft` | not-implemented | M1 |

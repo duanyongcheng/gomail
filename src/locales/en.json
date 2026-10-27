@@ -376,6 +376,8 @@
       "move_to_folder": "Move to folder",
       "send": "Send"
     },
+    "nextRetry": "Next retry",
+    "dismissFailedError": "Could not dismiss failed writes. Try again.",
     "dismissFailed": "Dismiss failed"
   },
   "about": {

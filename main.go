@@ -19,6 +19,7 @@ var syncComplete = mygo.NewEvent[app.SyncComplete]("mail:sync-complete")
 var syncProgress = mygo.NewEvent[domain.SyncProgress]("mail:sync-progress")
 var newMail = mygo.NewEvent[domain.NewMail]("mail:new")
 var realtimeStatus = mygo.NewEvent[app.RealtimeStatus]("mail:realtime-status")
+var pendingOpsChanged = mygo.NewEvent[struct{}]("mail:pending-ops-changed")
 
 func main() {
 	mygo.App.SetName("Pebble Go")
@@ -29,8 +30,9 @@ func main() {
 	runtime.OnProgress = func(event domain.SyncProgress) { _ = syncProgress.Broadcast(event) }
 	runtime.OnNewMail = func(event domain.NewMail) { _ = newMail.Broadcast(event) }
 	runtime.OnRealtime = func(event app.RealtimeStatus) { _ = realtimeStatus.Broadcast(event) }
+	runtime.OnPendingOpsChanged = func() { _ = pendingOpsChanged.Broadcast(struct{}{}) }
 	windowService := &desktop.AppService{}
-	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, windowService)
+	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog
@@ -102,6 +104,8 @@ func main() {
 			if err := runtime.Restore(); err != nil {
 				slog.Warn("saved credentials require attention; cached mail remains available")
 			}
+			workers.Add(1)
+			go func() { defer workers.Done(); runtime.RunPendingOpsWorker(ctx) }()
 			if os.Getenv("PEBBLE_SELFTEST") == "1" {
 				if err := prepareSelftest(runtime); err != nil {
 					slog.Error("selftest fixture failed")

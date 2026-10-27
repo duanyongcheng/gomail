@@ -31,12 +31,24 @@ func prepareSelftest(runtime *app.Runtime) error {
 	}
 	fixture.Set("m1", raw, []string{"INBOX", "UNREAD"})
 	fixture.Set("m2", []byte("malformed local selftest message"), []string{"INBOX", "UNREAD"})
+	// A second inbox message is the durable-write subject: archiving it must not
+	// remove the message the UI assertions below inspect.
+	queueRaw, err := mailmime.Build("sender@example.invalid", "Queued remote write", "queued write body", "", "queued@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, nil)
+	if err != nil {
+		return err
+	}
+	fixture.Set("m3", queueRaw, []string{"INBOX", "UNREAD"})
 	account := domain.Account{ID: "selftest-gmail", Email: "demo@example.invalid", DisplayName: "Selftest Gmail", Provider: "gmail", CreatedAt: 1, UpdatedAt: 1}
 	if err := runtime.DB.SaveAccount(runtime.Context, account, nil); err != nil {
 		return err
 	}
 	runtime.InstallProvider(account.ID, gmail.New(runtime.DB, fixture.API(selftestToken{}), account.ID))
 	if _, err := (&app.SyncService{Runtime: runtime}).Sync(runtime.Context, app.AccountRequest{AccountID: account.ID}); err != nil {
+		return err
+	}
+	// Queue a real offline-style write. The packaged run replays it through the
+	// durable worker instead of relying on a synchronous provider call.
+	if _, err := (&app.MessageService{Runtime: runtime}).Archive(runtime.Context, app.ArchiveRequest{MessageID: account.ID + ":m3"}); err != nil {
 		return err
 	}
 	// Leave a durable failure visible in settings, but repair its remote content
@@ -67,8 +79,28 @@ func waitSelftestPage(ctx context.Context, window *mygo.Window, script string, t
 	}
 }
 
+func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		summary, err := runtime.DB.PendingMailOpsSummary(ctx, "selftest-gmail")
+		if err == nil && summary.TotalActiveCount == 0 {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-deadline.C:
+			return false
+		case <-ticker.C:
+		}
+	}
+}
+
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "download failures rendered": false, "failed download retried through UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -99,6 +131,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	privacyMode := json.RawMessage(`"Strict"`)
 	rendered, renderErr := (&app.MessageService{Runtime: runtime}).Rendered(ctx, app.MessageRequest{MessageID: "selftest-gmail:m1", PrivacyMode: privacyMode})
 	checks["cid attachment rendered"] = renderErr == nil && strings.Contains(rendered.Rendered.HTML, "pebble-attachment://localhost/")
+	checks["queued remote write replayed"] = pendingQueueDrained(ctx, runtime)
 	if !waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(button => /^(设置|Settings)$/.test(button.textContent.trim())); if (!button) return false; button.click(); return true; })()`, 5*time.Second) {
 		return
 	}

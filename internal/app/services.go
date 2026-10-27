@@ -21,18 +21,20 @@ import (
 )
 
 type Runtime struct {
-	DB          *store.DB
-	Context     context.Context
-	Keyring     crypto.Keyring
-	OpenBrowser func(string) error
-	OnSync      func(SyncComplete)
-	OnProgress  func(domain.SyncProgress)
-	OnNewMail   func(domain.NewMail)
-	OnRealtime  func(RealtimeStatus)
-	Scheduler   *Scheduler
-	mu          sync.RWMutex
-	providers   map[string]domain.Transport
-	crypto      *crypto.Service
+	DB                  *store.DB
+	Context             context.Context
+	Keyring             crypto.Keyring
+	OpenBrowser         func(string) error
+	OnSync              func(SyncComplete)
+	OnProgress          func(domain.SyncProgress)
+	OnNewMail           func(domain.NewMail)
+	OnRealtime          func(RealtimeStatus)
+	OnPendingOpsChanged func()
+	pendingWake         chan struct{}
+	Scheduler           *Scheduler
+	mu                  sync.RWMutex
+	providers           map[string]domain.Transport
+	crypto              *crypto.Service
 }
 
 type SyncComplete struct {
@@ -41,7 +43,7 @@ type SyncComplete struct {
 }
 
 func New(ctx context.Context, db *store.DB, keyring crypto.Keyring, open func(string) error) *Runtime {
-	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}}
+	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}, pendingWake: make(chan struct{}, 1)}
 	r.Scheduler = newScheduler(r)
 	return r
 }
@@ -281,15 +283,7 @@ func (s *MessageService) Rendered(ctx context.Context, a MessageRequest) (Messag
 	return MessageWithHTML{Message: m, Rendered: RenderedHTML{HTML: rendered.HTML, TrackersBlocked: trackers, ImagesBlocked: rendered.ImagesBlocked}}, nil
 }
 func (s *MessageService) Flags(ctx context.Context, a FlagsRequest) (Empty, error) {
-	m, err := s.Runtime.DB.Message(ctx, a.MessageID)
-	if err != nil {
-		return Empty{}, err
-	}
-	p, err := s.Runtime.provider(m.AccountID)
-	if err != nil {
-		return Empty{}, err
-	}
-	return Empty{}, p.Flags(ctx, a.MessageID, a.IsRead, a.IsStarred)
+	return s.QueueFlags(ctx, a)
 }
 func (s *MessageService) Attachments(ctx context.Context, a MessageRequest) ([]domain.Attachment, error) {
 	return s.Runtime.DB.Attachments(ctx, a.MessageID)
