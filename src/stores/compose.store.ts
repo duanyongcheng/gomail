@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import type { Message } from "@/lib/api";
+import type { LocalDraft } from "@/lib/platform/compose";
 import { useUIStore, type ActiveView } from "./ui.store";
 
 export type ComposeMode = "new" | "reply" | "reply-all" | "forward";
 
 export interface ComposePrefill {
+  localDraft?: LocalDraft;
   to?: string[];
   cc?: string[];
   bcc?: string[];

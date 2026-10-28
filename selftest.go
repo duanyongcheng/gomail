@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bary/pebble-go/internal/app"
+	"github.com/bary/pebble-go/internal/crypto"
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/mailmime"
 	"github.com/bary/pebble-go/internal/provider/gmail"
@@ -23,7 +24,18 @@ type selftestToken struct{}
 
 func (selftestToken) Token(context.Context) (string, error) { return "demo-access", nil }
 
+type selftestKeyring struct{ key []byte }
+
+func (k *selftestKeyring) Get(string) ([]byte, error) {
+	if k.key == nil {
+		return nil, crypto.ErrKeyNotFound
+	}
+	return k.key, nil
+}
+func (k *selftestKeyring) Set(_ string, key []byte) error { k.key = key; return nil }
+
 func prepareSelftest(runtime *app.Runtime) error {
+	runtime.Keyring = &selftestKeyring{}
 	fixture := testgmail.NewMock()
 	context.AfterFunc(runtime.Context, fixture.Close)
 	png := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130}
@@ -60,7 +72,16 @@ func prepareSelftest(runtime *app.Runtime) error {
 	// Leave a durable failure visible in settings, but repair its remote content
 	// so the explicit UI retry can exercise recovery through generated bindings.
 	fixture.Set("m2", []byte("From: sender@example.invalid\r\nSubject: Recovered download selftest\r\n\r\nRecovered message"), []string{"INBOX", "UNREAD"})
-	return nil
+	compose := &app.ComposeService{Runtime: runtime}
+	attachment, err := compose.Stage(runtime.Context, app.StageComposeRequest{Filename: "draft-selftest.txt", Bytes: []int{100, 114, 97, 102, 116}})
+	if err != nil {
+		return err
+	}
+	if _, err := compose.Save(runtime.Context, app.SaveDraftRequest{AccountID: account.ID, ClientKey: "selftest-draft", Subject: "Local draft selftest", BodyText: "Restored local draft", BodyHTML: "<p>Restored local draft</p>", EditorMode: "rich", AttachmentPaths: []string{attachment}}); err != nil {
+		return err
+	}
+	_, err = compose.Cleanup(runtime.Context, app.CleanupComposeRequest{Path: attachment})
+	return err
 }
 
 func waitSelftestPage(ctx context.Context, window *mygo.Window, script string, timeout time.Duration) bool {
@@ -106,7 +127,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -175,4 +196,28 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	empty := waitSelftestPage(ctx, window, `/没有下载失败的邮件|No failed downloads/.test(document.body.innerText)`, 10*time.Second)
 	page, err := runtime.DB.DownloadFailures(ctx, "selftest-gmail", 20, 0)
 	checks["failed download retried through UI"] = empty && err == nil && page.Total == 0
+	// Clear the selected message via the mailbox row so the compose FAB appears.
+	if !waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(b => /^(收件箱|Inbox)/.test(b.textContent.trim())); if (!button) return false; button.click(); return true; })()`, 5*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(b => /^(撰写|写邮件|写信|Compose)$/.test(b.getAttribute('aria-label') || '')); if (!button) return false; button.click(); return true; })()`, 5*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(本地草稿|Local drafts)$/.test(b.textContent.trim())); if (!b) return false; b.click(); return true; })()`, 10*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim()==='Local draft selftest'); if (!b || b.disabled) return false; b.click(); return true; })()`, 10*time.Second) {
+		return
+	}
+	checks["local draft restored through UI"] = waitSelftestPage(ctx, window, `document.getElementById('compose-subject')?.value === 'Local draft selftest' && document.body.innerText.includes('draft-selftest.txt')`, 10*time.Second)
+	capture("local-draft.png")
+	if !waitSelftestPage(ctx, window, `(() => { const input=document.getElementById('compose-subject'); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Edited local draft selftest'); input.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`, 5*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(保存并关闭|Save and close)$/.test(b.textContent.trim())); if (!b || b.disabled) return false; b.click(); return true; })()`, 5*time.Second) {
+		return
+	}
+	closed := waitSelftestPage(ctx, window, `document.getElementById('compose-subject') === null`, 15*time.Second)
+	drafts, draftErr := (&app.ComposeService{Runtime: runtime}).List(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
+	checks["local draft saved through UI"] = closed && draftErr == nil && len(drafts) == 1 && drafts[0].Subject == "Edited local draft selftest" && drafts[0].AttachmentCount == 1
 }

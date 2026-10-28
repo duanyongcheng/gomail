@@ -10,12 +10,13 @@ The next slices support larger messages and persistent recovery of failed
 Gmail downloads, with a retry list in account settings, plus backend privacy
 HTML/CID rendering. Gmail supports multiple accounts, local search, unread counts
 and read/star changes. Mail mutations now use a durable remote-write queue, so
-offline changes survive restart and retry with backoff. Same-message writes replay in durable order; pending
-local changes survive concurrent sync, and unknown outcomes are not auto-retried.
-Cached attachments can
-be downloaded or saved through the native Save As dialog. Sending/drafts, labels
-CRUD and threading remain M1 work. IMAP/SMTP are tested
-as an isolated protocol prototype and join the app in M2.
+offline changes survive restart and retry with backoff. Same-message writes
+replay in durable order; pending local changes survive concurrent sync, and unknown
+outcomes are not auto-retried. Cached attachments can be downloaded or saved
+through the native Save As dialog. Compose supports local encrypted drafts and
+attachment staging. Gmail sending/cloud drafts, labels CRUD and threading remain
+M1 work. IMAP/SMTP are tested as an isolated protocol prototype and join the app
+in M2.
 
 ## Development
 
@@ -71,6 +72,11 @@ retry and failures, and can dismiss them. Permanent delete is unavailable with
 `gmail.modify`. See [remote operations](docs/m1-remote-ops.md) and the
 [reliability follow-up](docs/m1-remote-ops-reliability.md).
 
+Compose auto-saves locally after three seconds. Use **Save and close**, then
+open a blank compose → **Local drafts** to continue editing. Content and staged
+attachment bytes are encrypted with the profile key; these drafts are not synced
+to Gmail. Sending remains unavailable. See [compose and drafts](docs/m1-compose-drafts.md).
+
 ## Gmail OAuth configuration
 
 Copy `.env.example` to a local `.env` and set your Google Desktop client values:
@@ -121,6 +127,8 @@ migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21
 and the account-scoped backfill reconciliation table in v22. Version 23 adds
 persistent Gmail message download failures and retry timing. Version 24 adds a
 Go-only operation-sequence sidecar for FIFO replay and sync reconciliation.
+Version 25 adds separate encrypted local drafts, staged attachment objects and
+reference tracking; these are not part of remotely synchronized mail or FTS.
 An unversioned PoC database is rejected instead of being silently rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 
@@ -144,8 +152,9 @@ suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox, attachment export and a failed-download retry through the settings UI,
-writes a JSON report and screenshots, then exits. It does not contact Google or use the keyring:
+inbox, attachment export, local draft restore/save and failed-download retry
+through the UI, writes a JSON report and screenshots, then exits. It does not
+contact Google or the system keyring; draft checks use an in-memory test keyring:
 
 ```sh
 CGO_ENABLED=0 go build -o /tmp/pebble-go-selftest .

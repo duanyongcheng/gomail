@@ -23,6 +23,7 @@ interface UseComposeEditorArgs {
     editorMode?: EditorMode;
     rawSource?: string;
     richTextHtml?: string;
+    quotedReplyHtml?: string;
   } | null;
   prefillBody?: string;
 }
@@ -210,8 +211,10 @@ export function useComposeEditor({
     return buildComposeEditorContent({ composeMode, composeReplyTo, isReply, signatureHtml, prefillBody, t });
   }, [composeMode, composeReplyTo, isReply, t, signatureHtml, prefillBody]);
   const quotedReplyHtml = useMemo(() => {
-    return isReply ? buildReplyQuoteHtml({ composeReplyTo, t }) : "";
-  }, [composeReplyTo, isReply, t]);
+    return restoredDraft?.quotedReplyHtml !== undefined
+      ? sanitizeComposeQuoteHtml(restoredDraft.quotedReplyHtml)
+      : (isReply ? buildReplyQuoteHtml({ composeReplyTo, t }) : "");
+  }, [composeReplyTo, isReply, t, restoredDraft]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -232,7 +235,9 @@ export function useComposeEditor({
       hasRestoredDraft: Boolean(restoredDraft),
     }) || !editor) return;
     // If restoring a draft, prefer its richTextHtml over generated editorContent
-    if (restoredDraft?.richTextHtml) {
+    if (restoredDraft && restoredDraft.editorMode !== "rich" && restoredDraft.rawSource) {
+      editor.commands.setContent(restoredDraft.rawSource);
+    } else if (restoredDraft?.richTextHtml) {
       editor.commands.setContent(restoredDraft.richTextHtml);
     } else if (editorContent) {
       editor.commands.setContent(editorContent);

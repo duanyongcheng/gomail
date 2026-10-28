@@ -1,5 +1,5 @@
-import { AccountService, AppService, AttachmentService, FolderService, MessageService, PendingOpsService, SearchService, SyncService } from "@/mygo";
-import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest } from "@/mygo";
+import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, PendingOpsService, SearchService, SyncService } from "@/mygo";
+import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
 function implemented<A, R>(run: (args: A) => Promise<R>, milestone = "M0"): Entry<A, R> { return { status: "implemented", milestone, run }; }
@@ -42,6 +42,16 @@ export const implementedCommands = {
   get_pending_mail_ops_summary: implemented((a: { accountId: string | null }) => PendingOpsService.summary({ accountId: a.accountId ?? "", limit: 100 }), "M1"),
   list_pending_mail_ops: implemented((a: { accountId: string | null; limit?: number }) => PendingOpsService.list({ accountId: a.accountId ?? "", limit: a.limit ?? 100 }), "M1"),
   dismiss_failed_pending_mail_ops: implemented((a: { accountId: string | null }) => PendingOpsService.dismiss({ accountId: a.accountId ?? "", limit: 100 }), "M1"),
+  save_draft: implemented((a: Partial<SaveDraftRequest>) => ComposeService.save({
+    accountId: a.accountId ?? "", to: a.to ?? [], cc: a.cc ?? [], bcc: a.bcc ?? [],
+    subject: a.subject ?? "", bodyText: a.bodyText ?? "", bodyHtml: a.bodyHtml ?? "",
+    inReplyTo: a.inReplyTo ?? "", existingDraftId: a.existingDraftId ?? "",
+    attachmentPaths: a.attachmentPaths ?? [], clientKey: a.clientKey ?? "",
+    editorMode: a.editorMode ?? "rich", rawSource: a.rawSource ?? "", quotedReplyHtml: a.quotedReplyHtml ?? "",
+  }), "M1"),
+  delete_draft: implemented((a: { accountId: string; draftId: string }) => ComposeService.delete(a), "M1"),
+  stage_compose_attachment: implemented((a: { filename: string; bytes: number[] }) => ComposeService.stage(a), "M1"),
+  cleanup_staged_compose_attachment: implemented((a: { path: string }) => ComposeService.cleanup(a), "M1"),
   list_attachments: implemented((a: MessageRequest) => MessageService.attachments(a)),
   get_attachment_path: implemented((a: { attachmentId: string }) => AttachmentService.path(a), "M1"),
   download_attachment: implemented((a: { attachmentId: string; saveTo: string }) => AttachmentService.download(a), "M1"),

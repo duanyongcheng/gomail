@@ -887,6 +887,10 @@ export async function saveDraft(args: {
   inReplyTo?: string;
   existingDraftId?: string;
   attachmentPaths?: string[];
+  clientKey?: string;
+  quotedReplyHtml?: string;
+  editorMode?: string;
+  rawSource?: string;
 }): Promise<string> {
   return invoke("save_draft", {
     accountId: args.accountId,
@@ -899,6 +903,10 @@ export async function saveDraft(args: {
     inReplyTo: args.inReplyTo ?? null,
     existingDraftId: args.existingDraftId ?? null,
     attachmentPaths: args.attachmentPaths ?? null,
+    clientKey: args.clientKey,
+    quotedReplyHtml: args.quotedReplyHtml,
+    editorMode: args.editorMode,
+    rawSource: args.rawSource,
   });
 }
 

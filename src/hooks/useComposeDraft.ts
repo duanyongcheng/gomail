@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useComposeStore } from "@/stores/compose.store";
 import { saveDraft } from "@/lib/api";
 import { hasComposeDraft, type ComposeAttachment } from "@/features/compose/compose-draft";
@@ -17,6 +17,7 @@ export interface DraftData {
   subject: string;
   rawSource: string;
   richTextHtml: string;
+  quotedReplyHtml?: string;
   editorMode: EditorMode;
   attachments: ComposeAttachment[];
   savedAt: number;
@@ -96,6 +97,10 @@ interface UseComposeDraftArgs {
   attachments: ComposeAttachment[];
   /** The current compose was restored from legacy WebView storage. */
   migrateLegacyDraft?: boolean;
+  existingDraftId?: string;
+  existingDraftAccountId?: string;
+  inReplyTo?: string;
+  quotedReplyHtml?: string;
   /** True once the TipTap editor has mounted and populated richTextHtml with
    * its initial content (signature, quoted reply, etc.). Until this flips to
    * true, the snapshot would compare user edits against an empty string and
@@ -105,8 +110,14 @@ interface UseComposeDraftArgs {
 
 export function useComposeDraft({
   to, cc, bcc, subject, rawSource, richTextHtml, editorMode, composeMode, fromAccountId, attachments, editorReady,
-  migrateLegacyDraft = false,
+  migrateLegacyDraft = false, existingDraftId, existingDraftAccountId, inReplyTo, quotedReplyHtml,
 }: UseComposeDraftArgs) {
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const mountedRef = useRef(true);
+  const errorsByAccountRef = useRef<Record<string, boolean>>({});
+  const clientKeysRef = useRef<Record<string, string>>({});
+  const currentContentRef = useRef<string>("");
+  const savedContentRef = useRef<string>("");
   // Snapshot the initial compose state so pre-populated reply/forward
   // fields don't immediately trigger the "unsaved draft" guard.
   // Deferred until the editor has rendered its initial content - taken once,
@@ -142,7 +153,9 @@ export function useComposeDraft({
   // belongs to a different account and must not be reused.
   const draftIdRef = useRef<string | null>(null);
   const draftAccountRef = useRef<string | null>(null);
-  const draftIdsByAccountRef = useRef<Record<string, string>>({});
+  const draftIdsByAccountRef = useRef<Record<string, string>>(
+    existingDraftId && existingDraftAccountId ? { [existingDraftAccountId]: existingDraftId } : {},
+  );
   const queuedSaveByAccountRef = useRef<Record<string, Parameters<typeof saveDraft>[0] | undefined>>({});
   const saveWorkerByAccountRef = useRef<Record<string, Promise<void> | undefined>>({});
   const cancelRetryDelayByAccountRef = useRef<Record<string, (() => void) | undefined>>({});
@@ -180,6 +193,7 @@ export function useComposeDraft({
         while (queued && !persistenceCancelledRef.current) {
           delete queuedSaveByAccountRef.current[accountId];
           try {
+            if (mountedRef.current) setSaveStatus("saving");
             const id = await saveDraft({
               ...queued,
               existingDraftId: draftIdsByAccountRef.current[accountId] || undefined,
@@ -193,8 +207,13 @@ export function useComposeDraft({
               legacyMigrationPendingRef.current = false;
             }
             consecutiveFailures = 0;
-          } catch (err) {
-            console.warn("Backend draft save failed:", err);
+            errorsByAccountRef.current[accountId] = false;
+            const { clientKey: _clientKey, ...saved } = queued;
+            savedContentRef.current = JSON.stringify(saved);
+            if (mountedRef.current && savedContentRef.current === currentContentRef.current) setSaveStatus("saved");
+          } catch {
+            errorsByAccountRef.current[accountId] = true;
+            if (mountedRef.current) setSaveStatus("error");
             consecutiveFailures += 1;
             const newerQueued = queuedSaveByAccountRef.current[accountId];
             if (newerQueued) {
@@ -231,7 +250,8 @@ export function useComposeDraft({
 
   function queueDraftSave(args: Parameters<typeof saveDraft>[0]) {
     if (persistenceCancelledRef.current) return;
-    queuedSaveByAccountRef.current[args.accountId] = args;
+    clientKeysRef.current[args.accountId] ??= crypto.randomUUID();
+    queuedSaveByAccountRef.current[args.accountId] = { ...args, clientKey: clientKeysRef.current[args.accountId] };
     startSaveWorker(args.accountId);
   }
 
@@ -246,14 +266,14 @@ export function useComposeDraft({
     );
     await Promise.allSettled(activeWorkers);
     const savedDraftIds = { ...draftIdsByAccountRef.current };
-    draftIdsByAccountRef.current = {};
-    draftIdRef.current = null;
     return savedDraftIds;
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     persistenceCancelledRef.current = false;
     return () => {
+      mountedRef.current = false;
       persistenceCancelledRef.current = true;
       queuedSaveByAccountRef.current = {};
       for (const cancelRetryDelay of Object.values(cancelRetryDelayByAccountRef.current)) {
@@ -278,6 +298,36 @@ export function useComposeDraft({
     useComposeStore.getState().setComposeDirty(userChanged);
   }, [arraysEqual, attachments, attachmentsEqual, bcc, cc, rawSource, richTextHtml, subject, to, editorReady]);
 
+  function currentSave(): Parameters<typeof saveDraft>[0] | null {
+    if (!fromAccountId) return null;
+    const bodyText = editorMode === "rich"
+      ? richTextHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : rawSource;
+    const bodyHtml = editorMode === "rich" ? richTextHtml : (editorMode === "html" ? rawSource : "");
+    return {
+      accountId: fromAccountId, to, cc, bcc, subject, bodyText,
+      bodyHtml, quotedReplyHtml,
+      rawSource, editorMode, inReplyTo,
+      attachmentPaths: attachments.map((a) => a.path).filter(Boolean),
+    };
+  }
+
+  async function saveNow(): Promise<boolean> {
+    const request = currentSave();
+    if (!request || !editorReady || persistenceCancelledRef.current) return false;
+    queueDraftSave(request);
+    // A finishing worker can hand off to another queued snapshot.
+    while (saveWorkerByAccountRef.current[request.accountId]) {
+      await saveWorkerByAccountRef.current[request.accountId];
+    }
+    return !errorsByAccountRef.current[request.accountId];
+  }
+  function resumeDraftSaves() { persistenceCancelledRef.current = false; }
+
+  // Depend on semantic content, not array identities: status renders and parent
+  // rerenders must not start a new retry budget for the same failed snapshot.
+  const saveSnapshotKey = JSON.stringify(currentSave());
+  currentContentRef.current = saveSnapshotKey;
+  useEffect(() => { if (savedContentRef.current !== saveSnapshotKey) setSaveStatus("idle"); }, [saveSnapshotKey]);
   // Auto-save draft to backend (debounced 3s). Do not persist plaintext draft
   // data in WebView storage.
   useEffect(() => {
@@ -289,28 +339,13 @@ export function useComposeDraft({
       const hasDraft = hasComposeDraft({
         to, cc, bcc, subject, rawSource, richTextHtml, attachments: draftAttachments,
       });
-      if (hasDraft && fromAccountId) {
-        const accountIdAtSave = fromAccountId;
-        // Save to backend under the current From account.
-        {
-          // Pick body source based on current editor mode to avoid stale content.
-          // For rich text, strip HTML tags to produce a plain-text fallback.
-          const bodyText = editorMode === "rich"
-            ? richTextHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-            : rawSource;
-          const bodyHtml = editorMode === "rich" ? richTextHtml : (editorMode === "html" ? rawSource : undefined);
-          queueDraftSave({
-            accountId: accountIdAtSave,
-            to, cc, bcc, subject,
-            bodyText,
-            bodyHtml: bodyHtml || undefined,
-            attachmentPaths: draftAttachments.map((attachment) => attachment.path).filter(Boolean),
-          });
-        }
+      if (fromAccountId && (hasDraft || draftIdsByAccountRef.current[fromAccountId])) {
+        const request = currentSave();
+        if (request) queueDraftSave(request);
       }
     }, 3000);
     return () => clearTimeout(timer);
-  }, [attachments, to, cc, bcc, subject, rawSource, richTextHtml, editorMode, composeMode, fromAccountId, editorReady]);
+  }, [saveSnapshotKey, composeMode, editorReady]);
 
-  return { draftIdRef, draftIdsByAccountRef, cancelPendingDraftSaves };
+  return { draftIdRef, draftIdsByAccountRef, cancelPendingDraftSaves, saveNow, saveStatus, resumeDraftSaves };
 }

@@ -16,7 +16,7 @@ import _ "modernc.org/sqlite"
 
 const (
 	LegacySchemaVersion = 20
-	SchemaVersion       = 24
+	SchemaVersion       = 25
 	readConnections     = 4
 )
 

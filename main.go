@@ -35,7 +35,7 @@ func main() {
 	runtime.OnAttachmentProgress = func(event app.AttachmentProgress) { _ = attachmentProgress.Broadcast(event) }
 	windowService := &desktop.AppService{}
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
-	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, fileService, windowService)
+	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, fileService, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog

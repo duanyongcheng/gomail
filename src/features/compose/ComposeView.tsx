@@ -2,7 +2,7 @@ import { senderIdentityLabel } from "@/lib/accountIdentity";
 import { useState, useEffect, useRef } from "react";
 import { EditorContent } from "@tiptap/react";
 import {
-  ArrowLeft, Send, X, AlertCircle,
+  ArrowLeft, Send, Save, X, AlertCircle,
   Type, FileCode2, Hash, Eye, EyeOff,
   Paperclip, FileText, Trash2, BookTemplate,
   ChevronDown, ChevronRight,
@@ -23,7 +23,10 @@ import { appendReplyQuoteHtml, useComposeEditor } from "@/hooks/useComposeEditor
 import { useConfirmStore } from "@/stores/confirm.store";
 import { useToastStore } from "@/stores/toast.store";
 import type { Account } from "@/lib/ipc-types";
-import type { ComposeAttachment } from "./compose-draft";
+import { hasComposeDraft, type ComposeAttachment } from "./compose-draft";
+import type { DraftData } from "@/hooks/useComposeDraft";
+import LocalDrafts from "./LocalDrafts";
+import { MAX_COMPOSE_ATTACHMENT_BYTES, MAX_DRAFT_ATTACHMENT_BYTES, MAX_COMPOSE_ATTACHMENTS } from "@/lib/platform/compose";
 import { ModeButton, EditorToolbar, MarkdownToolbar, composeStyles } from "./ComposeToolbar";
 import ComposeAiAssistant from "../ai/ComposeAiAssistant";
 import { subjectAfterAddingAttachments } from "./attachment-subject";
@@ -54,10 +57,18 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   const [isDiscarding, setIsDiscarding] = useState(false);
   const sendInProgressRef = useRef(false);
   const [sendInProgress, setSendInProgress] = useState(false);
+  const [savingAndClosing, setSavingAndClosing] = useState(false);
+  const saveClosingRef = useRef(false);
+  const localDraft = composePrefill?.localDraft;
 
   const isReply = composeMode === "reply" || composeMode === "reply-all";
-  const restoredDraft = useRef(
-    composeMode === "new"
+  const restoredDraft = useRef<DraftData | null>(
+    localDraft ? {
+      accountId: localDraft.accountId, to: localDraft.to, cc: localDraft.cc, bcc: localDraft.bcc,
+      subject: localDraft.subject, rawSource: localDraft.rawSource,
+      richTextHtml: localDraft.bodyHtml, quotedReplyHtml: localDraft.quotedReplyHtml, editorMode: localDraft.editorMode === "markdown" || localDraft.editorMode === "html" ? localDraft.editorMode : "rich",
+      attachments: localDraft.attachments, savedAt: localDraft.updatedAt * 1000,
+    } : composeMode === "new"
       ? loadDraftFromStorage(accountsLoaded ? accounts.map((account) => account.id) : undefined)
       : null,
   );
@@ -127,11 +138,16 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   useEffect(() => {
     if (editor && !editorReady) setEditorReady(true);
   }, [editor, editorReady]);
-  const { cancelPendingDraftSaves } = useComposeDraft({
-    to, cc, bcc, subject, rawSource, richTextHtml, editorMode, composeMode, fromAccountId,
+  const withPendingRecipient = (values: string[], input: string) => input.trim() ? [...values, input.trim()] : values;
+  const { cancelPendingDraftSaves, saveNow, saveStatus, resumeDraftSaves } = useComposeDraft({
+    to: withPendingRecipient(to, toInputValue), cc: withPendingRecipient(cc, ccInputValue), bcc: withPendingRecipient(bcc, bccInputValue),
+    subject, rawSource, richTextHtml, editorMode, composeMode, fromAccountId,
     attachments,
     editorReady,
-    migrateLegacyDraft: Boolean(restoredDraft.current),
+    migrateLegacyDraft: Boolean(restoredDraft.current) && !localDraft,
+    existingDraftId: localDraft?.id, existingDraftAccountId: localDraft?.accountId,
+    inReplyTo: localDraft?.inReplyTo || (isReply ? composeReplyTo?.message_id_header ?? undefined : undefined),
+    quotedReplyHtml,
   });
 
   // ─── Templates ───────────────────────────────────────────────────────────────
@@ -176,8 +192,8 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     );
     attachmentsRef.current = nextAttachments;
     setAttachments(nextAttachments);
-    void cleanupStagedAttachment(attachmentToRemove.path).catch((err) => {
-      console.warn("Failed to remove staged compose attachment:", err);
+    void cleanupStagedAttachment(attachmentToRemove.path).catch(() => {
+      console.warn("Failed to remove staged compose attachment");
     });
   }
 
@@ -202,7 +218,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     );
     for (const result of cleanupResults) {
       if (result.status === "rejected") {
-        console.warn("Failed to remove staged compose attachment:", result.reason);
+        console.warn("Failed to remove staged compose attachment");
       }
     }
   }
@@ -230,7 +246,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     if (deletionResults.some((result) => result.status === "rejected")) {
       for (const result of deletionResults) {
         if (result.status === "rejected") {
-          console.warn(`Failed to delete draft after ${context}:`, result.reason);
+          console.warn(`Failed to delete draft after ${context}`);
         }
       }
       useToastStore.getState().addToast({
@@ -242,10 +258,12 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
             )
           : t(
               "compose.discardDraftCleanupFailed",
-              "Discarded, but failed to remove the saved draft. You can delete it from Drafts.",
+              "Could not delete the saved draft. Keep editing or try again.",
             ),
       });
+      return false;
     }
+    return true;
   }
 
   async function stageAttachmentFiles(files: FileList | File[]) {
@@ -253,6 +271,11 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
       const staged: ComposeAttachment[] = [];
       try {
         for (const file of Array.from(files)) {
+          if (file.size > MAX_COMPOSE_ATTACHMENT_BYTES ||
+            attachmentsRef.current.length + staged.length >= MAX_COMPOSE_ATTACHMENTS ||
+            attachmentsRef.current.reduce((sum, a) => sum + a.size, 0) + staged.reduce((sum, a) => sum + a.size, 0) + file.size > MAX_DRAFT_ATTACHMENT_BYTES) {
+            throw new Error(t("compose.attachmentLimit", "Attachments: 10 MiB per file, 25 MiB total, up to 100 files."));
+          }
           const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
           if (!acceptsStagedAttachmentsRef.current) return;
           const path = await stageComposeAttachment(file.name, bytes);
@@ -301,6 +324,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   }, [sendError]);
 
   async function handleSend() {
+    if (accounts.find((a) => a.id === fromAccountId)?.capabilities?.send === false) return;
     if (sendInProgressRef.current || discardInProgressRef.current) return;
     const finalTo = mergePendingRecipient(to, toInputValue).filter(Boolean);
     const finalCc = mergePendingRecipient(cc, ccInputValue).filter(Boolean);
@@ -408,7 +432,10 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
       await waitForPendingAttachmentStaging();
     }
     if (!acceptsStagedAttachmentsRef.current) return;
-    await cleanupSavedDrafts("discard");
+    if (!await cleanupSavedDrafts("discard")) {
+      discardInProgressRef.current = false; setIsDiscarding(false); resumeDraftSaves?.();
+      return;
+    }
     await cleanupAllStagedAttachments();
     clearDraftStorage();
     useComposeStore.getState().setComposeDirty(false);
@@ -417,6 +444,19 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     confirmCloseCompose();
   }
 
+  async function handleSaveAndClose() {
+    if (saveClosingRef.current || sendInProgressRef.current || discardInProgressRef.current) return;
+    saveClosingRef.current = true; setSavingAndClosing(true);
+    try {
+      if (!await saveNow()) return;
+      await cancelPendingDraftSaves();
+      await cleanupAllStagedAttachments();
+      useComposeStore.getState().setComposeDirty(false);
+      closeCompose();
+    } finally { saveClosingRef.current = false; setSavingAndClosing(false); }
+  }
+
+  const hasContent = Boolean(toInputValue.trim() || ccInputValue.trim() || bccInputValue.trim()) || hasComposeDraft({ to, cc, bcc, subject, rawSource, richTextHtml, attachments });
   const title =
     composeMode === "reply"
       ? t("compose.reply", "Reply")
@@ -426,7 +466,8 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           ? t("compose.forward", "Forward")
           : t("compose.newMessage", "New Message");
   const hasToRecipient = to.some(Boolean) || isValidEmailAddress(toInputValue);
-  const sendDisabled = sendInProgress
+  const sendingUnavailable = accounts.find((a) => a.id === fromAccountId)?.capabilities?.send === false;
+  const sendDisabled = sendingUnavailable || sendInProgress
     || sendMutation.isPending
     || pendingAttachmentStagingCount > 0
     || !fromAccountId
@@ -434,8 +475,8 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
 
   return (
     <div
-      aria-busy={sendInProgress}
-      inert={sendInProgress}
+      aria-busy={sendInProgress || savingAndClosing}
+      inert={sendInProgress || savingAndClosing}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -466,8 +507,13 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
             {title}
           </span>
         </div>
+        <button type="button" onClick={() => void handleSaveAndClose()} disabled={!editorReady || !fromAccountId || pendingAttachmentStagingCount > 0 || savingAndClosing}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 13 }}>
+          <Save size={14} /> {t("compose.saveAndClose", "Save and close")}
+        </button>
         <button
           onClick={handleSend}
+          title={sendingUnavailable ? t("compose.sendUnavailable", "Sending is not available yet. You can save a local draft.") : undefined}
           disabled={sendDisabled}
           style={{
             display: "flex", alignItems: "center", gap: "6px",
@@ -484,6 +530,13 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
         </button>
       </div>
 
+      <div role={saveStatus === "error" ? "alert" : "status"} style={{ padding: "6px 20px", fontSize: 12 }}>
+        {saveStatus === "saving" ? t("compose.draftSaving", "Saving local draft…")
+          : saveStatus === "saved" ? t("compose.draftSaved", "Saved locally (encrypted)")
+          : saveStatus === "error" ? t("compose.draftSaveError", "Could not save the draft. Keep this window open and try again.")
+          : t("compose.localDraftsNotice", "Encrypted on this device only; not synced to Gmail.")}
+      </div>
+      <LocalDrafts accountId={fromAccountId} disabled={hasContent || Boolean(localDraft)} />
       {/* Error banner */}
       {sendError && (
         <div role="alert" aria-live="assertive" style={{

@@ -39,6 +39,7 @@ type Runtime struct {
 	mu                   sync.RWMutex
 	providers            map[string]domain.Transport
 	crypto               *crypto.Service
+	composeMu            sync.Mutex
 }
 
 type SyncComplete struct {
@@ -153,7 +154,7 @@ func (s *AccountService) Login(ctx context.Context, request LoginRequest) (domai
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.crypto == nil {
-		has, err := r.DB.HasAuthData(ctx)
+		has, err := r.DB.HasEncryptedData(ctx)
 		if err != nil {
 			return domain.Account{}, err
 		}

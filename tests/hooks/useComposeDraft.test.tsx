@@ -201,8 +201,8 @@ describe("useComposeDraft", () => {
       }) as Parameters<typeof useComposeDraft>[0],
     });
 
-    act(() => {
-      vi.advanceTimersByTime(3000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
     });
 
     expect(saveDraftMock).toHaveBeenCalledOnce();
@@ -284,6 +284,53 @@ describe("useComposeDraft", () => {
       subject: "Latest version",
       existingDraftId: "draft-1",
     }));
+  });
+
+  it("restores the existing draft id and preserves source/reply fields on explicit save", async () => {
+    saveDraftMock.mockResolvedValue("existing");
+    const { result } = renderHook(() => useComposeDraft(baseProps({
+      existingDraftId: "existing", existingDraftAccountId: "account-1",
+      editorMode: "markdown", rawSource: "**source**", inReplyTo: "original@example.invalid",
+    })));
+    await act(async () => { expect(await result.current.saveNow()).toBe(true); });
+    expect(saveDraftMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      existingDraftId: "existing", rawSource: "**source**", editorMode: "markdown", inReplyTo: "original@example.invalid",
+      clientKey: expect.any(String),
+    }));
+    expect(result.current.saveStatus).toBe("saved");
+  });
+
+  it("does not display saved for edits made while an older snapshot is saving", async () => {
+    const first = deferred<string>();
+    saveDraftMock.mockReturnValueOnce(first.promise).mockResolvedValue("draft-1");
+    const { result, rerender } = renderHook((props) => useComposeDraft(props), {
+      initialProps: baseProps({ subject: "first" }),
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    rerender(baseProps({ subject: "newer" }));
+    await act(async () => { first.resolve("draft-1"); await first.promise; });
+    expect(result.current.saveStatus).not.toBe("saved");
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(result.current.saveStatus).toBe("saved");
+  });
+
+  it("preserves reply quotes separately from editable source", async () => {
+    saveDraftMock.mockResolvedValue("d");
+    const { result } = renderHook(() => useComposeDraft(baseProps({
+      subject: "reply", editorMode: "markdown", rawSource: "**answer**",
+      quotedReplyHtml: "<blockquote>original</blockquote>",
+    })));
+    await act(async () => { await result.current.saveNow(); });
+    expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({
+      rawSource: "**answer**", bodyHtml: "", quotedReplyHtml: "<blockquote>original</blockquote>",
+    }));
+  });
+
+  it("uses the same idempotency key after a failed create", async () => {
+    saveDraftMock.mockRejectedValueOnce(new Error("response lost")).mockResolvedValue("draft-1");
+    renderHook(() => useComposeDraft(baseProps({ subject: "retry" })));
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+    expect(saveDraftMock.mock.calls[0][0].clientKey).toBe(saveDraftMock.mock.calls[1][0].clientKey);
   });
 
   it("waits for an in-flight save and cancels future saves during discard", async () => {

@@ -70,6 +70,10 @@ export interface Capabilities {
   html: boolean;
 }
 
+export interface CleanupComposeRequest {
+  path: string;
+}
+
 export interface CountsRequest {
   accountId: string;
   byFolder: boolean;
@@ -102,6 +106,25 @@ export interface DownloadFailuresRequest {
   offset: number;
 }
 
+export interface DraftAttachment {
+  name: string;
+  path: string;
+  size: number;
+}
+
+export interface DraftRequest {
+  accountId: string;
+  draftId: string;
+}
+
+export interface DraftSummary {
+  id: string;
+  accountId: string;
+  subject: string;
+  updatedAt: number;
+  attachmentCount: number;
+}
+
 export interface Empty {}
 
 export interface FlagsRequest {
@@ -128,6 +151,23 @@ export interface Geometry {
   height: number;
   x: number;
   y: number;
+}
+
+export interface LocalDraft {
+  id: string;
+  accountId: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  inReplyTo: string;
+  quotedReplyHtml: string;
+  editorMode: string;
+  rawSource: string;
+  attachments: DraftAttachment[];
+  updatedAt: number;
 }
 
 export interface LoginRequest {
@@ -256,6 +296,23 @@ export interface RenderedHTML {
   images_blocked: number;
 }
 
+export interface SaveDraftRequest {
+  accountId: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  inReplyTo: string;
+  quotedReplyHtml: string;
+  existingDraftId: string;
+  attachmentPaths: string[];
+  clientKey: string;
+  editorMode: string;
+  rawSource: string;
+}
+
 export interface SearchHit {
   message_id: string;
   score: number;
@@ -269,6 +326,11 @@ export interface SearchRequest {
   query: string;
   accountId: string;
   limit: number;
+}
+
+export interface StageComposeRequest {
+  filename: string;
+  bytes: number[];
 }
 
 export interface StartSyncRequest {
@@ -459,6 +521,31 @@ export const AttachmentService = {
    */
   path(request: AttachmentRequest): Promise<string | null> {
     return call("AttachmentService.Path", request);
+  },
+} as const;
+
+export const ComposeService = {
+  cleanup(request: CleanupComposeRequest): Promise<Empty> {
+    return call("ComposeService.Cleanup", request);
+  },
+  delete(request: DraftRequest): Promise<Empty> {
+    return call("ComposeService.Delete", request);
+  },
+  get(request: DraftRequest): Promise<LocalDraft> {
+    return call("ComposeService.Get", request);
+  },
+  list(request: AccountRequest): Promise<DraftSummary[]> {
+    return call("ComposeService.List", request);
+  },
+  /**
+   * Save is deliberately local-only; it never interprets an unknown draft ID as
+   * a Gmail ID or calls the network. Partial recipient input is valid in a draft.
+   */
+  save(request: SaveDraftRequest): Promise<string> {
+    return call("ComposeService.Save", request);
+  },
+  stage(request: StageComposeRequest): Promise<string> {
+    return call("ComposeService.Stage", request);
   },
 } as const;
 

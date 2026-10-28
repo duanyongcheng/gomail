@@ -28,7 +28,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `batch_delete` | implemented | M1 |
 | `batch_mark_read` | implemented | M1 |
 | `batch_star` | implemented | M1 |
-| `cleanup_staged_compose_attachment` | not-implemented | M1 |
+| `cleanup_staged_compose_attachment` | implemented | M1 |
 | `clear_notification_attention` | startup-stub | M4 |
 | `complete_oauth_flow` | implemented | M0 |
 | `create_rule` | not-implemented | M3 |
@@ -36,7 +36,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `delete_auto_backup_config` | not-implemented | M5 |
 | `delete_background_image` | not-implemented | M3 |
 | `delete_contact` | not-implemented | M3 |
-| `delete_draft` | not-implemented | M1 |
+| `delete_draft` | implemented | M1 |
 | `delete_email_template` | not-implemented | M3 |
 | `delete_message` | implemented | M1 |
 | `delete_rule` | not-implemented | M3 |
@@ -112,7 +112,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `restore_message` | implemented | M1 |
 | `save_auto_backup_config` | not-implemented | M5 |
 | `save_contact` | not-implemented | M3 |
-| `save_draft` | not-implemented | M1 |
+| `save_draft` | implemented | M1 |
 | `save_email_template` | not-implemented | M3 |
 | `save_translate_config` | not-implemented | M5 |
 | `search_contact_suggestions` | startup-stub | M3 |
@@ -129,7 +129,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `set_xoauth2_refresh` | not-implemented | M2 |
 | `show_test_notification` | not-implemented | M4 |
 | `snooze_message` | not-implemented | M3 |
-| `stage_compose_attachment` | not-implemented | M1 |
+| `stage_compose_attachment` | implemented | M1 |
 | `start_sync` | implemented | M1 |
 | `stop_sync` | implemented | M1 |
 | `suppress_contact_suggestion` | not-implemented | M3 |

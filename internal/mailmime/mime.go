@@ -119,7 +119,8 @@ func ParseWithLimit(raw []byte, limit int) (Message, error) {
 	return out, nil
 }
 
-// Build constructs a bounded RFC 5322/MIME message. Bcc is envelope-only.
+// Build is the deterministic fixture/protocol-prototype builder. Product
+// compose/send code must use BuildOutgoing with explicit identity/time instead.
 func Build(from, subject, text, html, messageID string, to, cc []*mail.Address, attachments []Attachment) ([]byte, error) {
 	var header mail.Header
 	header.SetAddressList("From", []*mail.Address{{Name: "协议测试", Address: from}})

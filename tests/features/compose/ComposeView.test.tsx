@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   addToast: vi.fn(),
   loadDraftFromStorage: vi.fn(),
   cancelPendingDraftSaves: vi.fn(),
+  saveNow: vi.fn(),
+  resumeDraftSaves: vi.fn(),
   confirmCloseCompose: vi.fn(),
   cancelCloseCompose: vi.fn(),
   showComposeLeaveConfirm: false,
@@ -97,6 +99,9 @@ vi.mock("../../../src/hooks/useComposeDraft", () => ({
     draftIdRef: { current: "draft-1" },
     draftIdsByAccountRef: { current: { "account-1": "draft-1" } },
     cancelPendingDraftSaves: mocks.cancelPendingDraftSaves,
+    saveNow: mocks.saveNow,
+    saveStatus: "idle",
+    resumeDraftSaves: mocks.resumeDraftSaves,
   }),
   loadDraftFromStorage: mocks.loadDraftFromStorage,
   clearDraftStorage: vi.fn(),
@@ -588,6 +593,38 @@ describe("ComposeView", () => {
       await pendingCancellation.promise;
     });
     await waitFor(() => expect(mocks.confirmCloseCompose).toHaveBeenCalledOnce());
+  });
+
+  it("rejects an oversized attachment before reading it", async () => {
+    render(<ComposeView />);
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]');
+    const file = attachmentFile("too-large.bin");
+    Object.defineProperty(file, "size", { value: 10 * 1024 * 1024 + 1 });
+    fireEvent.change(fileInput!, { target: { files: [file] } });
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(stageComposeAttachment).not.toHaveBeenCalled();
+  });
+
+  it("saves and closes without deleting the persisted draft", async () => {
+    mocks.saveNow.mockResolvedValue(true);
+    render(<ComposeView />);
+    fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
+    await waitFor(() => expect(mocks.closeCompose).toHaveBeenCalled());
+    expect(deleteDraft).not.toHaveBeenCalled();
+  });
+
+  it("retains the compose when save or deletion fails", async () => {
+    mocks.saveNow.mockResolvedValue(false);
+    mocks.showComposeLeaveConfirm = true;
+    vi.mocked(deleteDraft).mockRejectedValueOnce(new Error("disk failure"));
+    render(<ComposeView />);
+    fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
+    await waitFor(() => expect(mocks.saveNow).toHaveBeenCalled());
+    expect(mocks.closeCompose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(mocks.resumeDraftSaves).toHaveBeenCalled());
+    expect(mocks.confirmCloseCompose).not.toHaveBeenCalled();
+    expect(cleanupStagedComposeAttachment).not.toHaveBeenCalled();
   });
 
   it("cleans staged files after a successful send", async () => {

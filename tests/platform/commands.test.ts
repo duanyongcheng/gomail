@@ -6,6 +6,7 @@ vi.mock("@/mygo", () => ({
   AccountService: { list: vi.fn(), login: vi.fn(), delete: vi.fn() },
   AppService: { profile: vi.fn(), quit: vi.fn() },
   AttachmentService: { path: vi.fn(), download: vi.fn() },
+  ComposeService: { save: vi.fn(), delete: vi.fn(), stage: vi.fn(), cleanup: vi.fn() },
   FileService: { downloads: vi.fn(), saveAttachment: vi.fn() },
   FolderService: { list: vi.fn() },
   MessageService: {
@@ -19,7 +20,7 @@ vi.mock("@/mygo", () => ({
   SearchService: { search: vi.fn() },
   SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
-import { AttachmentService, FileService, MessageService, PendingOpsService, SyncService } from "@/mygo";
+import { AttachmentService, ComposeService, FileService, MessageService, PendingOpsService, SyncService } from "@/mygo";
 import { downloadDir } from "../../src/lib/platform/path";
 import { saveAttachmentAs } from "../../src/lib/platform/attachments";
 import { invoke } from "../../src/lib/platform/core";
@@ -72,6 +73,18 @@ describe("MyGO command adapter", () => {
     await invoke("dismiss_failed_pending_mail_ops", { accountId: "a" });
     expect(PendingOpsService.dismiss).toHaveBeenCalledWith({ accountId: "a", limit: 100 });
     await expect(invoke("empty_trash", { accountId: "a" })).rejects.toThrow("Permanent delete");
+  });
+
+  it("routes local drafts and staged byte arrays without exposing generic filesystem APIs", async () => {
+    vi.mocked(ComposeService.save).mockResolvedValueOnce("local-draft:1");
+    expect(await invoke("save_draft", { accountId: "a", subject: "s", clientKey: "key", bodyHtml: null })).toBe("local-draft:1");
+    expect(ComposeService.save).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", subject: "s", clientKey: "key", bodyHtml: "", attachmentPaths: [] }));
+    await invoke("stage_compose_attachment", { filename: "file", bytes: [0, 255] });
+    expect(ComposeService.stage).toHaveBeenCalledWith({ filename: "file", bytes: [0, 255] });
+    await invoke("cleanup_staged_compose_attachment", { path: "compose-attachment:opaque" });
+    expect(ComposeService.cleanup).toHaveBeenCalledWith({ path: "compose-attachment:opaque" });
+    await invoke("delete_draft", { accountId: "a", draftId: "d" });
+    expect(ComposeService.delete).toHaveBeenCalledWith({ accountId: "a", draftId: "d" });
   });
 
   it("routes attachment commands, Downloads and nullable save dialog results", async () => {
