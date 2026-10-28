@@ -1,8 +1,8 @@
 # M1 local encrypted drafts and production MIME
 
-This slice prepares compose for sending; it does **not** enable Gmail sending or
-cloud draft synchronization. The compose page explicitly says local-only, and
-Gmail's Send button remains disabled by its capability flag.
+This slice introduced local drafts before sending. The later
+[Gmail outbox slice](m1-gmail-outbox.md) enables Send; drafts themselves remain
+local-only, without cloud draft synchronization.
 
 ## User flow
 
@@ -78,8 +78,9 @@ SMTP must use envelope recipients and omit that header. The future provider must
 choose correctly. The caller supplies a stable Message-ID across retries. The old
 `Build` remains only a deterministic fixture/protocol-prototype helper.
 
-No outgoing MIME is submitted to a server in this slice. Gmail draft APIs, sender
-identity verification, durable outbox/reconciliation and send errors remain next.
+This original draft slice did not submit MIME. The [Gmail outbox](m1-gmail-outbox.md)
+now uses the builder with mailbox verification and durable send handling; Gmail
+cloud draft APIs remain separate work.
 
 ## Tests
 

@@ -30,7 +30,8 @@ func (db *DB) HasEncryptedData(ctx context.Context) (bool, error) {
 	var has bool
 	err := db.read.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM accounts WHERE auth_data IS NOT NULL)
 		OR EXISTS(SELECT 1 FROM compose_drafts WHERE data IS NOT NULL)
-		OR EXISTS(SELECT 1 FROM compose_attachments)`).Scan(&has)
+		OR EXISTS(SELECT 1 FROM compose_attachments)
+		OR EXISTS(SELECT 1 FROM outbox WHERE data IS NOT NULL)`).Scan(&has)
 	return has, err
 }
 func (db *DB) ComposeAccountExists(ctx context.Context, account string) (bool, error) {

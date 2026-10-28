@@ -587,9 +587,11 @@ export async function sendEmail(
   bodyHtml?: string,
   inReplyTo?: string,
   attachmentPaths?: string[],
+  clientKey?: string,
 ): Promise<void> {
+  // Resolves on durable outbox acceptance, not remote delivery.
   return invoke<void>("send_email", {
-    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths,
+    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths, clientKey,
   });
 }
 

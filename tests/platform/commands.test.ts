@@ -7,6 +7,7 @@ vi.mock("@/mygo", () => ({
   AppService: { profile: vi.fn(), quit: vi.fn() },
   AttachmentService: { path: vi.fn(), download: vi.fn() },
   ComposeService: { save: vi.fn(), delete: vi.fn(), stage: vi.fn(), cleanup: vi.fn() },
+  OutboxService: { queue: vi.fn().mockResolvedValue({}) },
   FileService: { downloads: vi.fn(), saveAttachment: vi.fn() },
   FolderService: { list: vi.fn() },
   MessageService: {
@@ -20,7 +21,7 @@ vi.mock("@/mygo", () => ({
   SearchService: { search: vi.fn() },
   SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
-import { AttachmentService, ComposeService, FileService, MessageService, PendingOpsService, SyncService } from "@/mygo";
+import { AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService } from "@/mygo";
 import { downloadDir } from "../../src/lib/platform/path";
 import { saveAttachmentAs } from "../../src/lib/platform/attachments";
 import { invoke } from "../../src/lib/platform/core";
@@ -48,7 +49,7 @@ describe("MyGO command adapter", () => {
   });
   it("rejects unknown names and action stubs with their command", async () => {
     await expect(invoke("__unknown__")).rejects.toThrow("NotImplemented: __unknown__");
-    await expect(invoke("send_email")).rejects.toThrow("NotImplemented: send_email");
+    await expect(invoke("create_rule")).rejects.toThrow("NotImplemented: create_rule");
     expect(await invoke("list_contacts")).toEqual([]);
   });
   it("adapts a typed rendered message to the existing tuple contract and preserves privacy mode", async () => {
@@ -73,6 +74,11 @@ describe("MyGO command adapter", () => {
     await invoke("dismiss_failed_pending_mail_ops", { accountId: "a" });
     expect(PendingOpsService.dismiss).toHaveBeenCalledWith({ accountId: "a", limit: 100 });
     await expect(invoke("empty_trash", { accountId: "a" })).rejects.toThrow("Permanent delete");
+  });
+
+  it("queues sending through the durable service without claiming remote delivery", async () => {
+    expect(await invoke("send_email", { accountId: "a", to: ["to@example.invalid"], clientKey: "k" })).toBeUndefined();
+    expect(OutboxService.queue).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", clientKey: "k", attachmentPaths: [] }));
   });
 
   it("routes local drafts and staged byte arrays without exposing generic filesystem APIs", async () => {

@@ -20,6 +20,8 @@ import (
 	"github.com/emersion/go-message/mail"
 )
 
+var selftestMailbox *testgmail.Mock
+
 type selftestToken struct{}
 
 func (selftestToken) Token(context.Context) (string, error) { return "demo-access", nil }
@@ -37,6 +39,8 @@ func (k *selftestKeyring) Set(_ string, key []byte) error { k.key = key; return 
 func prepareSelftest(runtime *app.Runtime) error {
 	runtime.Keyring = &selftestKeyring{}
 	fixture := testgmail.NewMock()
+	fixture.ProfileEmail = "demo@example.invalid"
+	selftestMailbox = fixture
 	context.AfterFunc(runtime.Context, fixture.Close)
 	png := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130}
 	raw, err := mailmime.Build("sender@example.invalid", "Pebble Go selftest", "中文搜索 selftest message", `<p>中文搜索 selftest message</p><img src="cid:logo">`, "selftest@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, []mailmime.Attachment{{ContentID: "logo", Inline: true, MIMEType: "image/png", Data: png}, {Filename: "selftest-export.txt", MIMEType: "text/plain", Data: []byte("Pebble Go attachment export selftest\n")}})
@@ -127,7 +131,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -220,4 +224,46 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	closed := waitSelftestPage(ctx, window, `document.getElementById('compose-subject') === null`, 15*time.Second)
 	drafts, draftErr := (&app.ComposeService{Runtime: runtime}).List(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
 	checks["local draft saved through UI"] = closed && draftErr == nil && len(drafts) == 1 && drafts[0].Subject == "Edited local draft selftest" && drafts[0].AttachmentCount == 1
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(撰写|Compose)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(本地草稿|Local drafts)$/.test(b.textContent.trim())); if (!b) return false; b.click(); return true; })()`, 10*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim()==='Edited local draft selftest'); if (!b || b.disabled) return false; b.click(); return true; })()`, 10*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const input=document.getElementById('compose-to-input'); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'recipient@example.invalid'); input.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`, 5*time.Second) {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(发送|Send)$/.test(b.textContent.trim())); if (!b || b.disabled) return false; b.click(); return true; })()`, 5*time.Second) {
+		return
+	}
+	sentClosed := waitSelftestPage(ctx, window, `document.getElementById('compose-subject') === null`, 10*time.Second)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		items, err := (&app.OutboxService{Runtime: runtime}).List(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
+		if err == nil && len(items) == 1 && items[0].Status == "sent" {
+			selftestMailbox.Lock()
+			count := len(selftestMailbox.SentRaw)
+			var raw []byte
+			if count == 1 {
+				raw = append([]byte{}, selftestMailbox.SentRaw[0]...)
+			}
+			selftestMailbox.Unlock()
+			parsed, parseErr := mailmime.ParseWithLimit(raw, mailmime.MaxOutgoingBytes)
+			checks["Gmail send through durable outbox UI"] = sentClosed && count == 1 && parseErr == nil && parsed.Subject == "Edited local draft selftest" && len(parsed.Attachments) == 1
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	if waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(设置|Settings)$/.test(b.textContent.trim())); if (!b) return false; b.click(); return true; })()`, 5*time.Second) &&
+		waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('[role="tab"]')).find(b => /^(远端写回|Remote Writes)$/.test(b.textContent.trim())); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
+		waitSelftestPage(ctx, window, `(() => { const s=Array.from(document.querySelectorAll('summary')).find(s => /发件箱|Outbox/.test(s.textContent)); if (!s) return false; s.parentElement.open=true; return /Gmail 已接收|Accepted by Gmail/.test(s.parentElement.innerText); })()`, 10*time.Second)
+		capture("outbox-sent.png")
+	}
 }

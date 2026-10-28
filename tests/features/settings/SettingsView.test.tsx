@@ -69,6 +69,8 @@ vi.mock("../../../src/features/settings/AboutTab", () => ({
   default: () => <div>About panel</div>,
 }));
 
+vi.mock("../../../src/features/compose/OutboxPanel", () => ({ default: () => <div>Outbox panel</div> }));
+
 vi.mock("../../../src/features/settings/PendingOpsTab", () => ({
   default: () => <div>Remote queue panel</div>,
 }));
@@ -86,6 +88,7 @@ describe("SettingsView", () => {
 
     expect(tab.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText("Remote queue panel")).toBeTruthy();
+    expect(screen.getByText("Outbox panel")).toBeTruthy();
   });
 
   it("exposes global proxy settings as a dedicated settings tab", () => {

@@ -163,23 +163,30 @@ func (s *ComposeService) Cleanup(ctx context.Context, request CleanupComposeRequ
 	return Empty{}, nil
 }
 func (s *ComposeService) attachment(ctx context.Context, cipher *crypto.Service, path string) (DraftAttachment, error) {
-	id, err := composeID(path)
+	data, err := s.attachmentData(ctx, cipher, path)
 	if err != nil {
 		return DraftAttachment{}, err
 	}
+	return DraftAttachment{Name: data.Name, Path: path, Size: int64(len(data.Bytes))}, nil
+}
+func (s *ComposeService) attachmentData(ctx context.Context, cipher *crypto.Service, path string) (composeAttachmentData, error) {
+	id, err := composeID(path)
+	if err != nil {
+		return composeAttachmentData{}, err
+	}
 	stored, err := s.Runtime.DB.ComposeAttachment(ctx, id)
 	if err != nil {
-		return DraftAttachment{}, errors.New("compose attachment is unavailable")
+		return composeAttachmentData{}, errors.New("compose attachment is unavailable")
 	}
 	plain, err := cipher.Decrypt(composeAttachmentPurpose, id, stored.Data)
 	if err != nil {
-		return DraftAttachment{}, errors.New("cannot decrypt compose attachment; data preserved")
+		return composeAttachmentData{}, errors.New("cannot decrypt compose attachment; data preserved")
 	}
 	var data composeAttachmentData
 	if json.Unmarshal(plain, &data) != nil || int64(len(data.Bytes)) != stored.Size {
-		return DraftAttachment{}, errors.New("invalid encrypted compose attachment")
+		return composeAttachmentData{}, errors.New("invalid encrypted compose attachment")
 	}
-	return DraftAttachment{Name: data.Name, Path: path, Size: stored.Size}, nil
+	return data, nil
 }
 func validateDraft(request SaveDraftRequest) error {
 	if request.AccountID == "" || len(request.ClientKey) > 200 || len(request.ExistingDraftID) > 200 {

@@ -118,7 +118,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `search_contact_suggestions` | startup-stub | M3 |
 | `search_contacts` | startup-stub | M3 |
 | `search_messages` | implemented | M0 |
-| `send_email` | not-implemented | M1 |
+| `send_email` | implemented | M1 |
 | `set_autostart_enabled` | not-implemented | M4 |
 | `set_contact_favorite` | not-implemented | M3 |
 | `set_email_signature` | not-implemented | M3 |

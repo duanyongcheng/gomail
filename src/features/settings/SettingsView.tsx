@@ -7,6 +7,7 @@ import AppearanceTab from "./AppearanceTab";
 import CloudSyncTab from "./CloudSyncTab";
 import RulesTab from "./RulesTab";
 import PendingOpsTab from "./PendingOpsTab";
+import OutboxPanel from "../compose/OutboxPanel";
 import ShortcutsTab from "./ShortcutsTab";
 import TranslateTab from "./TranslateTab";
 import AiTab from "./AiTab";
@@ -113,7 +114,7 @@ export default function SettingsView() {
         {activeTab === "proxy" && <ProxyTab />}
         {activeTab === "appearance" && <AppearanceTab />}
         {activeTab === "rules" && <RulesTab />}
-        {activeTab === "remoteWrites" && <PendingOpsTab />}
+        {activeTab === "remoteWrites" && <><OutboxPanel /><PendingOpsTab /></>}
         {activeTab === "translation" && <TranslateTab />}
         {activeTab === "ai" && <AiTab />}
         {activeTab === "shortcuts" && <ShortcutsTab />}

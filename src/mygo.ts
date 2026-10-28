@@ -249,6 +249,23 @@ export interface OAuthStatus {
   message: string;
 }
 
+export interface OutboxActionRequest {
+  accountId: string;
+  id: string;
+  action: string;
+}
+
+export interface OutboxItem {
+  id: string;
+  accountId: string;
+  subject: string;
+  status: string;
+  attempts: number;
+  nextRetryAt: number | null;
+  lastError: string;
+  createdAt: number;
+}
+
 export interface PendingMailOp {
   id: string;
   account_id: string;
@@ -326,6 +343,19 @@ export interface SearchRequest {
   query: string;
   accountId: string;
   limit: number;
+}
+
+export interface SendRequest {
+  accountId: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml: string;
+  inReplyTo: string;
+  attachmentPaths: string[];
+  clientKey: string;
 }
 
 export interface StageComposeRequest {
@@ -549,6 +579,19 @@ export const ComposeService = {
   },
 } as const;
 
+export const OutboxService = {
+  action(request: OutboxActionRequest): Promise<Empty> {
+    return call("OutboxService.Action", request);
+  },
+  list(request: AccountRequest): Promise<OutboxItem[]> {
+    return call("OutboxService.List", request);
+  },
+  /** Queue returns only after encrypted MIME is durable. It does NOT mean sent. */
+  queue(request: SendRequest): Promise<Empty> {
+    return call("OutboxService.Queue", request);
+  },
+} as const;
+
 /**
  * FileService owns only native directory/dialog adaptation. Attachment lookup,
  * constrained reads and copying remain in the framework-independent core.
@@ -591,4 +634,5 @@ export const events = {
   mailRealtimeStatus: event<RealtimeStatus>("mail:realtime-status"),
   mailPendingOpsChanged: event<{}>("mail:pending-ops-changed"),
   attachmentDownloadProgress: event<AttachmentProgress>("attachment:download-progress"),
+  mailOutboxChanged: event<{}>("mail:outbox-changed"),
 } as const;

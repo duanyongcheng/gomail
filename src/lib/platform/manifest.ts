@@ -76,7 +76,6 @@ export const commands = {
   save_translate_config: pending("save_translate_config", "M5"),
   search_contact_suggestions: startup([], "M3"),
   search_contacts: startup([], "M3"),
-  send_email: pending("send_email", "M1"),
   set_autostart_enabled: pending("set_autostart_enabled", "M4"),
   set_contact_favorite: pending("set_contact_favorite", "M3"),
   set_email_signature: pending("set_email_signature", "M3"),

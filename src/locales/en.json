@@ -99,6 +99,18 @@
     "threadView": "Thread view",
     "messageList": "Message list"
   },
+  "outbox": {
+    "allAccounts": "All accounts", "title": "Outbox", "notice": "Queued is not sent. Unknown outcomes are never resent automatically.",
+    "queuedNotice": "Added to Outbox. This does not mean sent yet; check Outbox for status.",
+    "attempts": "Attempts", "retry": "Retry", "cancel": "Cancel queued send", "check": "Check Sent", "dismiss": "Dismiss",
+    "listLimit": "Showing up to 50 items, active first. Dismiss finished items to see older ones.",
+    "empty": "No outbox items", "readFailed": "Could not read outbox.",
+    "actionFailed": "Could not change this outbox item. Refresh and try again.",
+    "checkInconclusive": "Sent check is inconclusive. No resend was attempted.",
+    "removeWarning": "Remove this local outbox item?",
+    "unknownWarning": "This may already have been sent. Dismissing does not undo delivery. Check Sent before composing another copy.",
+    "status": { "queued": "Queued", "preparing": "Checking sender", "in_progress": "Sending", "sent": "Accepted by Gmail", "failed": "Failed", "outcome_unknown": "Outcome unknown" }
+  },
   "compose": {
     "localDrafts": "Local drafts",
     "localDraftsNotice": "Encrypted on this device only; not synced to Gmail.",

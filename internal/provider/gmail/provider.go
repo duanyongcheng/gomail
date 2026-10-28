@@ -26,7 +26,7 @@ func New(db *store.DB, api *googleapi.API, account string) *Provider {
 	return &Provider{DB: db, API: api, AccountID: account}
 }
 func (p *Provider) Capabilities() domain.Capabilities {
-	return domain.Capabilities{Read: true, ModifyFlags: true}
+	return domain.Capabilities{Read: true, ModifyFlags: true, Send: true}
 }
 func (p *Provider) Folders(ctx context.Context) ([]domain.Folder, error) {
 	return p.DB.Folders(ctx, p.AccountID)

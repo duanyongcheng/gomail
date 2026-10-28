@@ -26,6 +26,7 @@ import type { Account } from "@/lib/ipc-types";
 import { hasComposeDraft, type ComposeAttachment } from "./compose-draft";
 import type { DraftData } from "@/hooks/useComposeDraft";
 import LocalDrafts from "./LocalDrafts";
+import OutboxPanel from "./OutboxPanel";
 import { MAX_COMPOSE_ATTACHMENT_BYTES, MAX_DRAFT_ATTACHMENT_BYTES, MAX_COMPOSE_ATTACHMENTS } from "@/lib/platform/compose";
 import { ModeButton, EditorToolbar, MarkdownToolbar, composeStyles } from "./ComposeToolbar";
 import ComposeAiAssistant from "../ai/ComposeAiAssistant";
@@ -56,6 +57,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   const discardInProgressRef = useRef(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
   const sendInProgressRef = useRef(false);
+  const sendClientKeyRef = useRef<string | null>(null);
   const [sendInProgress, setSendInProgress] = useState(false);
   const [savingAndClosing, setSavingAndClosing] = useState(false);
   const saveClosingRef = useRef(false);
@@ -254,7 +256,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
         message: context === "send"
           ? t(
               "compose.draftCleanupFailed",
-              "Sent, but failed to remove the saved draft. You can delete it from Drafts.",
+              "Queued, but failed to remove the local draft. Check Outbox before sending another copy.",
             )
           : t(
               "compose.discardDraftCleanupFailed",
@@ -325,7 +327,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
 
   async function handleSend() {
     if (accounts.find((a) => a.id === fromAccountId)?.capabilities?.send === false) return;
-    if (sendInProgressRef.current || discardInProgressRef.current) return;
+    if (sendInProgressRef.current || discardInProgressRef.current || saveClosingRef.current) return;
     const finalTo = mergePendingRecipient(to, toInputValue).filter(Boolean);
     const finalCc = mergePendingRecipient(cc, ccInputValue).filter(Boolean);
     const finalBcc = mergePendingRecipient(bcc, bccInputValue).filter(Boolean);
@@ -382,14 +384,13 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     }
     const outgoingBodyHtml = appendReplyQuoteHtml(bodyHtml, quotedReplyHtml);
 
-    const inReplyTo =
-      isReply && composeReplyTo?.message_id_header
-        ? composeReplyTo.message_id_header
-        : undefined;
+    const inReplyTo = localDraft?.inReplyTo || (isReply ? composeReplyTo?.message_id_header ?? undefined : undefined);
+    sendClientKeyRef.current ??= crypto.randomUUID();
 
     sendMutation.mutate(
       {
         accountId: fromAccountId,
+        clientKey: sendClientKeyRef.current,
         to: finalTo,
         cc: finalCc,
         bcc: finalBcc,
@@ -403,6 +404,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
       },
       {
         onSuccess: () => {
+          useToastStore.getState().addToast({ type: "success", message: t("outbox.queuedNotice", "Added to Outbox. This does not mean sent yet; check Outbox for status.") });
           void (async () => {
             try {
               await cleanupSavedDrafts("send");
@@ -537,6 +539,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           : t("compose.localDraftsNotice", "Encrypted on this device only; not synced to Gmail.")}
       </div>
       <LocalDrafts accountId={fromAccountId} disabled={hasContent || Boolean(localDraft)} />
+      <OutboxPanel accountId={fromAccountId} />
       {/* Error banner */}
       {sendError && (
         <div role="alert" aria-live="assertive" style={{

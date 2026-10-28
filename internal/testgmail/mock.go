@@ -1,10 +1,14 @@
 package testgmail
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
 	"net/url"
 	"sort"
 	"strconv"
@@ -34,6 +38,10 @@ type Mock struct {
 	PageSize          int
 	OmitFromList      map[string]bool
 	Requests          []string
+	ProfileEmail      string
+	SentRaw           [][]byte
+	SendStatus        int
+	LoseSendResponse  bool
 }
 
 func (m *Mock) Lock()   { m.mu.Lock() }
@@ -110,12 +118,64 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/gmail/v1/users/me")
 	switch path {
 	case "/profile":
-		_ = json.NewEncoder(w).Encode(Profile{Email: "demo@gmail.example.invalid", HistoryID: m.HistoryID})
+		email := m.ProfileEmail
+		if email == "" {
+			email = "demo@gmail.example.invalid"
+		}
+		_ = json.NewEncoder(w).Encode(Profile{Email: email, HistoryID: m.HistoryID})
 	case "/labels":
 		_ = json.NewEncoder(w).Encode(map[string]any{"labels": []Label{{ID: "INBOX", Name: "INBOX", Type: "system"}, {ID: "UNREAD", Name: "UNREAD", Type: "system"}, {ID: "STARRED", Name: "STARRED", Type: "system"}, {ID: "Label_work", Name: "工作", Type: "user"}}})
+	case "/messages/send":
+		if r.Method != http.MethodPost {
+			w.WriteHeader(405)
+			return
+		}
+		if m.SendStatus != 0 {
+			w.WriteHeader(m.SendStatus)
+			return
+		}
+		var input struct {
+			Raw string `json:"raw"`
+		}
+		if json.NewDecoder(io.LimitReader(r.Body, 50<<20)).Decode(&input) != nil {
+			w.WriteHeader(400)
+			return
+		}
+		raw, err := base64.RawURLEncoding.DecodeString(input.Raw)
+		if err != nil {
+			w.WriteHeader(400)
+			return
+		}
+		m.SentRaw = append(m.SentRaw, raw)
+		id := fmt.Sprintf("sent-%d", len(m.SentRaw))
+		m.Messages[id] = Message{ID: id, ThreadID: "thread-" + id, Labels: []string{"SENT"}, Raw: input.Raw, Date: "1700000000000", HistoryID: m.HistoryID}
+		if m.LoseSendResponse {
+			conn, _, err := w.(http.Hijacker).Hijack()
+			if err == nil {
+				conn.Close()
+			}
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
 	case "/messages":
 		ids := make([]string, 0, len(m.Messages))
-		for id := range m.Messages {
+		for id, message := range m.Messages {
+			if query := r.URL.Query().Get("q"); query != "" {
+				data, _ := base64.RawURLEncoding.DecodeString(message.Raw)
+				parsed, err := mail.ReadMessage(bytes.NewReader(data))
+				if err != nil || strings.Trim(parsed.Header.Get("Message-ID"), "<>") != strings.TrimPrefix(query, "rfc822msgid:") {
+					continue
+				}
+				sent := false
+				for _, label := range message.Labels {
+					if label == "SENT" {
+						sent = true
+					}
+				}
+				if !sent {
+					continue
+				}
+			}
 			if !m.OmitFromList[id] {
 				ids = append(ids, id)
 			}

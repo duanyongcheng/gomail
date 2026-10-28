@@ -31,6 +31,11 @@ type Runtime struct {
 	OnRealtime           func(RealtimeStatus)
 	OnPendingOpsChanged  func()
 	OnAttachmentProgress func(AttachmentProgress)
+	OnOutboxChanged      func()
+	outboxWake           chan struct{}
+	outboxMu             sync.Mutex
+	outboxWorkerMu       sync.Mutex
+	outboxSettlement     *outboxSettlement
 	pendingWake          chan struct{}
 	pendingMu            sync.Mutex
 	pendingWorkerMu      sync.Mutex
@@ -48,7 +53,7 @@ type SyncComplete struct {
 }
 
 func New(ctx context.Context, db *store.DB, keyring crypto.Keyring, open func(string) error) *Runtime {
-	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}, pendingWake: make(chan struct{}, 1)}
+	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}, pendingWake: make(chan struct{}, 1), outboxWake: make(chan struct{}, 1)}
 	r.Scheduler = newScheduler(r)
 	return r
 }

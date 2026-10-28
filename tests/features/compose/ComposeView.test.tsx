@@ -66,6 +66,8 @@ vi.mock("../../../src/stores/compose.store", () => ({
   ),
 }));
 
+vi.mock("../../../src/features/compose/OutboxPanel", () => ({ default: () => null }));
+
 vi.mock("../../../src/hooks/queries", () => ({
   useAccountsQuery: () => mocks.accountsQuery,
 }));
@@ -625,6 +627,14 @@ describe("ComposeView", () => {
     await waitFor(() => expect(mocks.resumeDraftSaves).toHaveBeenCalled());
     expect(mocks.confirmCloseCompose).not.toHaveBeenCalled();
     expect(cleanupStagedComposeAttachment).not.toHaveBeenCalled();
+  });
+
+  it("announces queue acceptance rather than remote delivery and includes a stable request key", async () => {
+    mocks.mutate.mockImplementation((_params, options) => options.onSuccess());
+    render(<ComposeView />);
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(mocks.addToast).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("does not mean sent yet") })));
+    expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ clientKey: expect.any(String) }), expect.any(Object));
   });
 
   it("cleans staged files after a successful send", async () => {

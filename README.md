@@ -14,8 +14,9 @@ offline changes survive restart and retry with backoff. Same-message writes
 replay in durable order; pending local changes survive concurrent sync, and unknown
 outcomes are not auto-retried. Cached attachments can be downloaded or saved
 through the native Save As dialog. Compose supports local encrypted drafts and
-attachment staging. Gmail sending/cloud drafts, labels CRUD and threading remain
-M1 work. IMAP/SMTP are tested as an isolated protocol prototype and join the app
+attachment staging. Gmail sending uses an encrypted durable outbox with primary
+mailbox verification and unknown-outcome protection. Cloud drafts, labels CRUD
+and threading remain M1 work. IMAP/SMTP are tested as an isolated protocol prototype and join the app
 in M2.
 
 ## Development
@@ -75,7 +76,13 @@ retry and failures, and can dismiss them. Permanent delete is unavailable with
 Compose auto-saves locally after three seconds. Use **Save and close**, then
 open a blank compose → **Local drafts** to continue editing. Content and staged
 attachment bytes are encrypted with the profile key; these drafts are not synced
-to Gmail. Sending remains unavailable. See [compose and drafts](docs/m1-compose-drafts.md).
+to Gmail. See [compose and drafts](docs/m1-compose-drafts.md).
+
+Send first saves a complete encrypted MIME snapshot to Outbox. The background
+worker checks the Gmail primary mailbox, submits once, and distinguishes Gmail
+acceptance from failed or unknown outcomes. Unknown sends are never automatically
+resent; use **Check Sent** in Compose → Outbox or Settings → Remote Writes.
+Queued acceptance is not delivery confirmation. See [Gmail outbox](docs/m1-gmail-outbox.md).
 
 ## Gmail OAuth configuration
 
@@ -95,7 +102,8 @@ variables are reserved for M2. Without a Google client ID, the login button says
 Gmail requests `gmail.modify` plus `openid email profile`. Google authorization
 opens in the system browser with PKCE and a one-shot loopback callback. User
 consent and real Google account verification are manual steps; automated checks
-use local fixtures only. No send or permanent-delete action is implemented.
+use local fixtures only. Sending is supported through Outbox; permanent delete
+remains unavailable with `gmail.modify`.
 
 OAuth tokens are encrypted in `accounts.auth_data` with the Pebble v1
 AES-256-GCM envelope, bound to account identity. The DEK uses the independent
@@ -129,6 +137,7 @@ persistent Gmail message download failures and retry timing. Version 24 adds a
 Go-only operation-sequence sidecar for FIFO replay and sync reconciliation.
 Version 25 adds separate encrypted local drafts, staged attachment objects and
 reference tracking; these are not part of remotely synchronized mail or FTS.
+Version 26 adds the encrypted send outbox, independent of idempotent mail mutations.
 An unversioned PoC database is rejected instead of being silently rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 
@@ -152,8 +161,9 @@ suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox, attachment export, local draft restore/save and failed-download retry
-through the UI, writes a JSON report and screenshots, then exits. It does not
+inbox, attachment export, local draft restore/save, failed-download retry and a
+single send to the local Gmail fixture through the UI, writes a JSON report and
+screenshots, then exits. It does not
 contact Google or the system keyring; draft checks use an in-memory test keyring:
 
 ```sh

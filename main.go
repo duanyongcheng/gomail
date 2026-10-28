@@ -21,6 +21,7 @@ var newMail = mygo.NewEvent[domain.NewMail]("mail:new")
 var realtimeStatus = mygo.NewEvent[app.RealtimeStatus]("mail:realtime-status")
 var pendingOpsChanged = mygo.NewEvent[struct{}]("mail:pending-ops-changed")
 var attachmentProgress = mygo.NewEvent[app.AttachmentProgress]("attachment:download-progress")
+var outboxChanged = mygo.NewEvent[struct{}]("mail:outbox-changed")
 
 func main() {
 	mygo.App.SetName("Pebble Go")
@@ -33,9 +34,10 @@ func main() {
 	runtime.OnRealtime = func(event app.RealtimeStatus) { _ = realtimeStatus.Broadcast(event) }
 	runtime.OnPendingOpsChanged = func() { _ = pendingOpsChanged.Broadcast(struct{}{}) }
 	runtime.OnAttachmentProgress = func(event app.AttachmentProgress) { _ = attachmentProgress.Broadcast(event) }
+	runtime.OnOutboxChanged = func() { _ = outboxChanged.Broadcast(struct{}{}) }
 	windowService := &desktop.AppService{}
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
-	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, fileService, windowService)
+	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog
@@ -109,6 +111,8 @@ func main() {
 			}
 			workers.Add(1)
 			go func() { defer workers.Done(); runtime.RunPendingOpsWorker(ctx) }()
+			workers.Add(1)
+			go func() { defer workers.Done(); runtime.RunOutboxWorker(ctx) }()
 			if os.Getenv("PEBBLE_SELFTEST") == "1" {
 				if err := prepareSelftest(runtime); err != nil {
 					slog.Error("selftest fixture failed")

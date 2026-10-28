@@ -11,6 +11,7 @@ interface SendEmailParams {
   bodyHtml?: string;
   inReplyTo?: string;
   attachmentPaths?: string[];
+  clientKey?: string;
 }
 
 export function useSendEmailMutation() {
@@ -28,10 +29,12 @@ export function useSendEmailMutation() {
         params.bodyHtml,
         params.inReplyTo,
         params.attachmentPaths,
+        params.clientKey,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["messages"] });
+      queryClient.invalidateQueries({ queryKey: ["outbox"] });
     },
   });
 }
