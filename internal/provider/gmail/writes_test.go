@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/provider/gmail"
 	"github.com/bary/pebble-go/internal/store"
 )
 
@@ -18,9 +17,7 @@ func TestReplayQueuedWritesUsesPersistedPayloadAndIsolatesAccounts(t *testing.T)
 	}
 	defer db.Close()
 	p, mock, _ := fixture(t, db, "a")
-	read, starred := true, true
-	add, remove := gmail.LabelsForFlags(&read, &starred)
-	payload, _ := json.Marshal(map[string]any{"remote_id": "m1", "add_labels": add, "remove_labels": remove})
+	payload, _ := json.Marshal(store.MailOpPayload{RemoteID: "m1", AddLabels: []string{"STARRED"}, RemoveLabels: []string{"UNREAD"}})
 	if _, err := p.Replay(t.Context(), "update_flags", payload); err != nil {
 		t.Fatal(err)
 	}

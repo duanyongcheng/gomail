@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/mailmime"
 	"github.com/bary/pebble-go/internal/provider/gmail"
+	"github.com/bary/pebble-go/internal/store"
 	"github.com/bary/pebble-go/internal/testgmail"
 	"github.com/egoist/mygo"
 	"github.com/emersion/go-message/mail"
@@ -50,6 +52,10 @@ func prepareSelftest(runtime *app.Runtime) error {
 	// durable worker instead of relying on a synchronous provider call.
 	if _, err := (&app.MessageService{Runtime: runtime}).Archive(runtime.Context, app.ArchiveRequest{MessageID: account.ID + ":m3"}); err != nil {
 		return err
+	}
+	inInbox, err := runtime.DB.MessageInFolderRemote(runtime.Context, account.ID+":m3", "INBOX")
+	if err != nil || inInbox {
+		return errors.New("selftest archive did not take effect locally")
 	}
 	// Leave a durable failure visible in settings, but repair its remote content
 	// so the explicit UI retry can exercise recovery through generated bindings.
@@ -100,7 +106,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -135,6 +141,19 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	rendered, renderErr := (&app.MessageService{Runtime: runtime}).Rendered(ctx, app.MessageRequest{MessageID: "selftest-gmail:m1", PrivacyMode: privacyMode})
 	checks["cid attachment rendered"] = renderErr == nil && strings.Contains(rendered.Rendered.HTML, "pebble-attachment://localhost/")
 	checks["queued remote write replayed"] = pendingQueueDrained(ctx, runtime)
+	// Fetch m3 authoritatively so a drained-but-incorrect queue cannot pass.
+	service := &app.MessageService{Runtime: runtime}
+	request := app.ArchiveRequest{MessageID: "selftest-gmail:m3"}
+	first, firstErr := service.Archive(ctx, request)
+	second, secondErr := service.Archive(ctx, request)
+	checks["restore and archive preserve order"] = firstErr == nil && secondErr == nil && first == "unarchived" && second == "archived" && pendingQueueDrained(ctx, runtime)
+	// Full backfill includes m3; the default mock History only lists m1/m2.
+	cursor, cursorErr := runtime.DB.Cursor(ctx, "selftest-gmail")
+	checkpoint := &store.GmailCheckpoint{Phase: "messages", HistoryID: cursor, SuppressNotifications: true}
+	checkpointErr := runtime.DB.CommitSnapshot(ctx, store.Snapshot{AccountID: "selftest-gmail", Checkpoint: checkpoint, ResetBackfill: true})
+	_, syncErr := (&app.SyncService{Runtime: runtime}).Sync(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
+	inInbox, membershipErr := runtime.DB.MessageInFolderRemote(ctx, "selftest-gmail:m3", "INBOX")
+	checks["archive survives authoritative sync"] = cursorErr == nil && checkpointErr == nil && syncErr == nil && membershipErr == nil && !inInbox
 	selected := waitSelftestPage(ctx, window, `(() => { const row = Array.from(document.querySelectorAll('[role="option"]')).find(row => row.textContent.includes('Pebble Go selftest')); if (!row) return false; row.click(); return true; })()`, 5*time.Second)
 	if selected && waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(button => /^(下载|Download): selftest-export.txt$/.test(button.getAttribute('aria-label') || '')); if (!button || button.disabled) return false; button.click(); return true; })()`, 10*time.Second) {
 		saved := waitSelftestPage(ctx, window, `Array.from(document.querySelectorAll('.attachment-list-download')).some(button => button.title.includes('exports') && button.title.includes('selftest-export.txt'))`, 10*time.Second)

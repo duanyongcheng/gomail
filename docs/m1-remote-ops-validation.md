@@ -2,6 +2,12 @@
 
 Validated on 2026-10-26 after commit `9e77ad0`. Real Gmail was not used.
 
+**Historical report:** later review found gaps despite this gate passing: the
+unknown-outcome test did not attempt another claim, the archive test manually
+changed membership, and batch wakeups were not covered. See the
+[reliability follow-up validation](m1-remote-ops-reliability-validation.md) for
+corrected behavior and stronger tests.
+
 ## Automated gate
 
 `bun run check` passed:

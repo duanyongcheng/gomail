@@ -8,39 +8,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bary/pebble-go/internal/provider/gmail"
 	"github.com/bary/pebble-go/internal/store"
 )
-
-func flagPayload(remote string, isRead, isStarred *bool) map[string]any {
-	add, remove := gmail.LabelsForFlags(isRead, isStarred)
-	return map[string]any{"remote_id": remote, "add_labels": add, "remove_labels": remove}
-}
-
-func labelPayload(remote string, add, remove []string) map[string]any {
-	return map[string]any{"remote_id": remote, "add_labels": add, "remove_labels": remove}
-}
-
-// QueueFlags applies the local flag and persists the remote write atomically.
-// Offline mail stays readable and the change survives restart.
-func (s *MessageService) QueueFlags(ctx context.Context, request FlagsRequest) (Empty, error) {
-	m, err := s.Runtime.DB.Message(ctx, request.MessageID)
-	if err != nil {
-		return Empty{}, err
-	}
-	if _, err := s.Runtime.provider(m.AccountID); err != nil {
-		return Empty{}, err
-	}
-	op := store.PendingMailOpInput{AccountID: m.AccountID, MessageID: m.ID, OpType: "update_flags", Payload: flagPayload(m.RemoteID, request.IsRead, request.IsStarred)}
-	change := store.LocalMailChange{MessageID: m.ID, IsRead: request.IsRead, IsStarred: request.IsStarred}
-	err = s.Runtime.DB.QueueMessageOps(ctx, []store.PendingMailOpInput{op}, func(tx *sql.Tx) error {
-		return store.ApplyLocalMailChanges(ctx, tx, []store.LocalMailChange{change})
-	})
-	if err == nil {
-		s.Runtime.notifyPendingOps()
-	}
-	return Empty{}, err
-}
 
 type ArchiveRequest struct {
 	MessageID string `json:"messageId"`
@@ -59,23 +28,25 @@ type AllReadRequest struct {
 	FolderIDs []string `json:"folderIds"`
 }
 
-// Archive keeps upstream's toggle semantics: a message already in the inbox is
-// archived, one outside it is restored.
+func (s *MessageService) mutateMail(ctx context.Context, request store.MailMutation) (store.MailMutationResult, error) {
+	result, err := s.Runtime.DB.QueueMailMutation(ctx, request)
+	if err == nil && result.Count > 0 {
+		s.Runtime.notifyPendingOps()
+	}
+	return result, err
+}
+
+// QueueFlags applies the local flag and persists the remote write atomically.
+// Offline mail stays readable and the change survives restart.
+func (s *MessageService) QueueFlags(ctx context.Context, request FlagsRequest) (Empty, error) {
+	_, err := s.mutateMail(ctx, store.MailMutation{MessageIDs: []string{request.MessageID}, OpType: "update_flags", IsRead: request.IsRead, IsStarred: request.IsStarred})
+	return Empty{}, err
+}
+
+// Archive keeps upstream's toggle semantics, decided inside the transaction.
 func (s *MessageService) Archive(ctx context.Context, request ArchiveRequest) (string, error) {
-	inInbox, err := s.Runtime.DB.MessageInFolderRemote(ctx, request.MessageID, "INBOX")
-	if err != nil {
-		return "", err
-	}
-	if inInbox {
-		if err := s.queueFolderChange(ctx, request.MessageID, "archive"); err != nil {
-			return "", err
-		}
-		return "archived", nil
-	}
-	if err := s.queueFolderChange(ctx, request.MessageID, "restore"); err != nil {
-		return "", err
-	}
-	return "unarchived", nil
+	result, err := s.mutateMail(ctx, store.MailMutation{MessageIDs: []string{request.MessageID}, OpType: "archive", ToggleArchive: true})
+	return result.ArchiveResult, err
 }
 func (s *MessageService) Restore(ctx context.Context, request ArchiveRequest) (Empty, error) {
 	return Empty{}, s.queueFolderChange(ctx, request.MessageID, "restore")
@@ -88,109 +59,32 @@ func (s *MessageService) Delete(ctx context.Context, request ArchiveRequest) (Em
 func (s *MessageService) DeletePermanent(context.Context, ArchiveRequest) (Empty, error) {
 	return Empty{}, errors.New("Permanent delete is not available with Gmail modify access")
 }
-
 func (s *MessageService) Move(ctx context.Context, request MoveRequest) (Empty, error) {
-	m, err := s.Runtime.DB.Message(ctx, request.MessageID)
-	if err != nil {
-		return Empty{}, err
-	}
-	targetAccount, targetRemote, err := s.Runtime.DB.Folder(ctx, request.TargetFolderID)
-	if err != nil {
-		return Empty{}, err
-	}
-	if targetAccount != m.AccountID {
-		return Empty{}, errors.New("target folder belongs to another account")
-	}
-	add, remove := gmail.MoveLabels("INBOX", targetRemote)
-	if targetRemote == "INBOX" {
-		add, remove = []string{"INBOX"}, nil
-	}
-	op := store.PendingMailOpInput{AccountID: m.AccountID, MessageID: m.ID, OpType: "move_to_folder", Payload: labelPayload(m.RemoteID, add, remove)}
-	if err := s.Runtime.DB.QueueMessageOps(ctx, []store.PendingMailOpInput{op}, nil); err != nil {
-		return Empty{}, err
-	}
-	s.Runtime.notifyPendingOps()
-	return Empty{}, nil
+	_, err := s.mutateMail(ctx, store.MailMutation{MessageIDs: []string{request.MessageID}, OpType: "move_to_folder", TargetFolderID: request.TargetFolderID})
+	return Empty{}, err
 }
-
 func (s *MessageService) queueFolderChange(ctx context.Context, messageID, opType string) error {
-	m, err := s.Runtime.DB.Message(ctx, messageID)
-	if err != nil {
-		return err
-	}
-	add, remove := gmail.ArchiveLabels()
-	switch opType {
-	case "restore":
-		add, remove = gmail.RestoreLabels()
-	case "delete":
-		add, remove = gmail.TrashLabels()
-	case "archive":
-	default:
-		return errors.New("unsupported folder change")
-	}
-	op := store.PendingMailOpInput{AccountID: m.AccountID, MessageID: m.ID, OpType: opType, Payload: labelPayload(m.RemoteID, add, remove)}
-	if err := s.Runtime.DB.QueueMessageOps(ctx, []store.PendingMailOpInput{op}, nil); err != nil {
-		return err
-	}
-	s.Runtime.notifyPendingOps()
-	return nil
+	_, err := s.mutateMail(ctx, store.MailMutation{MessageIDs: []string{messageID}, OpType: opType})
+	return err
 }
 
-// BatchArchive and BatchDelete queue one row per message in a single
-// transaction, so a partial failure cannot leave the selection half applied.
+// BatchArchive and BatchDelete queue one row per message in one transaction.
 func (s *MessageService) BatchArchive(ctx context.Context, request BatchRequest) (int, error) {
-	return s.queueBatchFolder(ctx, request.MessageIDs, "archive")
+	return s.batchMutation(ctx, store.MailMutation{MessageIDs: request.MessageIDs, OpType: "archive"})
 }
 func (s *MessageService) BatchDelete(ctx context.Context, request BatchRequest) (int, error) {
-	return s.queueBatchFolder(ctx, request.MessageIDs, "delete")
+	return s.batchMutation(ctx, store.MailMutation{MessageIDs: request.MessageIDs, OpType: "delete"})
 }
-
-func (s *MessageService) queueBatchFolder(ctx context.Context, messageIDs []string, opType string) (int, error) {
-	if len(messageIDs) == 0 || len(messageIDs) > 200 {
-		return 0, errors.New("invalid batch size")
-	}
-	add, remove := gmail.ArchiveLabels()
-	if opType == "delete" {
-		add, remove = gmail.TrashLabels()
-	}
-	ops := make([]store.PendingMailOpInput, 0, len(messageIDs))
-	for _, id := range messageIDs {
-		m, err := s.Runtime.DB.Message(ctx, id)
-		if err != nil {
-			return 0, err
-		}
-		ops = append(ops, store.PendingMailOpInput{AccountID: m.AccountID, MessageID: m.ID, OpType: opType, Payload: labelPayload(m.RemoteID, add, remove)})
-	}
-	if err := s.Runtime.DB.QueueMessageOps(ctx, ops, nil); err != nil {
-		return 0, err
-	}
-	s.Runtime.notifyPendingOps()
-	return len(ops), nil
-}
-
 func (s *MessageService) BatchFlags(ctx context.Context, request BatchRequest) (int, error) {
+	return s.batchMutation(ctx, store.MailMutation{MessageIDs: request.MessageIDs, OpType: "update_flags", IsRead: request.IsRead, IsStarred: request.Starred})
+}
+func (s *MessageService) batchMutation(ctx context.Context, request store.MailMutation) (int, error) {
 	if len(request.MessageIDs) == 0 || len(request.MessageIDs) > 200 {
 		return 0, errors.New("invalid batch size")
 	}
-	ops := make([]store.PendingMailOpInput, 0, len(request.MessageIDs))
-	changes := make([]store.LocalMailChange, 0, len(request.MessageIDs))
-	for _, id := range request.MessageIDs {
-		m, err := s.Runtime.DB.Message(ctx, id)
-		if err != nil {
-			return 0, err
-		}
-		ops = append(ops, store.PendingMailOpInput{AccountID: m.AccountID, MessageID: m.ID, OpType: "update_flags", Payload: flagPayload(m.RemoteID, request.IsRead, request.Starred)})
-		changes = append(changes, store.LocalMailChange{MessageID: m.ID, IsRead: request.IsRead, IsStarred: request.Starred})
-	}
-	err := s.Runtime.DB.QueueMessageOps(ctx, ops, func(tx *sql.Tx) error {
-		return store.ApplyLocalMailChanges(ctx, tx, changes)
-	})
-	if err == nil && s.Runtime.OnPendingOpsChanged != nil {
-		s.Runtime.OnPendingOpsChanged()
-	}
-	return len(ops), err
+	result, err := s.mutateMail(ctx, request)
+	return result.Count, err
 }
-
 func (s *MessageService) MarkAccountAllRead(ctx context.Context, request AccountRequest) (int, error) {
 	return s.markAllRead(ctx, request.AccountID, nil)
 }
@@ -198,48 +92,18 @@ func (s *MessageService) MarkFolderAllRead(ctx context.Context, request AllReadR
 	if len(request.FolderIDs) == 0 {
 		return 0, nil
 	}
-	for _, id := range request.FolderIDs {
-		account, _, err := s.Runtime.DB.Folder(ctx, id)
-		if err != nil {
-			return 0, err
-		}
-		if account != request.AccountID {
-			return 0, errors.New("folder belongs to another account")
-		}
-	}
 	return s.markAllRead(ctx, request.AccountID, request.FolderIDs)
 }
-
 func (s *MessageService) markAllRead(ctx context.Context, account string, folderIDs []string) (int, error) {
-	ids, err := s.Runtime.DB.UnreadMessageIDs(ctx, account, folderIDs)
-	if err != nil {
-		return 0, err
+	if account == "" {
+		return 0, errors.New("account required")
 	}
 	read := true
-	ops := make([]store.PendingMailOpInput, 0, len(ids))
-	changes := make([]store.LocalMailChange, 0, len(ids))
-	for _, id := range ids {
-		m, err := s.Runtime.DB.Message(ctx, id)
-		if err != nil {
-			return 0, err
-		}
-		ops = append(ops, store.PendingMailOpInput{AccountID: account, MessageID: id, OpType: "update_flags", Payload: flagPayload(m.RemoteID, &read, nil)})
-		changes = append(changes, store.LocalMailChange{MessageID: id, IsRead: &read})
-	}
-	if len(ops) == 0 {
-		return 0, nil
-	}
-	err = s.Runtime.DB.QueueMessageOps(ctx, ops, func(tx *sql.Tx) error {
-		return store.ApplyLocalMailChanges(ctx, tx, changes)
-	})
-	if err == nil && s.Runtime.OnPendingOpsChanged != nil {
-		s.Runtime.OnPendingOpsChanged()
-	}
-	return len(ops), err
+	result, err := s.mutateMail(ctx, store.MailMutation{AccountID: account, FolderIDs: folderIDs, AllUnread: true, OpType: "update_flags", IsRead: &read})
+	return result.Count, err
 }
 
-// notifyPendingOps wakes the worker immediately instead of waiting for the
-// polling tick. It never blocks the caller that just queued work.
+// notifyPendingOps wakes the worker immediately instead of waiting for a poll.
 func (r *Runtime) notifyPendingOps() {
 	select {
 	case r.pendingWake <- struct{}{}:
@@ -250,41 +114,91 @@ func (r *Runtime) notifyPendingOps() {
 	}
 }
 
-// PendingOpsService exposes the durable queue to the existing settings UI.
 type PendingOpsService struct{ Runtime *Runtime }
-
 type PendingOpsRequest struct {
 	AccountID string `json:"accountId"`
 	Limit     int    `json:"limit"`
 }
 
-func (s *PendingOpsService) Summary(_ context.Context, request PendingOpsRequest) (store.PendingMailOpsSummary, error) {
-	return s.Runtime.DB.PendingMailOpsSummary(s.Runtime.Context, request.AccountID)
+func (s *PendingOpsService) Summary(ctx context.Context, request PendingOpsRequest) (store.PendingMailOpsSummary, error) {
+	return s.Runtime.DB.PendingMailOpsSummary(ctx, request.AccountID)
 }
-func (s *PendingOpsService) List(_ context.Context, request PendingOpsRequest) ([]store.PendingMailOp, error) {
-	return s.Runtime.DB.PendingMailOps(s.Runtime.Context, request.AccountID, request.Limit)
+func (s *PendingOpsService) List(ctx context.Context, request PendingOpsRequest) ([]store.PendingMailOp, error) {
+	return s.Runtime.DB.PendingMailOps(ctx, request.AccountID, request.Limit)
 }
 func (s *PendingOpsService) Dismiss(ctx context.Context, request PendingOpsRequest) (int, error) {
 	n, err := s.Runtime.DB.DismissFailedPendingOps(ctx, request.AccountID)
-	if err == nil && n > 0 && s.Runtime.OnPendingOpsChanged != nil {
-		s.Runtime.OnPendingOpsChanged()
+	if err == nil && n > 0 {
+		s.Runtime.notifyPendingOps()
 	}
 	return int(n), err
 }
 
-// RunPendingOpsWorker replays queued writes on the application context. A
-// failed startup recovery keeps the queue intact for the next launch.
+// pendingSettlement is retained until SQLite accepts the replay result. A local
+// disk/transaction failure must never cause another HTTP call in this process.
+type pendingSettlement struct {
+	id      string
+	unknown bool
+	message string
+}
+
+func (r *Runtime) settlePendingOp(ctx context.Context) error {
+	result := r.pendingSettlement
+	if result == nil {
+		return nil
+	}
+	var err error
+	if result.message == "" && !result.unknown {
+		err = r.DB.CompletePendingOp(ctx, result.id)
+	} else {
+		err = r.DB.FailPendingOp(ctx, result.id, result.message, result.unknown)
+	}
+	if err == nil {
+		r.pendingSettlement = nil
+		if r.OnPendingOpsChanged != nil {
+			r.OnPendingOpsChanged()
+		}
+	}
+	return err
+}
+
+// RunPendingOpsWorker is the sole startup recovery owner. On recovery failure
+// it retries locally without claiming any remote work. The app context owns it.
 func (r *Runtime) RunPendingOpsWorker(ctx context.Context) {
+	r.pendingWorkerMu.Lock()
+	defer r.pendingWorkerMu.Unlock()
 	if r.DB == nil {
 		return
 	}
-	if err := r.DB.ResetInterruptedPendingOps(ctx); err != nil {
-		slog.Warn("pending write recovery deferred", "error", err)
-	}
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	for {
-		r.processPendingOps(ctx)
+	recovered := false
+	for ctx.Err() == nil {
+		if !recovered {
+			r.pendingMu.Lock()
+			err := r.settlePendingOp(ctx)
+			if err == nil {
+				err = r.DB.ResetInterruptedPendingOps(ctx)
+			}
+			r.pendingMu.Unlock()
+			if err == nil {
+				recovered = true
+				if r.OnPendingOpsChanged != nil {
+					r.OnPendingOpsChanged()
+				}
+			} else if ctx.Err() == nil {
+				slog.Warn("pending write recovery deferred")
+			}
+		}
+		if recovered {
+			more, err := r.processPendingOps(ctx)
+			if err != nil && ctx.Err() == nil {
+				slog.Warn("pending write processing deferred")
+			}
+			if err == nil && more {
+				continue
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return
@@ -294,40 +208,55 @@ func (r *Runtime) RunPendingOpsWorker(ctx context.Context) {
 	}
 }
 
-func (r *Runtime) processPendingOps(ctx context.Context) {
-	ops, payloads, err := r.DB.ClaimPendingOps(ctx, 20, time.Now().Unix())
-	if err != nil {
-		if ctx.Err() == nil {
-			slog.Warn("pending write claim failed", "error", err)
-		}
-		return
+// Claim one row just before each call, so a failed settlement never strands an
+// unstarted batch. FIFO blocking is per message; other messages can progress.
+func (r *Runtime) processPendingOps(ctx context.Context) (bool, error) {
+	r.pendingMu.Lock()
+	defer r.pendingMu.Unlock()
+	if err := r.settlePendingOp(ctx); err != nil {
+		return false, err
 	}
-	for _, op := range ops {
-		if ctx.Err() != nil {
-			return
+	for i := 0; i < 20; i++ {
+		if err := ctx.Err(); err != nil {
+			return false, err
 		}
-		outcomeUnknown, err := r.replayPendingOp(ctx, op, payloads[op.ID])
-		switch {
-		case err == nil && !outcomeUnknown:
-			_ = r.DB.CompletePendingOp(ctx, op.ID)
-		case ctx.Err() != nil:
-			return
-		case outcomeUnknown:
-			message := "Remote write outcome is unknown; it will not be retried automatically."
-			if err != nil {
-				message = err.Error()
-			}
-			_ = r.DB.FailPendingOp(ctx, op.ID, message, true)
-		default:
-			_ = r.DB.FailPendingOp(ctx, op.ID, err.Error(), false)
+		ops, payloads, err := r.DB.ClaimPendingOps(ctx, 1, time.Now().Unix())
+		if err != nil {
+			return false, err
+		}
+		if len(ops) == 0 {
+			return false, nil
+		}
+		op := ops[0]
+		unknown, replayErr := r.replayPendingOp(ctx, op, payloads[op.ID])
+		if ctx.Err() != nil && replayErr != nil && !unknown {
+			return false, ctx.Err()
+		}
+		result := &pendingSettlement{id: op.ID, unknown: unknown}
+		if unknown {
+			result.message = "Remote write outcome is unknown; it will not be retried automatically."
+		} else if replayErr != nil {
+			result.message = "Remote write failed; check the account connection and retry status."
+		}
+		r.pendingSettlement = result
+		if err := r.settlePendingOp(ctx); err != nil {
+			return false, err
 		}
 	}
-	if len(ops) > 0 && r.OnPendingOpsChanged != nil {
-		r.OnPendingOpsChanged()
-	}
+	return true, nil
 }
 
 func (r *Runtime) replayPendingOp(ctx context.Context, op store.PendingMailOp, payload json.RawMessage) (bool, error) {
+	message, err := r.DB.Message(ctx, op.MessageID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if message.AccountID != op.AccountID {
+		return false, errors.New("pending operation crosses account boundary")
+	}
 	p, err := r.provider(op.AccountID)
 	if err != nil {
 		return false, err

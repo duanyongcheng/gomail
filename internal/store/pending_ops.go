@@ -2,12 +2,14 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"time"
+
+	"github.com/bary/pebble-go/internal/domain"
 )
 
 const MaxPendingMailOpAttempts = 8
@@ -89,8 +91,7 @@ func (db *DB) QueueMessageOps(ctx context.Context, ops []PendingMailOpInput, app
 		return errors.New("empty pending operation batch")
 	}
 	return db.withTx(ctx, func(tx *sql.Tx) error {
-		now := time.Now().Unix()
-		for i, op := range ops {
+		for _, op := range ops {
 			if op.AccountID == "" || op.MessageID == "" || op.OpType == "" {
 				return errors.New("incomplete pending operation")
 			}
@@ -104,13 +105,7 @@ func (db *DB) QueueMessageOps(ctx context.Context, ops []PendingMailOpInput, app
 			if owner != op.AccountID {
 				return errors.New("pending operation crosses account boundary")
 			}
-			payload, err := json.Marshal(op.Payload)
-			if err != nil {
-				return err
-			}
-			id := fmt.Sprintf("op-%d-%d-%d", now, i, time.Now().UnixNano()%1000000)
-			if _, err := tx.ExecContext(ctx, `INSERT INTO pending_mail_ops(id,account_id,message_id,op_type,payload_json,status,attempts,created_at,updated_at,next_retry_at)
-				VALUES(?,?,?,?,?,'pending',0,?,?,NULL)`, id, op.AccountID, op.MessageID, op.OpType, string(payload), now, now); err != nil {
+			if err := insertPendingOp(ctx, tx, op); err != nil {
 				return err
 			}
 		}
@@ -119,6 +114,21 @@ func (db *DB) QueueMessageOps(ctx context.Context, ops []PendingMailOpInput, app
 		}
 		return nil
 	})
+}
+
+func insertPendingOp(ctx context.Context, tx *sql.Tx, op PendingMailOpInput) error {
+	payload, err := json.Marshal(op.Payload)
+	if err != nil {
+		return err
+	}
+	id := "op-" + rand.Text()
+	now := time.Now().Unix()
+	if _, err := tx.ExecContext(ctx, `INSERT INTO pending_mail_ops(id,account_id,message_id,op_type,payload_json,status,attempts,created_at,updated_at,next_retry_at)
+		VALUES(?,?,?,?,?,'pending',0,?,?,NULL)`, id, op.AccountID, op.MessageID, op.OpType, string(payload), now, now); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, "INSERT INTO mail_op_sequence(op_id,kind) VALUES(?,'queued')", id)
+	return err
 }
 
 func (db *DB) PendingMailOps(ctx context.Context, account string, limit int) ([]PendingMailOp, error) {
@@ -185,8 +195,14 @@ func (db *DB) ClaimPendingOps(ctx context.Context, limit int, now int64) ([]Pend
 	payloads := map[string]json.RawMessage{}
 	err := db.withTx(ctx, func(tx *sql.Tx) error {
 		rows, err := tx.QueryContext(ctx, `SELECT `+pendingColumns+` FROM pending_mail_ops
-			WHERE status='pending' OR (status='failed' AND attempts < ? AND (next_retry_at IS NULL OR next_retry_at <= ?))
-			ORDER BY updated_at,id LIMIT ?`, MaxPendingMailOpAttempts, now, min(max(limit, 1), 100))
+			WHERE id IN (SELECT p.id FROM pending_mail_ops p
+			JOIN mail_op_sequence q ON q.op_id=p.id AND q.kind='queued'
+			WHERE (p.status='pending' OR (p.status='failed' AND p.attempts < ? AND (p.next_retry_at IS NULL OR p.next_retry_at <= ?)))
+			AND CASE WHEN json_valid(p.payload_json) THEN COALESCE(json_extract(p.payload_json,'$._result'),'pending') ELSE 'pending' END NOT IN ('outcome_unknown','remote_succeeded')
+			AND NOT EXISTS (SELECT 1 FROM pending_mail_ops earlier
+				JOIN mail_op_sequence eq ON eq.op_id=earlier.id AND eq.kind='queued'
+				WHERE earlier.account_id=p.account_id AND earlier.message_id=p.message_id AND earlier.status!='done' AND eq.sequence<q.sequence))
+			ORDER BY (SELECT sequence FROM mail_op_sequence WHERE op_id=pending_mail_ops.id AND kind='queued') LIMIT ?`, MaxPendingMailOpAttempts, now, min(max(limit, 1), 100))
 		if err != nil {
 			return err
 		}
@@ -219,74 +235,148 @@ func (db *DB) ClaimPendingOps(ctx context.Context, limit int, now int64) ([]Pend
 }
 
 func (db *DB) CompletePendingOp(ctx context.Context, id string) error {
-	_, err := db.write.ExecContext(ctx, "UPDATE pending_mail_ops SET status='done',last_error=NULL,next_retry_at=NULL,updated_at=? WHERE id=?", time.Now().Unix(), id)
-	return err
-}
-
-func (db *DB) FailPendingOp(ctx context.Context, id string, errText string, outcomeUnknown bool) error {
-	now := time.Now().Unix()
-	var attempts int
-	var payload []byte
-	if err := db.read.QueryRowContext(ctx, "SELECT attempts,payload_json FROM pending_mail_ops WHERE id=?", id).Scan(&attempts, &payload); err != nil {
-		return err
-	}
-	attempts++
-	if outcomeUnknown {
-		updated, err := withResult(payload, "outcome_unknown")
+	return db.withTx(ctx, func(tx *sql.Tx) error {
+		var payload []byte
+		if err := tx.QueryRowContext(ctx, "SELECT payload_json FROM pending_mail_ops WHERE id=? AND status='in_progress'", id).Scan(&payload); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		updated, err := withResult(payload, "remote_succeeded")
 		if err != nil {
 			return err
 		}
-		_, err = db.write.ExecContext(ctx, "UPDATE pending_mail_ops SET status='failed',payload_json=?,attempts=?,last_error=?,next_retry_at=NULL,updated_at=? WHERE id=?", string(updated), min(attempts, MaxPendingMailOpAttempts), errText, now, id)
+		if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO mail_op_sequence(op_id,kind) VALUES(?,'succeeded')", id); err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, "UPDATE pending_mail_ops SET status='done',payload_json=?,last_error=NULL,next_retry_at=NULL,updated_at=? WHERE id=?", string(updated), time.Now().Unix(), id)
 		return err
-	}
-	if attempts >= MaxPendingMailOpAttempts {
-		_, err := db.write.ExecContext(ctx, "UPDATE pending_mail_ops SET status='failed',attempts=?,last_error=?,next_retry_at=NULL,updated_at=? WHERE id=?", attempts, errText, now, id)
+	})
+}
+
+func (db *DB) FailPendingOp(ctx context.Context, id string, errText string, outcomeUnknown bool) error {
+	return db.withTx(ctx, func(tx *sql.Tx) error {
+		now := time.Now().Unix()
+		var attempts int
+		var payload []byte
+		if err := tx.QueryRowContext(ctx, "SELECT attempts,payload_json FROM pending_mail_ops WHERE id=? AND status='in_progress'", id).Scan(&attempts, &payload); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		attempts++
+		var next *int64
+		if outcomeUnknown {
+			updated, err := withResult(payload, "outcome_unknown")
+			if err != nil {
+				return err
+			}
+			payload = updated
+		} else if attempts < MaxPendingMailOpAttempts {
+			value := now + int64(retryDelay(attempts)/time.Second)
+			next = &value
+		}
+		_, err := tx.ExecContext(ctx, "UPDATE pending_mail_ops SET status='failed',payload_json=?,attempts=?,last_error=?,next_retry_at=?,updated_at=? WHERE id=?", string(payload), attempts, errText, next, now, id)
 		return err
-	}
-	next := now + int64(retryDelay(attempts)/time.Second)
-	_, err := db.write.ExecContext(ctx, "UPDATE pending_mail_ops SET status='failed',attempts=?,last_error=?,next_retry_at=?,updated_at=? WHERE id=?", attempts, errText, next, now, id)
-	return err
+	})
 }
 
 // ResetInterruptedPendingOps replays interrupted writes except unconfirmed
 // sends, whose remote outcome cannot be known.
 func (db *DB) ResetInterruptedPendingOps(ctx context.Context) error {
-	now := time.Now().Unix()
-	rows, err := db.read.QueryContext(ctx, "SELECT id,payload_json FROM pending_mail_ops WHERE status='in_progress' AND op_type='send'")
-	if err != nil {
-		return err
-	}
-	interrupted := map[string][]byte{}
-	for rows.Next() {
-		var id string
-		var payload []byte
-		if err := rows.Scan(&id, &payload); err != nil {
-			rows.Close()
-			return err
-		}
-		interrupted[id] = payload
-	}
-	rows.Close()
-	for id, payload := range interrupted {
-		if pendingResult(payload) == "remote_succeeded" {
-			continue
-		}
-		updated, err := withResult(payload, "outcome_unknown")
+	return db.withTx(ctx, func(tx *sql.Tx) error {
+		now := time.Now().Unix()
+		rows, err := tx.QueryContext(ctx, "SELECT id,op_type,status,payload_json FROM pending_mail_ops WHERE status!='done'")
 		if err != nil {
 			return err
 		}
-		if _, err := db.write.ExecContext(ctx, "UPDATE pending_mail_ops SET status='failed',payload_json=?,attempts=?,last_error=?,next_retry_at=NULL,updated_at=? WHERE id=?", string(updated), MaxPendingMailOpAttempts, "Send outcome is unknown after interruption; check Sent before sending again.", now, id); err != nil {
+		type interruptedOp struct {
+			id, kind, status string
+			payload          []byte
+		}
+		var interrupted []interruptedOp
+		for rows.Next() {
+			var op interruptedOp
+			if err := rows.Scan(&op.id, &op.kind, &op.status, &op.payload); err != nil {
+				rows.Close()
+				return err
+			}
+			interrupted = append(interrupted, op)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
 			return err
 		}
-	}
-	_, err = db.write.ExecContext(ctx, "UPDATE pending_mail_ops SET status='pending',next_retry_at=NULL,updated_at=? WHERE status='in_progress'", now)
-	return err
+		for _, op := range interrupted {
+			result := pendingResult(op.payload)
+			if result == "remote_succeeded" {
+				if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO mail_op_sequence(op_id,kind) VALUES(?,'succeeded')", op.id); err != nil {
+					return err
+				}
+				if _, err := tx.ExecContext(ctx, "UPDATE pending_mail_ops SET status='done',last_error=NULL,next_retry_at=NULL,updated_at=? WHERE id=?", now, op.id); err != nil {
+					return err
+				}
+				continue
+			}
+			if result == "outcome_unknown" || op.kind == "send" && op.status == "in_progress" {
+				payload := op.payload
+				if result != "outcome_unknown" {
+					payload, err = withResult(payload, "outcome_unknown")
+					if err != nil {
+						return err
+					}
+				}
+				query := "UPDATE pending_mail_ops SET status='failed',payload_json=?,last_error=?,next_retry_at=NULL,updated_at=? WHERE id=?"
+				if result != "outcome_unknown" {
+					query += " AND status='in_progress'"
+				}
+				if _, err := tx.ExecContext(ctx, query, string(payload), "Remote write outcome is unknown; check the mailbox before another attempt.", now, op.id); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err = tx.ExecContext(ctx, "UPDATE pending_mail_ops SET status='pending',next_retry_at=NULL,updated_at=? WHERE status='in_progress'", now); err != nil {
+			return err
+		}
+		// Repair local effects of v23 queued folder writes even when this
+		// profile starts offline/manual and no sync will run to apply overlays.
+		rows, err = tx.QueryContext(ctx, `SELECT m.id,m.account_id,m.remote_id FROM messages m WHERE m.is_deleted=0
+			AND EXISTS(SELECT 1 FROM pending_mail_ops p WHERE p.message_id=m.id AND p.account_id=m.account_id
+			AND (p.status!='done' OR EXISTS(SELECT 1 FROM mail_op_sequence s WHERE s.op_id=p.id AND s.kind='succeeded')))`)
+		if err != nil {
+			return err
+		}
+		var messages []domain.Message
+		for rows.Next() {
+			var m domain.Message
+			if err := rows.Scan(&m.ID, &m.AccountID, &m.RemoteID); err != nil {
+				rows.Close()
+				return err
+			}
+			messages = append(messages, m)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		for _, m := range messages {
+			if err := overlayMailIntents(ctx, tx, m, nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // RetryFailedPendingOps makes failed, non-unknown operations due immediately.
 func (db *DB) RetryFailedPendingOps(ctx context.Context, account string) (int64, error) {
-	query := "UPDATE pending_mail_ops SET next_retry_at=0,updated_at=? WHERE status='failed' AND json_extract(payload_json,'$._result') IS NOT 'outcome_unknown'"
-	args := []any{time.Now().Unix()}
+	query := `UPDATE pending_mail_ops SET next_retry_at=0,updated_at=? WHERE status='failed' AND attempts<?
+		AND CASE WHEN json_valid(payload_json) THEN COALESCE(json_extract(payload_json,'$._result'),'pending') ELSE 'pending' END NOT IN ('outcome_unknown','remote_succeeded')`
+	args := []any{time.Now().Unix(), MaxPendingMailOpAttempts}
 	if account != "" {
 		query += " AND account_id=?"
 		args = append(args, account)
@@ -299,17 +389,49 @@ func (db *DB) RetryFailedPendingOps(ctx context.Context, account string) (int64,
 }
 
 func (db *DB) DismissFailedPendingOps(ctx context.Context, account string) (int64, error) {
-	query := "UPDATE pending_mail_ops SET status='done',last_error=NULL,next_retry_at=NULL,updated_at=? WHERE status='failed'"
-	args := []any{time.Now().Unix()}
-	if account != "" {
-		query += " AND account_id=?"
-		args = append(args, account)
-	}
-	result, err := db.write.ExecContext(ctx, query, args...)
+	var count int64
+	err := db.withTx(ctx, func(tx *sql.Tx) error {
+		query := "SELECT id FROM pending_mail_ops WHERE status='failed'"
+		args := []any{}
+		if account != "" {
+			query += " AND account_id=?"
+			args = append(args, account)
+		}
+		rows, err := tx.QueryContext(ctx, query, args...)
+		if err != nil {
+			return err
+		}
+		var ids []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return err
+			}
+			ids = append(ids, id)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			// Do not let later startup interpret a dismissed marker as a fresh
+			// remote success. Dismiss also removes any stale overlay receipt.
+			if _, err := tx.ExecContext(ctx, "DELETE FROM mail_op_sequence WHERE op_id=? AND kind='succeeded'", id); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE pending_mail_ops SET status='done',last_error=NULL,next_retry_at=NULL,updated_at=? WHERE id=?", time.Now().Unix(), id); err != nil {
+				return err
+			}
+		}
+		count = int64(len(ids))
+		return nil
+	})
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return count, nil
 }
 
 func (db *DB) ActivePendingOpAccounts(ctx context.Context) ([]string, error) {

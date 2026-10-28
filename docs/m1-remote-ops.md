@@ -1,8 +1,10 @@
 # M1 durable remote operations / outbox
 
 This slice makes Gmail writes durable. It reuses the legacy v20
-`pending_mail_ops` table so the Rust schema oracle stays byte identical; no v24
-schema change is needed.
+`pending_mail_ops` table so the Rust schema oracle stays byte identical. The
+[reliability follow-up](m1-remote-ops-reliability.md) adds a v24 Go-only sequence
+sidecar and corrects local-effect, retry, FIFO and synchronization gaps in the
+original slice.
 
 ## Local-first writes
 
@@ -16,7 +18,7 @@ Queued operation types:
 |---|---|
 | `update_flags` | add/remove `UNREAD`, `STARRED` |
 | `archive` | remove `INBOX` (toggle restores when already archived) |
-| `restore` | add `INBOX` |
+| `restore` | add `INBOX`, remove `TRASH`/`SPAM` |
 | `delete` | add `TRASH`, remove `INBOX` |
 | `move_to_folder` | add the target label, remove `INBOX` |
 | `send` | reserved; never auto-retried when outcome is unknown |
@@ -65,7 +67,8 @@ malformed or unsupported payloads, server errors and cancellation. App tests
 cover local-first flags, background replay, wake-on-enqueue, cancellation,
 batch/all-read scoping, archive toggle and folder ownership. Frontend tests
 cover typed command routing and the Remote Writes tab states. The packaged
-selftest queues an archive and verifies the worker drains it.
+selftest now also verifies local membership and authoritative sync after
+restore/archive replay, not just queue drain.
 
 Sending remains out of scope for this slice: no send command is enabled and the
 `outcome_unknown` machinery only protects future outbox work. IMAP/SMTP ops are

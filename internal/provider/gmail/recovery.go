@@ -16,18 +16,19 @@ const retriesPerPass = 10
 // A page can contain many large messages. Commit bounded prefixes without
 // advancing its checkpoint; a replay safely refreshes those committed prefixes.
 type pageBatch struct {
-	provider      *Provider
-	ctx           context.Context
-	folders       []domain.Folder
-	snapshot      store.Snapshot
-	announcements []domain.NewMail
-	bytes         int
-	result        *domain.SyncResult
-	counted       map[string]bool
+	provider         *Provider
+	ctx              context.Context
+	folders          []domain.Folder
+	snapshot         store.Snapshot
+	announcements    []domain.NewMail
+	bytes            int
+	result           *domain.SyncResult
+	counted          map[string]bool
+	pendingWatermark int64
 }
 
 func (b *pageBatch) reset() {
-	b.snapshot = store.Snapshot{AccountID: b.provider.AccountID, Folders: b.folders}
+	b.snapshot = store.Snapshot{AccountID: b.provider.AccountID, Folders: b.folders, PendingOpWatermark: &b.pendingWatermark}
 	b.announcements = nil
 	b.bytes = 0
 }

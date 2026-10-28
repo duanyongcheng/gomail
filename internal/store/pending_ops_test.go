@@ -99,7 +99,7 @@ func TestPendingOpsInterruptionUnknownOutcomeAndDismiss(t *testing.T) {
 	db := pendingFixture(t)
 	ops := []PendingMailOpInput{
 		{AccountID: "a", MessageID: "a:m", OpType: "archive", Payload: map[string]any{"remote_id": "m"}},
-		{AccountID: "a", MessageID: "a:m", OpType: "send", Payload: map[string]any{"remote_id": "m"}},
+		{AccountID: "b", MessageID: "b:m", OpType: "send", Payload: map[string]any{"remote_id": "m"}},
 	}
 	if err := db.QueueMessageOps(t.Context(), ops, nil); err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestPendingOpsInterruptionUnknownOutcomeAndDismiss(t *testing.T) {
 	if err := db.ResetInterruptedPendingOps(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	listed, err := db.PendingMailOps(t.Context(), "a", 10)
+	listed, err := db.PendingMailOps(t.Context(), "", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestPendingOpsInterruptionUnknownOutcomeAndDismiss(t *testing.T) {
 	if err != nil || len(claimed) != 1 || claimed[0].OpType != "archive" {
 		t.Fatal("unknown send was retried", claimed, err)
 	}
-	if n, err := db.DismissFailedPendingOps(t.Context(), "a"); err != nil || n != 1 {
+	if n, err := db.DismissFailedPendingOps(t.Context(), "b"); err != nil || n != 1 {
 		t.Fatal(n, err)
 	}
 	summary, _ := db.PendingMailOpsSummary(t.Context(), "")

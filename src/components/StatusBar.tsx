@@ -147,9 +147,7 @@ export default function StatusBar() {
       queryClient.invalidateQueries({
         queryKey: pendingMailOpsSummaryQueryKey(activeAccountId),
       });
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      queryClient.invalidateQueries({ queryKey: ["messages"] });
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
+      refreshMailQueries();
     });
     return () => { unlisten.then((fn) => fn()); };
   }, [activeAccountId, queryClient]);

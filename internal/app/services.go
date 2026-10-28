@@ -32,6 +32,9 @@ type Runtime struct {
 	OnPendingOpsChanged  func()
 	OnAttachmentProgress func(AttachmentProgress)
 	pendingWake          chan struct{}
+	pendingMu            sync.Mutex
+	pendingWorkerMu      sync.Mutex
+	pendingSettlement    *pendingSettlement
 	Scheduler            *Scheduler
 	mu                   sync.RWMutex
 	providers            map[string]domain.Transport

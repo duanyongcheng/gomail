@@ -190,6 +190,7 @@ type Snapshot struct {
 	ProcessedRemoteIDs []string
 	RecoveredRemoteIDs []string
 	Failures           []MessageFailure
+	PendingOpWatermark *int64
 }
 
 // CommitSnapshot atomically updates the cache, FTS triggers, memberships, and
@@ -248,6 +249,14 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 			}
 		}
 		for _, id := range s.Removed {
+			// A confirmed remote deletion supersedes local label intents. Clear
+			// their FIFO blockers without trying to recreate the missing mail.
+			if _, err := tx.ExecContext(ctx, "UPDATE pending_mail_ops SET status='done',last_error=NULL,next_retry_at=NULL WHERE account_id=? AND message_id=?", s.AccountID, id); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "DELETE FROM mail_op_sequence WHERE kind='succeeded' AND op_id IN (SELECT id FROM pending_mail_ops WHERE account_id=? AND message_id=?)", s.AccountID, id); err != nil {
+				return err
+			}
 			if _, err := tx.ExecContext(ctx, "UPDATE messages SET is_deleted=1 WHERE id=? AND account_id=?", id, s.AccountID); err != nil {
 				return err
 			}
@@ -288,6 +297,9 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 				if err != nil {
 					return err
 				}
+			}
+			if err := overlayMailIntents(ctx, tx, m, s.PendingOpWatermark); err != nil {
+				return err
 			}
 			if _, err := tx.ExecContext(ctx, "DELETE FROM attachments WHERE message_id=?", m.ID); err != nil {
 				return err

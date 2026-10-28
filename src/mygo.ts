@@ -343,20 +343,14 @@ export const FolderService = {
 } as const;
 
 export const MessageService = {
-  /**
-   * Archive keeps upstream's toggle semantics: a message already in the inbox is
-   * archived, one outside it is restored.
-   */
+  /** Archive keeps upstream's toggle semantics, decided inside the transaction. */
   archive(request: ArchiveRequest): Promise<string> {
     return call("MessageService.Archive", request);
   },
   attachments(a: MessageRequest): Promise<Attachment[]> {
     return call("MessageService.Attachments", a);
   },
-  /**
-   * BatchArchive and BatchDelete queue one row per message in a single
-   * transaction, so a partial failure cannot leave the selection half applied.
-   */
+  /** BatchArchive and BatchDelete queue one row per message in one transaction. */
   batchArchive(request: BatchRequest): Promise<number> {
     return call("MessageService.BatchArchive", request);
   },
@@ -443,7 +437,6 @@ export const SyncService = {
   },
 } as const;
 
-/** PendingOpsService exposes the durable queue to the existing settings UI. */
 export const PendingOpsService = {
   dismiss(request: PendingOpsRequest): Promise<number> {
     return call("PendingOpsService.Dismiss", request);

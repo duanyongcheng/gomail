@@ -27,6 +27,10 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
+	watermark, err := p.DB.PendingOpWatermark(ctx)
+	if err != nil {
+		return result, err
+	}
 	state, err := p.DB.GmailState(ctx, p.AccountID)
 	if err != nil {
 		return result, err
@@ -78,7 +82,7 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 			result.Limited = true
 		}
 	}()
-	batch := &pageBatch{provider: p, ctx: ctx, folders: folders, result: &result, counted: map[string]bool{}}
+	batch := &pageBatch{provider: p, ctx: ctx, folders: folders, result: &result, counted: map[string]bool{}, pendingWatermark: watermark}
 	batch.reset()
 	ready, err := p.DB.ReadyMessageFailures(ctx, p.AccountID, time.Now().Unix(), retriesPerPass)
 	if err != nil {

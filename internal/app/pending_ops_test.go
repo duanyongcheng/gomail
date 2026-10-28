@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -115,6 +114,15 @@ func TestQueuedWritesRetryWithBackoffAndNeverAutoRetryUnknownOutcome(t *testing.
 	if len(ops) != 1 || ops[0].Status != "failed" || ops[0].NextRetryAt != nil || ops[0].Result != "outcome_unknown" {
 		t.Fatal("unknown outcome remained retryable", ops)
 	}
+	writer.mu.Lock()
+	before := len(writer.calls)
+	writer.mu.Unlock()
+	r.processPendingOps(t.Context())
+	writer.mu.Lock()
+	defer writer.mu.Unlock()
+	if len(writer.calls) != before {
+		t.Fatal("worker replayed an unknown outcome")
+	}
 }
 
 func TestQueuedWriteWakesWorkerWithoutWaitingForPoll(t *testing.T) {
@@ -217,12 +225,9 @@ func TestArchiveTogglesUsingInboxMembership(t *testing.T) {
 	if len(ops) != 1 || ops[0].OpType != "archive" {
 		t.Fatal(ops)
 	}
-	// Removing the inbox membership models the committed archive.
-	if err := db.QueueMessageOps(t.Context(), []store.PendingMailOpInput{{AccountID: "a", MessageID: "a:m", OpType: "archive", Payload: map[string]any{"remote_id": "remote-m"}}}, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(t.Context(), "DELETE FROM message_folders WHERE message_id='a:m'")
-		return err
-	}); err != nil {
-		t.Fatal(err)
+	inInbox, err := db.MessageInFolderRemote(t.Context(), "a:m", "INBOX")
+	if err != nil || inInbox {
+		t.Fatal("archive did not update local membership", inInbox, err)
 	}
 	result, err = service.Archive(t.Context(), ArchiveRequest{MessageID: "a:m"})
 	if err != nil || result != "unarchived" {

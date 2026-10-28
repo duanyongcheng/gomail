@@ -10,7 +10,9 @@ The next slices support larger messages and persistent recovery of failed
 Gmail downloads, with a retry list in account settings, plus backend privacy
 HTML/CID rendering. Gmail supports multiple accounts, local search, unread counts
 and read/star changes. Mail mutations now use a durable remote-write queue, so
-offline changes survive restart and retry with backoff. Cached attachments can
+offline changes survive restart and retry with backoff. Same-message writes replay in durable order; pending
+local changes survive concurrent sync, and unknown outcomes are not auto-retried.
+Cached attachments can
 be downloaded or saved through the native Save As dialog. Sending/drafts, labels
 CRUD and threading remain M1 work. IMAP/SMTP are tested
 as an isolated protocol prototype and join the app in M2.
@@ -66,7 +68,8 @@ Flags, archive/restore, trash, moves, batch actions and mark-all-read commit
 locally and enqueue a remote write in one transaction. A background worker
 replays the queue with backoff; Settings → Remote Writes shows the queue, next
 retry and failures, and can dismiss them. Permanent delete is unavailable with
-`gmail.modify`. See [remote operations](docs/m1-remote-ops.md).
+`gmail.modify`. See [remote operations](docs/m1-remote-ops.md) and the
+[reliability follow-up](docs/m1-remote-ops-reliability.md).
 
 ## Gmail OAuth configuration
 
@@ -116,7 +119,8 @@ under `logs/` and contain operation statuses, not credential or mail payloads.
 read-only connections, WAL, foreign keys and a 15-second busy timeout. Legacy
 migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21
 and the account-scoped backfill reconciliation table in v22. Version 23 adds
-persistent Gmail message download failures and retry timing.
+persistent Gmail message download failures and retry timing. Version 24 adds a
+Go-only operation-sequence sidecar for FIFO replay and sync reconciliation.
 An unversioned PoC database is rejected instead of being silently rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 
