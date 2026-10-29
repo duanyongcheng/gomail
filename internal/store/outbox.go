@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/bary/pebble-go/internal/domain"
@@ -90,11 +91,20 @@ func (db *DB) OutboxList(ctx context.Context, account string) ([]OutboxRecord, e
 	}
 	return out, rows.Err()
 }
-func (db *DB) ClaimOutbox(ctx context.Context, now int64) (OutboxRecord, error) {
+func (db *DB) ClaimOutbox(ctx context.Context, now int64, excludedAccounts ...string) (OutboxRecord, error) {
 	var record OutboxRecord
 	err := db.withTx(ctx, func(tx *sql.Tx) error {
 		var err error
-		record, err = scanOutbox(tx.QueryRowContext(ctx, "SELECT "+outboxColumns+" FROM outbox WHERE status='queued' OR (status='failed' AND retryable=1 AND attempts<? AND next_retry_at<=?) ORDER BY created_at,id LIMIT 1", MaxOutboxAttempts, now))
+		query := "SELECT " + outboxColumns + " FROM outbox WHERE (status='queued' OR (status='failed' AND retryable=1 AND attempts<? AND next_retry_at<=?))"
+		args := []any{MaxOutboxAttempts, now}
+		if len(excludedAccounts) > 0 {
+			query += " AND account_id NOT IN (" + strings.TrimSuffix(strings.Repeat("?,", len(excludedAccounts)), ",") + ")"
+			for _, account := range excludedAccounts {
+				args = append(args, account)
+			}
+		}
+		query += " ORDER BY created_at,id LIMIT 1"
+		record, err = scanOutbox(tx.QueryRowContext(ctx, query, args...))
 		if err != nil {
 			return err
 		}

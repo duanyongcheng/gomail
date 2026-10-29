@@ -286,6 +286,7 @@ func (r *Runtime) notifyOutbox() {
 type outboxSettlement struct {
 	ID     string
 	Result domain.SendResult
+	Paused bool
 }
 
 func (r *Runtime) settleOutbox(ctx context.Context) error {
@@ -299,7 +300,13 @@ func (r *Runtime) settleOutbox(ctx context.Context) error {
 	} else if pending.Result.RemoteID != "" {
 		status = "sent"
 	}
-	if err := r.DB.SettleOutbox(ctx, pending.ID, status, pending.Result.Message, pending.Result.RemoteID, pending.Result.Retryable); err != nil {
+	var err error
+	if pending.Paused {
+		err = r.DB.ReleaseOutboxAccessClaim(ctx, pending.ID)
+	} else {
+		err = r.DB.SettleOutbox(ctx, pending.ID, status, pending.Result.Message, pending.Result.RemoteID, pending.Result.Retryable)
+	}
+	if err != nil {
 		return err
 	}
 	r.outboxSettlement = nil
@@ -318,7 +325,7 @@ func (r *Runtime) processOutbox(ctx context.Context) (bool, error) {
 		if err := ctx.Err(); err != nil {
 			return false, err
 		}
-		record, err := r.DB.ClaimOutbox(ctx, time.Now().Unix())
+		record, err := r.DB.ClaimOutbox(ctx, time.Now().Unix(), r.blockedAccounts()...)
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
 		}
@@ -326,7 +333,7 @@ func (r *Runtime) processOutbox(ctx context.Context) (bool, error) {
 			return false, err
 		}
 		result := r.sendOutbox(ctx, record)
-		r.outboxSettlement = &outboxSettlement{ID: record.ID, Result: result}
+		r.outboxSettlement = &outboxSettlement{ID: record.ID, Result: result, Paused: !result.Unknown && result.RemoteID == "" && r.accountBlocked(record.AccountID)}
 		if err := r.settleOutbox(ctx); err != nil {
 			return false, err
 		}

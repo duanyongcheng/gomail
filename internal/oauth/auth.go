@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bary/pebble-go/internal/domain"
 	"golang.org/x/oauth2"
 )
 
@@ -160,31 +161,59 @@ func (t *Tokens) Token(ctx context.Context) (string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.token == nil {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
 		token, err := t.Vault.Load()
 		if err != nil {
-			return "", errors.New("Gmail sign-in required")
+			var access *domain.AccessError
+			if errors.As(err, &access) {
+				return "", access
+			}
+			return "", &domain.AccessError{State: domain.ConnectionCredentialsUnavailable}
 		}
 		t.token = token
 	}
 	if t.token.AccessToken != "" && (t.token.Expiry.IsZero() || time.Until(t.token.Expiry) > time.Minute) {
+		if err := t.validateGrant(t.token); err != nil {
+			return "", err
+		}
 		return t.token.AccessToken, nil
 	}
 	if t.token.RefreshToken == "" {
-		return "", errors.New("Gmail reauthorization required")
+		return "", &domain.AccessError{State: domain.ConnectionReauthRequired}
 	}
 	old := *t.token
 	expired := old
 	expired.Expiry = time.Now().Add(-time.Hour)
 	fresh, err := t.cfg.TokenSource(context.WithValue(ctx, oauth2.HTTPClient, t.http), &expired).Token()
 	if err != nil {
-		return "", errors.New("Gmail token refresh failed; reauthorization may be required")
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		var response *oauth2.RetrieveError
+		if errors.As(err, &response) {
+			switch response.ErrorCode {
+			case "invalid_grant", "invalid_token":
+				return "", &domain.AccessError{State: domain.ConnectionReauthRequired}
+			case "invalid_client", "unauthorized_client":
+				return "", &domain.AccessError{State: domain.ConnectionConfigurationRequired}
+			}
+		}
+		return "", &domain.AccessError{State: domain.ConnectionTemporaryError}
 	}
 	if fresh.RefreshToken == "" {
 		fresh.RefreshToken = old.RefreshToken
+	}
+	if fresh.Extra("scope") == nil && old.Extra("scope") != nil {
+		fresh = fresh.WithExtra(map[string]any{"scope": old.Extra("scope")})
 	}
 	if err = t.Vault.Save(fresh); err != nil {
 		return "", fmt.Errorf("cannot persist refreshed token: %w", err)
 	}
 	t.token = fresh
+	if err := t.validateGrant(fresh); err != nil {
+		return "", err
+	}
 	return fresh.AccessToken, nil
 }

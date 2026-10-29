@@ -7,6 +7,7 @@ import {
   updateOAuthAccountProxySetting,
 } from "../../../src/lib/api";
 
+vi.mock("../../../src/features/settings/AccountConnections", () => ({ default: () => null }));
 vi.mock("../../../src/features/settings/MailDownloadFailures", () => ({ default: () => null }));
 vi.mock("../../../src/features/settings/GmailLabels", () => ({ default: () => null }));
 

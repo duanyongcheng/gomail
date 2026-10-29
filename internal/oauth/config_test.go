@@ -57,7 +57,7 @@ func TestDatabaseVaultRestoreAndCAS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token := &oauth2.Token{AccessToken: "private-access", RefreshToken: "private-refresh", Expiry: time.Now().Add(time.Hour)}
+	token := (&oauth2.Token{AccessToken: "private-access", RefreshToken: "private-refresh", Expiry: time.Now().Add(time.Hour)}).WithExtra(map[string]any{"scope": ModifyScope})
 	encrypted, err := EncodeToken(service, "a", "client", token)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestDatabaseVaultRestoreAndCAS(t *testing.T) {
 	stale := &DatabaseVault{DB: db, Crypto: service, Context: t.Context(), AccountID: "a", ClientID: "client"}
 	for _, v := range []*DatabaseVault{vault, stale} {
 		restored, err := v.Load()
-		if err != nil || restored.RefreshToken != token.RefreshToken {
+		if err != nil || restored.RefreshToken != token.RefreshToken || restored.Extra("scope") != ModifyScope {
 			t.Fatal("restore failed", err)
 		}
 	}

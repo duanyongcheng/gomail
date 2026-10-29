@@ -139,6 +139,7 @@ func (s *PendingOpsService) Dismiss(ctx context.Context, request PendingOpsReque
 type pendingSettlement struct {
 	id      string
 	unknown bool
+	paused  bool
 	message string
 }
 
@@ -148,7 +149,9 @@ func (r *Runtime) settlePendingOp(ctx context.Context) error {
 		return nil
 	}
 	var err error
-	if result.message == "" && !result.unknown {
+	if result.paused {
+		err = r.DB.ReleasePendingAccessClaim(ctx, result.id)
+	} else if result.message == "" && !result.unknown {
 		err = r.DB.CompletePendingOp(ctx, result.id)
 	} else {
 		err = r.DB.FailPendingOp(ctx, result.id, result.message, result.unknown)
@@ -220,7 +223,7 @@ func (r *Runtime) processPendingOps(ctx context.Context) (bool, error) {
 		if err := ctx.Err(); err != nil {
 			return false, err
 		}
-		ops, payloads, err := r.DB.ClaimPendingOps(ctx, 1, time.Now().Unix())
+		ops, payloads, err := r.DB.ClaimPendingOps(ctx, 1, time.Now().Unix(), r.blockedAccounts()...)
 		if err != nil {
 			return false, err
 		}
@@ -232,7 +235,7 @@ func (r *Runtime) processPendingOps(ctx context.Context) (bool, error) {
 		if ctx.Err() != nil && replayErr != nil && !unknown {
 			return false, ctx.Err()
 		}
-		result := &pendingSettlement{id: op.ID, unknown: unknown}
+		result := &pendingSettlement{id: op.ID, unknown: unknown, paused: replayErr != nil && !unknown && r.accountBlocked(op.AccountID)}
 		if unknown {
 			result.message = "Remote write outcome is unknown; it will not be retried automatically."
 		} else if replayErr != nil {

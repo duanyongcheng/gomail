@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bary/pebble-go/internal/crypto"
+	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/store"
 	"golang.org/x/oauth2"
 )
@@ -26,10 +27,12 @@ type DatabaseVault struct {
 type tokenRecord struct {
 	ClientID string        `json:"client_id"`
 	Token    *oauth2.Token `json:"token"`
+	Scope    string        `json:"scope,omitempty"`
 }
 
 func EncodeToken(service *crypto.Service, account, client string, token *oauth2.Token) ([]byte, error) {
-	plain, err := json.Marshal(tokenRecord{ClientID: client, Token: token})
+	scope, _ := token.Extra("scope").(string)
+	plain, err := json.Marshal(tokenRecord{ClientID: client, Token: token, Scope: scope})
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +51,10 @@ func (v *DatabaseVault) Load() (*oauth2.Token, error) {
 	}
 	var record tokenRecord
 	if json.Unmarshal(plain, &record) != nil || record.Token == nil || record.ClientID != v.ClientID || record.Token.RefreshToken == "" {
-		return nil, errors.New("saved Gmail credentials require reauthorization with the configured client")
+		return nil, &domain.AccessError{State: domain.ConnectionReauthRequired}
+	}
+	if record.Scope != "" {
+		record.Token = record.Token.WithExtra(map[string]any{"scope": record.Scope})
 	}
 	v.previous = append([]byte{}, encrypted...)
 	return record.Token, nil

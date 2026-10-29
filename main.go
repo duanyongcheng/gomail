@@ -23,6 +23,7 @@ var pendingOpsChanged = mygo.NewEvent[struct{}]("mail:pending-ops-changed")
 var attachmentProgress = mygo.NewEvent[app.AttachmentProgress]("attachment:download-progress")
 var outboxChanged = mygo.NewEvent[struct{}]("mail:outbox-changed")
 var foldersChanged = mygo.NewEvent[app.AccountRequest]("mail:folders-changed")
+var accountChanged = mygo.NewEvent[app.AccountRequest]("mail:account-changed")
 var trustChanged = mygo.NewEvent[app.SenderRequest]("mail:trusted-senders-changed")
 
 func main() {
@@ -38,6 +39,7 @@ func main() {
 	runtime.OnAttachmentProgress = func(event app.AttachmentProgress) { _ = attachmentProgress.Broadcast(event) }
 	runtime.OnOutboxChanged = func() { _ = outboxChanged.Broadcast(struct{}{}) }
 	runtime.OnFoldersChanged = func(event app.AccountRequest) { _ = foldersChanged.Broadcast(event) }
+	runtime.OnAccountChanged = func(event app.AccountRequest) { _ = accountChanged.Broadcast(event) }
 	runtime.OnTrustChanged = func(event app.SenderRequest) { _ = trustChanged.Broadcast(event) }
 	windowService := &desktop.AppService{}
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
@@ -113,10 +115,6 @@ func main() {
 			if err := runtime.Restore(); err != nil {
 				slog.Warn("saved credentials require attention; cached mail remains available")
 			}
-			workers.Add(1)
-			go func() { defer workers.Done(); runtime.RunPendingOpsWorker(ctx) }()
-			workers.Add(1)
-			go func() { defer workers.Done(); runtime.RunOutboxWorker(ctx) }()
 			if os.Getenv("PEBBLE_SELFTEST") == "1" {
 				if err := prepareSelftest(runtime); err != nil {
 					slog.Error("selftest fixture failed")
@@ -124,6 +122,10 @@ func main() {
 					return
 				}
 			}
+			workers.Add(1)
+			go func() { defer workers.Done(); runtime.RunPendingOpsWorker(ctx) }()
+			workers.Add(1)
+			go func() { defer workers.Done(); runtime.RunOutboxWorker(ctx) }()
 			mygo.App.WhenReady(func() {
 				if ctx.Err() != nil {
 					return

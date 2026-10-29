@@ -99,6 +99,25 @@
     "threadView": "Thread view",
     "messageList": "Message list"
   },
+  "accountConnection": {
+    "title": "Gmail connection",
+    "notice": "Status is read locally. Reconnect opens Google sign-in for the same mailbox and keeps your mail and drafts. Unknown sends are never resent automatically.",
+    "loadFailed": "Could not read account connection states.",
+    "available": "Local credentials available",
+    "temporaryError": "Temporary connection problem; retries continue",
+    "reauthRequired": "Authorization expired or revoked; reconnect this account",
+    "permissionRequired": "Mail access permission is missing; reconnect and grant access",
+    "credentialsUnavailable": "Saved credentials unavailable; unlock the profile keyring and reconnect",
+    "configurationRequired": "Google sign-in configuration requires attention",
+    "reconnecting": "Waiting for Google sign-in; this account's queued work is paused",
+    "failed": "Could not reconnect. Existing mail and credentials are kept.",
+    "cancelFailed": "Could not cancel sign-in. Try again.",
+    "unavailable": "Connection status unavailable",
+    "reconnect": "Reconnect",
+    "cancel": "Cancel sign-in",
+    "notConfigured": "Configure Google OAuth before reconnecting.",
+    "done": "Account reconnected. Your existing mail and drafts are kept."
+  },
   "gmailLabels": {
     "title": "Gmail labels", "account": "Label account",
     "notice": "Manage Gmail server labels online. Deleting a label does not delete its messages. Local app tags are separate.",

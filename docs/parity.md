@@ -4,7 +4,7 @@
 
 Implemented entries call generated MyGO bindings. Startup stubs return explicit safe empty values for optional UI startup reads/preferences; they do not claim those features are implemented. Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.
 
-Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue.
+Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue. Account access/reconnection uses generated AccountService methods and mail:account-changed directly; it adds no invoke commands. Confirmed access failures pause the account's sync and queued work; unknown sends stay quarantined.
 
 | Command | Status | Milestone |
 |---|---|---|

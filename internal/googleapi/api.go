@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bary/pebble-go/internal/domain"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+
 	"time"
 )
 
@@ -28,9 +30,11 @@ type TokenSource interface {
 	Token(context.Context) (string, error)
 }
 type API struct {
-	Base   string
-	HTTP   *http.Client
-	Tokens TokenSource
+	Base          string
+	HTTP          *http.Client
+	Tokens        TokenSource
+	BeforeRequest func() error
+	OnResult      func(error)
 }
 type HTTPError struct {
 	Status  int
@@ -70,11 +74,17 @@ func decodeHTTPError(status int, body []byte) error {
 			Errors []struct {
 				Reason string `json:"reason"`
 			} `json:"errors"`
+			Details []struct {
+				Reason string `json:"reason"`
+			} `json:"details"`
 		} `json:"error"`
 	}
 	_ = json.Unmarshal(body, &value)
 	out := &HTTPError{Status: status}
 	for _, e := range value.Error.Errors {
+		out.Reasons = append(out.Reasons, e.Reason)
+	}
+	for _, e := range value.Error.Details {
 		out.Reasons = append(out.Reasons, e.Reason)
 	}
 	return out
@@ -129,7 +139,8 @@ func (a *API) request(ctx context.Context, method, path string, query url.Values
 	return a.requestWithLimit(ctx, method, path, query, body, out, defaultResponseLimit)
 }
 
-func (a *API) requestWithLimit(ctx context.Context, method, path string, query url.Values, body any, out any, limit int64) error {
+func (a *API) requestWithLimit(ctx context.Context, method, path string, query url.Values, body any, out any, limit int64) (result error) {
+	defer func() { a.report(result) }()
 	endpoint, err := url.Parse(a.Base + path)
 	if err != nil {
 		return err
@@ -143,6 +154,9 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 		}
 	}
 	for attempt := 0; attempt < 3; attempt++ {
+		if err := a.checkAccess(); err != nil {
+			return err
+		}
 		token, err := a.Tokens.Token(ctx)
 		if err != nil {
 			return err
@@ -155,12 +169,15 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
+		if err := a.checkAccess(); err != nil {
+			return err
+		}
 		resp, err := a.HTTP.Do(req)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			return errors.New("Gmail network request failed")
+			return &domain.AccessError{State: domain.ConnectionTemporaryError}
 		}
 		responseLimit := limit
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -176,7 +193,9 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			return errors.New("Gmail response read failed")
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return &domain.AccessError{State: domain.ConnectionTemporaryError}
+			}
 		}
 		if int64(len(payload)) > responseLimit && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return &ContentError{Kind: "too_large"}

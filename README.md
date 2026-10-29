@@ -19,7 +19,9 @@ mailbox verification and unknown-outcome protection. Conversation view groups
 cached mail by account-scoped Gmail threads and carries reply context through
 sending. Gmail custom labels can be created, renamed and deleted from account
 settings. Sender trust is persisted per account and enforced by the backend
-privacy policy. Cloud drafts and remaining account polish are still M1 work.
+privacy policy. Account-level access states and same-mailbox Google reconnection
+preserve cached mail and queued work when authorization needs attention. Cloud
+drafts and remaining account polish are still M1 work.
 IMAP/SMTP are tested as an isolated protocol prototype and join the app in M2.
 
 ## Development
@@ -105,6 +107,14 @@ Deleting a label does not delete its messages. Uncertain writes are retained for
 read-only refresh/reconciliation instead of automatic retries. See
 [Gmail labels](docs/m1-gmail-labels.md).
 
+Settings → Accounts → **Gmail connection** shows each account's local access
+state and offers **Reconnect** / **Cancel sign-in**. Bad credentials in one account
+do not prevent other accounts from restoring. Confirmed authorization failures
+pause that account's sync and queued work without exhausting retry attempts;
+temporary network failures retain normal backoff. Reconnection verifies the same
+Gmail mailbox, preserves account settings/mail/drafts, and keeps unknown sends
+unknown. See [account access and reconnection](docs/m1-account-reauth.md).
+
 ## Gmail OAuth configuration
 
 Copy `.env.example` to a local `.env` and set your Google Desktop client values:
@@ -185,7 +195,8 @@ alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
 inbox, conversation view, Gmail label CRUD, sender trust/revocation, attachment export, local draft
-restore/save, failed-download retry and a
+restore/save, failed-download retry, same-mailbox reconnection with unknown-send
+and draft preservation, and a
 single send to the local Gmail fixture through the UI, writes a JSON report and
 screenshots, then exits. It does not
 contact Google or the system keyring; draft checks use an in-memory test keyring:

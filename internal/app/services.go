@@ -2,21 +2,19 @@ package app
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/oauth2"
 
 	"github.com/bary/pebble-go/internal/crypto"
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/googleapi"
 	"github.com/bary/pebble-go/internal/oauth"
 	"github.com/bary/pebble-go/internal/privacy"
-	"github.com/bary/pebble-go/internal/provider/gmail"
 	"github.com/bary/pebble-go/internal/store"
 )
 
@@ -34,20 +32,28 @@ type Runtime struct {
 	OnOutboxChanged      func()
 	OnFoldersChanged     func(AccountRequest)
 	OnTrustChanged       func(SenderRequest)
-	labelManagementMu    sync.Mutex
-	outboxWake           chan struct{}
-	outboxMu             sync.Mutex
-	outboxWorkerMu       sync.Mutex
-	outboxSettlement     *outboxSettlement
-	pendingWake          chan struct{}
-	pendingMu            sync.Mutex
-	pendingWorkerMu      sync.Mutex
-	pendingSettlement    *pendingSettlement
-	Scheduler            *Scheduler
-	mu                   sync.RWMutex
-	providers            map[string]domain.Transport
-	crypto               *crypto.Service
-	composeMu            sync.Mutex
+	OnAccountChanged     func(AccountRequest)
+	// Dependencies are overridden only by isolated local fixtures.
+	Authorize         func(context.Context, *oauth2.Config, *http.Client, func(string) error) (*oauth2.Token, error)
+	GmailAPIBase      string
+	authFlowMu        sync.Mutex
+	reconnectAccount  string
+	reconnectCancel   context.CancelFunc
+	connections       map[string]*accountConnection
+	labelManagementMu sync.Mutex
+	outboxWake        chan struct{}
+	outboxMu          sync.Mutex
+	outboxWorkerMu    sync.Mutex
+	outboxSettlement  *outboxSettlement
+	pendingWake       chan struct{}
+	pendingMu         sync.Mutex
+	pendingWorkerMu   sync.Mutex
+	pendingSettlement *pendingSettlement
+	Scheduler         *Scheduler
+	mu                sync.RWMutex
+	providers         map[string]domain.Transport
+	crypto            *crypto.Service
+	composeMu         sync.Mutex
 }
 
 type SyncComplete struct {
@@ -56,7 +62,7 @@ type SyncComplete struct {
 }
 
 func New(ctx context.Context, db *store.DB, keyring crypto.Keyring, open func(string) error) *Runtime {
-	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, providers: map[string]domain.Transport{}, pendingWake: make(chan struct{}, 1), outboxWake: make(chan struct{}, 1)}
+	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, Authorize: oauth.Authorize, GmailAPIBase: googleapi.APIBase, providers: map[string]domain.Transport{}, connections: map[string]*accountConnection{}, pendingWake: make(chan struct{}, 1), outboxWake: make(chan struct{}, 1)}
 	r.Scheduler = newScheduler(r)
 	return r
 }
@@ -67,33 +73,7 @@ func httpClient() *http.Client {
 // Restore only decrypts local records and constructs lazy token sources. It
 // never invokes Token, Profile, Sync, or a browser during application startup.
 func (r *Runtime) Restore() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	has, err := r.DB.HasAuthData(r.Context)
-	if err != nil || !has {
-		return err
-	}
-	r.crypto, err = crypto.Load(r.Keyring, true)
-	if err != nil {
-		return err
-	}
-	accounts, err := r.DB.Accounts(r.Context)
-	if err != nil {
-		return err
-	}
-	cfg := oauth.Google()
-	for _, account := range accounts {
-		if account.Provider != "gmail" {
-			continue
-		}
-		vault := &oauth.DatabaseVault{DB: r.DB, Crypto: r.crypto, Context: r.Context, AccountID: account.ID, ClientID: cfg.ClientID}
-		if _, err := vault.Load(); err != nil {
-			return err
-		}
-		tokens := oauth.NewTokens(cfg, httpClient(), vault)
-		r.providers[account.ID] = gmail.New(r.DB, &googleapi.API{Base: googleapi.APIBase, HTTP: httpClient(), Tokens: tokens}, account.ID)
-	}
-	return nil
+	return r.restoreAccounts()
 }
 
 // InstallProvider is used by the explicit local selftest and provider tests.
@@ -101,11 +81,15 @@ func (r *Runtime) InstallProvider(account string, p domain.Transport) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.providers[account] = p
+	delete(r.connections, account)
 }
 func (r *Runtime) provider(account string) (domain.Transport, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	p := r.providers[account]
+	if c := r.connections[account]; c != nil && c.state.Blocked() {
+		return nil, &domain.AccessError{State: c.state}
+	}
 	if p == nil {
 		return nil, errors.New("Gmail sign-in required")
 	}
@@ -149,62 +133,7 @@ func (s *AccountService) List(ctx context.Context, _ Empty) ([]domain.Account, e
 	return accounts, nil
 }
 func (s *AccountService) Login(ctx context.Context, request LoginRequest) (domain.Account, error) {
-	r := s.Runtime
-	if request.Provider != "gmail" && request.Provider != "google" {
-		return domain.Account{}, errors.New("NotImplemented: complete_oauth_flow for this provider (M2)")
-	}
-	cfg := oauth.Google()
-	if cfg.ClientID == "" {
-		return domain.Account{}, errors.New("未配置 Google OAuth client ID")
-	}
-	// Serialize authorizations and key creation. A second login cannot generate
-	// a replacement DEK while the first is storing its account.
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.crypto == nil {
-		has, err := r.DB.HasEncryptedData(ctx)
-		if err != nil {
-			return domain.Account{}, err
-		}
-		r.crypto, err = crypto.Load(r.Keyring, has)
-		if err != nil {
-			return domain.Account{}, err
-		}
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stop := context.AfterFunc(r.Context, cancel)
-	defer stop()
-	client := httpClient()
-	token, err := oauth.Authorize(ctx, cfg, client, r.OpenBrowser)
-	if err != nil {
-		return domain.Account{}, err
-	}
-	api := &googleapi.API{Base: googleapi.APIBase, HTTP: client, Tokens: staticToken{token.AccessToken}}
-	profile, err := api.Profile(ctx)
-	if err != nil {
-		return domain.Account{}, err
-	}
-	digest := sha256.Sum256([]byte(strings.ToLower(profile.Email)))
-	id := "gmail:" + hex.EncodeToString(digest[:16])
-	now := time.Now().Unix()
-	color := "#0ea5e9"
-	account := domain.Account{ID: id, Email: profile.Email, DisplayName: profile.Email, Provider: "gmail", Color: &color, AccountLabel: request.AccountLabel, CreatedAt: now, UpdatedAt: now}
-	encrypted, err := oauth.EncodeToken(r.crypto, id, cfg.ClientID, token)
-	if err != nil {
-		return domain.Account{}, err
-	}
-	if err := r.DB.SaveAccount(ctx, account, encrypted); err != nil {
-		return domain.Account{}, err
-	}
-	vault := &oauth.DatabaseVault{DB: r.DB, Crypto: r.crypto, Context: r.Context, AccountID: id, ClientID: cfg.ClientID}
-	if _, err := vault.Load(); err != nil {
-		return domain.Account{}, err
-	}
-	api.Tokens = oauth.NewTokens(cfg, client, vault)
-	r.providers[id] = gmail.New(r.DB, api, id)
-	account.Capabilities = r.providers[id].Capabilities()
-	return account, nil
+	return s.login(ctx, request)
 }
 
 type staticToken struct{ value string }
@@ -212,14 +141,17 @@ type staticToken struct{ value string }
 func (t staticToken) Token(context.Context) (string, error) { return t.value, nil }
 func (s *AccountService) Delete(ctx context.Context, request AccountRequest) (Empty, error) {
 	r := s.Runtime
-	r.Scheduler.control.Lock()
-	defer r.Scheduler.control.Unlock()
-	r.Scheduler.stop(request.AccountID)
+	release := r.quiesceAccount(request.AccountID)
+	defer release()
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if c := r.connections[request.AccountID]; c != nil && c.cancel != nil {
+		c.cancel()
+	}
 	err := r.DB.DeleteAccount(ctx, request.AccountID)
 	if err == nil {
 		delete(r.providers, request.AccountID)
+		delete(r.connections, request.AccountID)
 	}
 	return Empty{}, err
 }

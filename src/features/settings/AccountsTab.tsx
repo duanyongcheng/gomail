@@ -1,4 +1,5 @@
 import { accountLabel } from "@/lib/accountIdentity";
+import AccountConnections from "./AccountConnections";
 import MailDownloadFailures from "./MailDownloadFailures";
 import GmailLabels from "./GmailLabels";
 import OAuthIdentityPanel from "./OAuthIdentityPanel";
@@ -462,6 +463,7 @@ export default function AccountsTab() {
 
       {accounts.some((account) => account.provider === "gmail") && (
         <>
+          <AccountConnections accounts={accounts.filter((account) => account.provider === "gmail")} />
           <MailDownloadFailures accounts={accounts.filter((account) => account.provider === "gmail")} />
           <GmailLabels accounts={accounts.filter((account) => account.provider === "gmail")} />
         </>

@@ -213,7 +213,7 @@ func (s *Scheduler) Preference(mode string) error {
 			s.status(RealtimeStatus{AccountID: id, Provider: "gmail", Mode: "manual"})
 			continue
 		}
-		if _, err := s.ensure(id, modeInterval(mode)); err != nil {
+		if _, err := s.ensure(id, modeInterval(mode)); err != nil && !s.runtime.accountBlocked(id) {
 			return err
 		}
 	}
@@ -305,9 +305,10 @@ func (s *Scheduler) run(w *syncWorker) {
 		s.mu.Unlock()
 	}()
 	for {
+		paused := s.runtime.accountBlocked(w.account)
 		s.mu.Lock()
 		now := time.Now()
-		enabled := s.configured && s.mode != "manual" || w.continuing
+		enabled := !paused && (s.configured && s.mode != "manual" || w.continuing)
 		if w.failures == 0 && !w.continuing && !w.lastFinished.IsZero() {
 			w.nextAt = w.lastFinished.Add(s.delay(w, now))
 		}
@@ -386,8 +387,21 @@ func (s *Scheduler) run(w *syncWorker) {
 		if w.ctx.Err() != nil {
 			return
 		}
+		if s.runtime.accountBlocked(w.account) {
+			status.Mode = "error"
+			status.NextRetryAt = nil
+			status.Message = "Account access requires attention; reconnect in Settings."
+		}
 		s.status(status)
 	}
+}
+
+func (s *Scheduler) accessChanged(account string) {
+	s.mu.Lock()
+	if w := s.jobs[account]; w != nil {
+		wake(w)
+	}
+	s.mu.Unlock()
 }
 
 func (s *Scheduler) status(status RealtimeStatus) {

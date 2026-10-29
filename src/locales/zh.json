@@ -99,6 +99,25 @@
     "threadView": "会话视图",
     "messageList": "邮件列表"
   },
+  "accountConnection": {
+    "title": "Gmail 连接状态",
+    "notice": "此处读取本地状态。重新连接会打开 Google 登录，验证同一邮箱并保留邮件和草稿。发送结果未知的邮件不会自动重发。",
+    "loadFailed": "无法读取账号连接状态。",
+    "available": "本地凭据可用",
+    "temporaryError": "连接暂时失败，将继续重试",
+    "reauthRequired": "授权已失效或撤销，请重新连接此账号",
+    "permissionRequired": "缺少邮件访问权限，请重新连接并授予权限",
+    "credentialsUnavailable": "已保存的凭据不可用，请解锁系统钥匙串后重新连接",
+    "configurationRequired": "Google 登录配置需要处理",
+    "reconnecting": "正在等待 Google 登录，此账号的待处理操作已暂停",
+    "failed": "无法重新连接，已有邮件和凭据已保留。",
+    "cancelFailed": "无法取消登录，请重试。",
+    "unavailable": "连接状态暂不可用",
+    "reconnect": "重新连接",
+    "cancel": "取消登录",
+    "notConfigured": "请先配置 Google OAuth，再重新连接。",
+    "done": "账号已重新连接，已有邮件和草稿已保留。"
+  },
   "gmailLabels": {
     "title": "Gmail 标签", "account": "标签所属账户",
     "notice": "联网管理 Gmail 服务端标签。删除标签不会删除邮件；应用本地标签是另一项功能。",

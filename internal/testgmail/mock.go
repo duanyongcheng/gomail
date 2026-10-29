@@ -97,7 +97,7 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "invalid PKCE", 400)
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "demo-access", "refresh_token": "demo-refresh", "token_type": "Bearer", "expires_in": 3600})
+			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "demo-access", "refresh_token": "demo-refresh", "token_type": "Bearer", "expires_in": 3600, "scope": ModifyScope})
 		} else {
 			m.Refreshes++
 			if m.RejectRefresh {

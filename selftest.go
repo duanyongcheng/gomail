@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -13,11 +15,13 @@ import (
 	"github.com/bary/pebble-go/internal/crypto"
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/mailmime"
+	"github.com/bary/pebble-go/internal/oauth"
 	"github.com/bary/pebble-go/internal/provider/gmail"
 	"github.com/bary/pebble-go/internal/store"
 	"github.com/bary/pebble-go/internal/testgmail"
 	"github.com/egoist/mygo"
 	"github.com/emersion/go-message/mail"
+	"golang.org/x/oauth2"
 )
 
 var selftestMailbox *testgmail.Mock
@@ -66,6 +70,22 @@ func prepareSelftest(runtime *app.Runtime) error {
 	if err := runtime.DB.SaveAccount(runtime.Context, account, nil); err != nil {
 		return err
 	}
+	if os.Getenv("PEBBLE_SELFTEST") == "1" {
+		_ = os.Setenv("GOOGLE_CLIENT_ID", "local-selftest-client")
+		_ = os.Setenv("GOOGLE_CLIENT_SECRET", "local-selftest-secret")
+		runtime.GmailAPIBase = fixture.Server.URL + "/gmail/v1/users/me"
+		runtime.Authorize = func(ctx context.Context, cfg *oauth2.Config, _ *http.Client, _ func(string) error) (*oauth2.Token, error) {
+			local := *cfg
+			local.Endpoint = fixture.OAuthConfig().Endpoint
+			return oauth.Authorize(ctx, &local, fixture.Server.Client(), func(target string) error {
+				response, err := fixture.Server.Client().Get(target)
+				if response != nil {
+					_ = response.Body.Close()
+				}
+				return err
+			})
+		}
+	}
 	runtime.InstallProvider(account.ID, gmail.New(runtime.DB, fixture.API(selftestToken{}), account.ID))
 	if _, err := (&app.SyncService{Runtime: runtime}).Sync(runtime.Context, app.AccountRequest{AccountID: account.ID}); err != nil {
 		return err
@@ -91,7 +111,26 @@ func prepareSelftest(runtime *app.Runtime) error {
 		return err
 	}
 	_, err = compose.Cleanup(runtime.Context, app.CleanupComposeRequest{Path: attachment})
-	return err
+	if err != nil {
+		return err
+	}
+	if os.Getenv("PEBBLE_SELFTEST") == "1" {
+		outbox := &app.OutboxService{Runtime: runtime}
+		if _, err := outbox.Queue(runtime.Context, app.SendRequest{AccountID: account.ID, ClientKey: "selftest-unknown-send", To: []string{"recipient@example.invalid"}, Subject: "Unknown send remains unknown", BodyText: "Must never be resent by reconnect."}); err != nil {
+			return err
+		}
+		row, err := runtime.DB.ClaimOutbox(runtime.Context, time.Now().Unix())
+		if err != nil {
+			return err
+		}
+		if err := runtime.DB.BeginOutboxSend(runtime.Context, row.ID); err != nil {
+			return err
+		}
+		if err := runtime.DB.SettleOutbox(runtime.Context, row.ID, "outcome_unknown", "fixture unknown", "", false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func waitSelftestPage(ctx context.Context, window *mygo.Window, script string, timeout time.Duration) bool {
@@ -137,7 +176,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false, "sender trust persisted and revoked through UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false, "sender trust persisted and revoked through UI": false, "Gmail account access shown through UI": false, "same-mailbox reconnection through UI": false, "reconnection preserves unknown send and draft": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -258,7 +297,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		items, err := (&app.OutboxService{Runtime: runtime}).List(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
-		if err == nil && len(items) == 1 && items[0].Status == "sent" {
+		if err == nil && len(items) == 2 && (items[0].Status == "sent" || items[1].Status == "sent") {
 			selftestMailbox.Lock()
 			count := len(selftestMailbox.SentRaw)
 			var raw []byte
@@ -283,4 +322,31 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	}
 	checks["sender trust persisted and revoked through UI"] = selftestTrust(ctx, runtime, window)
 	capture("trusted-senders.png")
+	if !checks["sender trust persisted and revoked through UI"] {
+		return
+	}
+	if !waitSelftestPage(ctx, window, `(() => { const b=document.getElementById('settings-tab-accounts');if(!b)return false;b.click();return true; })()`, 5*time.Second) {
+		return
+	}
+	checks["Gmail account access shown through UI"] = waitSelftestPage(ctx, window, `(() => { const s=document.getElementById('account-connections-title')?.closest('section');return Boolean(s)&&/本地凭据可用|Local credentials available/.test(s.innerText); })()`, 10*time.Second)
+	if os.Getenv("PEBBLE_SELFTEST") != "1" {
+		return
+	}
+	if _, err := (&app.ComposeService{Runtime: runtime}).Save(ctx, app.SaveDraftRequest{AccountID: "selftest-gmail", ClientKey: "reconnect-draft", Subject: "Draft preserved after reconnect", BodyText: "Preserve me"}); err != nil {
+		return
+	}
+	beforeAccount, beforeAccountErr := runtime.DB.Account(ctx, "selftest-gmail")
+	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(重新连接|Reconnect): demo@example\.invalid$/.test(b.getAttribute('aria-label')||''));if(!b||b.disabled)return false;b.click();return true; })()`, 5*time.Second) {
+		return
+	}
+	checks["same-mailbox reconnection through UI"] = waitSelftestPage(ctx, window, `document.body.innerText.includes('账号已重新连接') || document.body.innerText.includes('Account reconnected')`, 10*time.Second)
+	afterAccount, afterAccountErr := runtime.DB.Account(ctx, "selftest-gmail")
+	beforeAccount.UpdatedAt, afterAccount.UpdatedAt = 0, 0
+	outboxItems, outboxErr := runtime.DB.OutboxList(ctx, "selftest-gmail")
+	drafts, draftErr = (&app.ComposeService{Runtime: runtime}).List(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
+	selftestMailbox.Lock()
+	sentCount := len(selftestMailbox.SentRaw)
+	selftestMailbox.Unlock()
+	checks["reconnection preserves unknown send and draft"] = checks["same-mailbox reconnection through UI"] && beforeAccountErr == nil && afterAccountErr == nil && reflect.DeepEqual(beforeAccount, afterAccount) && outboxErr == nil && len(outboxItems) == 2 && outboxItems[0].Status == "outcome_unknown" && drafts != nil && draftErr == nil && len(drafts) == 1 && drafts[0].Subject == "Draft preserved after reconnect" && sentCount == 1
+	capture("account-reconnected.png")
 }

@@ -18,6 +18,12 @@ export interface Account {
   capabilities: Capabilities;
 }
 
+export interface AccountConnection {
+  accountId: string;
+  state: ConnectionState;
+  canReconnect: boolean;
+}
+
 export interface AccountRequest {
   accountId: string;
 }
@@ -73,6 +79,9 @@ export interface Capabilities {
 export interface CleanupComposeRequest {
   path: string;
 }
+
+/** ConnectionState describes account access, not mailbox freshness or delivery. */
+export type ConnectionState = "available" | "temporary_error" | "reauth_required" | "permission_required" | "credentials_unavailable" | "configuration_required" | "reconnecting";
 
 export interface CountsRequest {
   accountId: string;
@@ -480,6 +489,12 @@ export interface WindowRequest {
 // ---- Services ----
 
 export const AccountService = {
+  cancelReconnect(request: AccountRequest): Promise<Empty> {
+    return call("AccountService.CancelReconnect", request);
+  },
+  connections(arg0: Empty): Promise<AccountConnection[]> {
+    return call("AccountService.Connections", arg0);
+  },
   delete(request: AccountRequest): Promise<Empty> {
     return call("AccountService.Delete", request);
   },
@@ -488,6 +503,9 @@ export const AccountService = {
   },
   login(request: LoginRequest): Promise<Account> {
     return call("AccountService.Login", request);
+  },
+  reconnect(request: AccountRequest): Promise<Empty> {
+    return call("AccountService.Reconnect", request);
   },
   status(arg0: Empty): Promise<OAuthStatus> {
     return call("AccountService.Status", arg0);
@@ -735,5 +753,6 @@ export const events = {
   attachmentDownloadProgress: event<AttachmentProgress>("attachment:download-progress"),
   mailOutboxChanged: event<{}>("mail:outbox-changed"),
   mailFoldersChanged: event<AccountRequest>("mail:folders-changed"),
+  mailAccountChanged: event<AccountRequest>("mail:account-changed"),
   mailTrustedSendersChanged: event<SenderRequest>("mail:trusted-senders-changed"),
 } as const;

@@ -272,3 +272,37 @@ func TestPreferenceChangeCancelsPassAndContinuationRunsPromptly(t *testing.T) {
 		}
 	})
 }
+
+func TestSchedulerPausesOnlyTheAccountWithAccessFailure(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		r, p := schedulerFixture(t)
+		other := &scheduledProvider{}
+		r.InstallProvider("b", other)
+		r.connections["a"] = &accountConnection{state: domain.ConnectionAvailable}
+		if err := r.Scheduler.Preference("realtime"); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		if p.count() != 1 || other.count() != 1 {
+			t.Fatal("initial sync missing")
+		}
+		r.mu.Lock()
+		r.connections["a"].state = domain.ConnectionReauthRequired
+		r.mu.Unlock()
+		r.Scheduler.accessChanged("a")
+		synctest.Wait()
+		time.Sleep(10 * time.Minute)
+		synctest.Wait()
+		if p.count() != 1 || other.count() < 2 {
+			t.Fatal("pause lost or crossed accounts", p.count(), other.count())
+		}
+		r.mu.Lock()
+		r.connections["a"].state = domain.ConnectionAvailable
+		r.mu.Unlock()
+		r.Scheduler.accessChanged("a")
+		synctest.Wait()
+		if p.count() != 2 {
+			t.Fatal("reconnected account did not resume")
+		}
+	})
+}

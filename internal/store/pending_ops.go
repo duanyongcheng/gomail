@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/bary/pebble-go/internal/domain"
@@ -190,19 +191,28 @@ func (db *DB) PendingMailOpsSummary(ctx context.Context, account string) (Pendin
 }
 
 // ClaimPendingOps atomically marks due rows in_progress and returns payloads.
-func (db *DB) ClaimPendingOps(ctx context.Context, limit int, now int64) ([]PendingMailOp, map[string]json.RawMessage, error) {
+func (db *DB) ClaimPendingOps(ctx context.Context, limit int, now int64, excludedAccounts ...string) ([]PendingMailOp, map[string]json.RawMessage, error) {
 	ops := []PendingMailOp{}
 	payloads := map[string]json.RawMessage{}
 	err := db.withTx(ctx, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, `SELECT `+pendingColumns+` FROM pending_mail_ops
+		query := `SELECT ` + pendingColumns + ` FROM pending_mail_ops
 			WHERE id IN (SELECT p.id FROM pending_mail_ops p
 			JOIN mail_op_sequence q ON q.op_id=p.id AND q.kind='queued'
 			WHERE (p.status='pending' OR (p.status='failed' AND p.attempts < ? AND (p.next_retry_at IS NULL OR p.next_retry_at <= ?)))
 			AND CASE WHEN json_valid(p.payload_json) THEN COALESCE(json_extract(p.payload_json,'$._result'),'pending') ELSE 'pending' END NOT IN ('outcome_unknown','remote_succeeded')
 			AND NOT EXISTS (SELECT 1 FROM pending_mail_ops earlier
 				JOIN mail_op_sequence eq ON eq.op_id=earlier.id AND eq.kind='queued'
-				WHERE earlier.account_id=p.account_id AND earlier.message_id=p.message_id AND earlier.status!='done' AND eq.sequence<q.sequence))
-			ORDER BY (SELECT sequence FROM mail_op_sequence WHERE op_id=pending_mail_ops.id AND kind='queued') LIMIT ?`, MaxPendingMailOpAttempts, now, min(max(limit, 1), 100))
+				WHERE earlier.account_id=p.account_id AND earlier.message_id=p.message_id AND earlier.status!='done' AND eq.sequence<q.sequence))`
+		args := []any{MaxPendingMailOpAttempts, now}
+		if len(excludedAccounts) > 0 {
+			query += " AND account_id NOT IN (" + strings.TrimSuffix(strings.Repeat("?,", len(excludedAccounts)), ",") + ")"
+			for _, account := range excludedAccounts {
+				args = append(args, account)
+			}
+		}
+		query += ` ORDER BY (SELECT sequence FROM mail_op_sequence WHERE op_id=pending_mail_ops.id AND kind='queued') LIMIT ?`
+		args = append(args, min(max(limit, 1), 100))
+		rows, err := tx.QueryContext(ctx, query, args...)
 		if err != nil {
 			return err
 		}
