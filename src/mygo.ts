@@ -382,6 +382,11 @@ export interface SendRequest {
   clientKey: string;
 }
 
+export interface SenderRequest {
+  accountId: string;
+  email: string;
+}
+
 export interface StageComposeRequest {
   filename: string;
   bytes: number[];
@@ -451,6 +456,19 @@ export interface TriggerSyncRequest {
   reason: string;
 }
 
+export interface TrustRequest {
+  accountId: string;
+  email: string;
+  trustType: string;
+}
+
+export interface TrustedSender {
+  account_id: string;
+  email: string;
+  trust_type: string;
+  created_at: number;
+}
+
 export interface WindowRequest {
   action: string;
   width: number;
@@ -488,6 +506,21 @@ export const GmailLabelService = {
   },
   list(request: AccountRequest): Promise<GmailLabelsView> {
     return call("GmailLabelService.List", request);
+  },
+} as const;
+
+export const TrustService = {
+  isTrusted(request: SenderRequest): Promise<boolean> {
+    return call("TrustService.IsTrusted", request);
+  },
+  list(request: AccountRequest): Promise<TrustedSender[]> {
+    return call("TrustService.List", request);
+  },
+  remove(request: SenderRequest): Promise<Empty> {
+    return call("TrustService.Remove", request);
+  },
+  set(request: TrustRequest): Promise<Empty> {
+    return call("TrustService.Set", request);
   },
 } as const;
 
@@ -702,4 +735,5 @@ export const events = {
   attachmentDownloadProgress: event<AttachmentProgress>("attachment:download-progress"),
   mailOutboxChanged: event<{}>("mail:outbox-changed"),
   mailFoldersChanged: event<AccountRequest>("mail:folders-changed"),
+  mailTrustedSendersChanged: event<SenderRequest>("mail:trusted-senders-changed"),
 } as const;

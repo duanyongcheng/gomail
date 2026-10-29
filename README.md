@@ -18,7 +18,8 @@ attachment staging. Gmail sending uses an encrypted durable outbox with primary
 mailbox verification and unknown-outcome protection. Conversation view groups
 cached mail by account-scoped Gmail threads and carries reply context through
 sending. Gmail custom labels can be created, renamed and deleted from account
-settings. Cloud drafts and remaining account/privacy polish are still M1 work.
+settings. Sender trust is persisted per account and enforced by the backend
+privacy policy. Cloud drafts and remaining account polish are still M1 work.
 IMAP/SMTP are tested as an isolated protocol prototype and join the app in M2.
 
 ## Development
@@ -61,6 +62,12 @@ LoadOnce, Off and TrustedSender modes control external images and stylesheets;
 trackers are reported in the privacy banner. CID inline images use the narrow
 `pebble-attachment://` protocol and cannot address arbitrary profile files. See
 [privacy rendering](docs/m1-privacy.md).
+
+The privacy banner can remember images-only or full sender trust per account.
+Images-only trust keeps trackers blocked; full trust requires confirmation.
+Settings → Privacy manages exact-address trust and revocation. The backend
+verifies persisted permission instead of trusting a frontend mode flag. See
+[sender trust](docs/m1-trusted-senders.md).
 
 The message attachment footer offers Download (system Downloads directory) and
 Save As (native file chooser). Existing files are preserved using numbered
@@ -177,7 +184,7 @@ suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox, conversation view, Gmail label CRUD, attachment export, local draft
+inbox, conversation view, Gmail label CRUD, sender trust/revocation, attachment export, local draft
 restore/save, failed-download retry and a
 single send to the local Gmail fixture through the UI, writes a JSON report and
 screenshots, then exits. It does not

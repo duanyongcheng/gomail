@@ -748,6 +748,12 @@
     "results": "{{count}} 个结果"
   },
   "privacy": {
+    "confirmTrustTitle": "完全信任此发件人？",
+    "confirmTrustMessage": "外部图片和追踪器可能泄露你的 IP 地址和阅读时间。此操作不验证发件人身份，且仅对当前账户生效。",
+    "saveTrustFailed": "无法保存发件人信任，隐私保护未放宽。",
+    "trustScope": "信任仅针对一个账户中的精确邮箱地址，不代表身份验证。仅信任图片仍会拦截追踪器。",
+    "trustAccount": "信任所属账户", "selectTrustAccount": "请先添加账户再管理可信发件人。",
+    "senderAddress": "发件人邮箱地址", "trustLevel": "信任级别", "saveTrust": "保存信任", "removeTrust": "撤销信任",
     "blocked": "已拦截 {{items}}",
     "tracker": "{{count}} 个跟踪器",
     "tracker_plural": "{{count}} 个跟踪器",

@@ -1,8 +1,11 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message, RenderedHtml } from "../../src/lib/api";
 import { useMessageLoader } from "../../src/hooks/useMessageLoader";
 import { getMessageWithHtml, getRenderedHtml } from "../../src/lib/api";
+
+const privacyEvents = vi.hoisted(() => ({ callback: undefined as undefined | ((e: { payload: { accountId: string; email: string } }) => void) }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: (_name: string, callback: typeof privacyEvents.callback) => { privacyEvents.callback = callback; return Promise.resolve(() => {}); } }));
 
 vi.mock("../../src/lib/api", () => ({
   getMessageWithHtml: vi.fn(),
@@ -87,6 +90,45 @@ describe("useMessageLoader", () => {
     await waitFor(() => expect(getRenderedHtml).toHaveBeenCalledOnce());
     expect(getRenderedHtml).toHaveBeenCalledWith("message-1", "LoadOnce");
     expect(getMessageWithHtml).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a permissive in-flight response after trust revocation", async () => {
+    vi.mocked(getMessageWithHtml).mockResolvedValue([makeMessage(), makeRendered("<p>initial</p>")]);
+    let oldResponse!: (value: RenderedHtml) => void;
+    vi.mocked(getRenderedHtml).mockImplementationOnce(() => new Promise((resolve) => { oldResponse = resolve; }))
+      .mockResolvedValueOnce(makeRendered("<p>strict after revoke</p>"));
+    const { result } = renderHook(() => useMessageLoader("message-1", "Strict"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.refreshPrivacy());
+    await waitFor(() => expect(getRenderedHtml).toHaveBeenCalledTimes(1));
+    act(() => privacyEvents.callback?.({ payload: { accountId: "account-1", email: "sender@example.com" } }));
+    await waitFor(() => expect(result.current.rendered?.html).toContain("strict after revoke"));
+    await act(async () => oldResponse(makeRendered("<p>STALE PERMISSIVE</p>")));
+    expect(result.current.rendered?.html).not.toContain("STALE");
+    expect(getMessageWithHtml).toHaveBeenCalledOnce();
+  });
+
+  it("ignores trust events for other mailboxes and rejects old initial HTML on mode change", async () => {
+    let initial!: (value: [Message, RenderedHtml]) => void;
+    vi.mocked(getMessageWithHtml).mockImplementationOnce(() => new Promise((resolve) => { initial = resolve; }));
+    vi.mocked(getRenderedHtml).mockResolvedValue(makeRendered("<p>new strict</p>"));
+    const { result, rerender } = renderHook(({ mode }) => useMessageLoader("message-1", mode), { initialProps: { mode: "Off" as "Off" | "Strict" } });
+    rerender({ mode: "Strict" });
+    await act(async () => initial([makeMessage(), makeRendered("<p>OLD OFF</p>")]));
+    await waitFor(() => expect(result.current.rendered?.html).toContain("new strict"));
+    act(() => privacyEvents.callback?.({ payload: { accountId: "other", email: "sender@example.com" } }));
+    expect(getRenderedHtml).toHaveBeenCalledOnce();
+  });
+
+  it("cannot restore initial trusted HTML after a trust change before metadata arrives", async () => {
+    let initial!: (value: [Message, RenderedHtml]) => void;
+    vi.mocked(getMessageWithHtml).mockImplementationOnce(() => new Promise((resolve) => { initial = resolve; }));
+    vi.mocked(getRenderedHtml).mockResolvedValue(makeRendered("<p>revoked before load</p>"));
+    const { result } = renderHook(() => useMessageLoader("message-1", "Strict"));
+    act(() => privacyEvents.callback?.({ payload: { accountId: "account-1", email: "sender@example.com" } }));
+    await act(async () => initial([makeMessage(), makeRendered("<p>OLD TRUSTED</p>")]));
+    await waitFor(() => expect(result.current.rendered?.html).toContain("revoked before load"));
+    expect(result.current.rendered?.html).not.toContain("OLD TRUSTED");
   });
 
   it("does not automatically mark read when the account capability is unavailable", async () => {

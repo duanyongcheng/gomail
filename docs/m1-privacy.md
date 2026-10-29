@@ -9,6 +9,7 @@ it is not the security boundary.
 ```text
 messages.body_html_raw + body_text + attachment metadata
   -> MessageService.Rendered(messageId, privacyMode)
+  -> persisted account/sender trust resolution
   -> internal/privacy.Render
   -> safe HTML + tracker/image counters
   -> generated binding / useMessageLoader
@@ -21,8 +22,11 @@ Script, iframe, object/embed, form controls, document metadata, event handlers,
 dangerous URL schemes and CSS remote-loading constructs are removed. Plain text
 without an HTML part is emitted as an escaped `<pre class="pebble-plain-text-email">`.
 
-The renderer accepts `Strict`, `LoadOnce`, `Off` and the external JSON form
-`{"TrustedSender":"sender@example"}`. The behavior is:
+The request accepts `Strict`, `LoadOnce`, `Off` and the external JSON form
+`{"TrustedSender":"sender@example.invalid"}`. The [sender-trust follow-up](m1-trusted-senders.md)
+now verifies that an override matches this message and its persisted account-scoped
+trust level. Unbacked/mismatched overrides become Strict; images-only records
+cannot escalate to full trust. After resolution, the renderer behavior is:
 
 | Mode | Ordinary HTTPS images | Known trackers / pixels | Embedded CSS | External stylesheet |
 |---|---|---|---|---|

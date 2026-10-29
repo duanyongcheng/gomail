@@ -748,6 +748,12 @@
     "results": "{{count}} results"
   },
   "privacy": {
+    "confirmTrustTitle": "Fully trust this sender?",
+    "confirmTrustMessage": "External images and trackers may reveal your IP address and when you read mail. This does not verify the sender's identity. Trust applies only to this account.",
+    "saveTrustFailed": "Could not save sender trust. Privacy protection was not relaxed.",
+    "trustScope": "Trust is an exact-address preference for one account, not verification of the sender. Images-only trust still blocks trackers.",
+    "trustAccount": "Trust account", "selectTrustAccount": "Add an account to manage trusted senders.",
+    "senderAddress": "Sender email address", "trustLevel": "Trust level", "saveTrust": "Save trust", "removeTrust": "Remove trust",
     "blocked": "Blocked {{items}}",
     "tracker": "{{count}} tracker",
     "tracker_plural": "{{count}} trackers",

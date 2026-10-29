@@ -5,8 +5,11 @@ import AttachmentList from "./AttachmentList";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getRenderedHtml, getMessage, updateMessageFlags } from "@/lib/api";
-import type { Message, RenderedHtml } from "@/lib/api";
+import type { Message, RenderedHtml, PrivacyMode } from "@/lib/api";
 import { defaultPrivacyMode } from "@/lib/privacyMode";
+import { subscribePrivacyChanges } from "@/lib/privacyEvents";
+import { useSenderTrust } from "@/hooks/useSenderTrust";
+import PrivacyBanner from "./PrivacyBanner";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { ShadowDomEmail } from "./ShadowDomEmail";
 import ContactAddressAction from "./ContactAddressAction";
@@ -32,6 +35,8 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [rendered, setRendered] = useState<RenderedHtml | null>(null);
+  const [mode, setMode] = useState<PrivacyMode>(() => defaultPrivacyMode());
+  const generation = useRef(0);
   const [renderError, setRenderError] = useState(false);
   const [renderLoading, setRenderLoading] = useState(false);
   const [actionError, setActionError] = useState(false);
@@ -41,6 +46,12 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
   const readMarked = useRef(false);
   const alive = useRef(true);
   const client = useQueryClient();
+  const refreshPrivacy = () => { generation.current++; setRendered(null); setRetry((v) => v + 1); };
+  const trust = useSenderTrust(message, refreshPrivacy);
+  useEffect(() => subscribePrivacyChanges((change) => {
+    if (change.settings) setMode(defaultPrivacyMode());
+    if (change.settings || (change.accountId === message.account_id && (!change.email || change.email.toLowerCase() === message.from_address.trim().toLowerCase()))) refreshPrivacy();
+  }), [message.account_id, message.from_address]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const contactParticipants = uniqueContactParticipants(
     { name: message.from_name, address: message.from_address },
@@ -51,13 +62,14 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
   useEffect(() => {
     if (!expanded) return;
     let cancelled = false;
-    setRenderError(false); setRenderLoading(true);
-    getRenderedHtml(message.id, defaultPrivacyMode())
-      .then((html) => { if (!cancelled) setRendered({ ...html, html: sanitizeHtml(html.html) }); })
-      .catch(() => { if (!cancelled) setRenderError(true); })
-      .finally(() => { if (!cancelled) setRenderLoading(false); });
+    const started = ++generation.current;
+    setRendered(null); setRenderError(false); setRenderLoading(true);
+    getRenderedHtml(message.id, mode)
+      .then((html) => { if (!cancelled && started === generation.current) setRendered({ ...html, html: sanitizeHtml(html.html) }); })
+      .catch(() => { if (!cancelled && started === generation.current) setRenderError(true); })
+      .finally(() => { if (!cancelled && started === generation.current) setRenderLoading(false); });
     return () => { cancelled = true; };
-  }, [expanded, message.id, message.updated_at, retry]);
+  }, [expanded, message.id, message.updated_at, retry, mode]);
 
   useEffect(() => {
     if (message.is_read) readMarked.current = false;
@@ -146,6 +158,8 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
           {renderLoading && !rendered && <p role="status">{t("common.loading", "Loading...")}</p>}
           {renderError && <p role="alert">{t("thread.renderFailed", "Could not render this message.")} <button onClick={() => setRetry((v) => v + 1)}>{t("common.retry", "Retry")}</button></p>}
           {actionError && <p role="alert">{t("thread.actionFailed", "Could not update or open this message.")} <button onClick={() => { setActionError(false); setRetry((v) => v + 1); }}>{t("common.retry", "Retry")}</button></p>}
+          {rendered && <PrivacyBanner rendered={rendered} onLoadImages={() => setMode("LoadOnce")} onTrustSender={(type) => void trust.save(type)} busy={trust.busy} error={trust.error} />}
+          {trust.error && !rendered && <p role="alert">{trust.error}</p>}
           {/* Body content */}
           {rendered?.html ? (
             <ShadowDomEmail html={rendered.html} />

@@ -6,8 +6,11 @@ import { trustSender } from "../../src/lib/api";
 
 const privacyMocks = vi.hoisted(() => ({
   calls: [] as Array<{ messageId: string; privacyMode: unknown }>,
+  refresh: vi.fn(),
+  confirm: vi.fn(),
 }));
 const trustSenderMock = vi.mocked(trustSender);
+vi.mock("../../src/stores/confirm.store", () => ({ useConfirmStore: { getState: () => ({ confirm: privacyMocks.confirm }) } }));
 
 const mockMessage: Message = {
   id: "message-1",
@@ -62,6 +65,7 @@ vi.mock("../../src/hooks/useMessageLoader", () => ({
       from_address: messageId === "message-1" ? "sender@example.com" : "second@example.com",
     },
     setMessage: vi.fn(),
+    refreshPrivacy: privacyMocks.refresh,
     rendered: { html: "<p>Body</p>", images_blocked: 1, trackers_blocked: [] },
     loading: false,
     };
@@ -95,8 +99,8 @@ vi.mock("../../src/components/AttachmentList", () => ({
 }));
 
 vi.mock("../../src/components/PrivacyBanner", () => ({
-  default: ({ onTrustSender }: { onTrustSender: (trustType: "all") => void }) => (
-    <button onClick={() => onTrustSender("all")}>trust sender</button>
+  default: ({ onTrustSender, error, busy }: { onTrustSender: (trustType: "all") => void; error?: string; busy?: boolean }) => (
+    <><button disabled={busy} onClick={() => onTrustSender("all")}>trust sender</button>{error && <p role="alert">{error}</p>}</>
   ),
 }));
 
@@ -140,6 +144,8 @@ describe("MessageDetail selected-text context actions", () => {
   beforeEach(() => {
     setSelectedText("");
     privacyMocks.calls = [];
+    privacyMocks.refresh.mockReset();
+    privacyMocks.confirm.mockReset().mockResolvedValue(true);
     trustSenderMock.mockReset();
     trustSenderMock.mockResolvedValue(undefined);
   });
@@ -200,12 +206,8 @@ describe("MessageDetail selected-text context actions", () => {
     const { rerender } = render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "trust sender" }));
 
-    await waitFor(() => {
-      expect(privacyMocks.calls.at(-1)).toEqual({
-        messageId: "message-1",
-        privacyMode: { TrustedSender: "sender@example.com" },
-      });
-    });
+    await waitFor(() => expect(privacyMocks.refresh).toHaveBeenCalled());
+    expect(privacyMocks.calls.at(-1)).toEqual({ messageId: "message-1", privacyMode: "LoadOnce" });
 
     rerender(<MessageDetail messageId="message-2" onBack={vi.fn()} />);
 
@@ -224,7 +226,6 @@ describe("MessageDetail selected-text context actions", () => {
 
   it("does not relax privacy when persisting sender trust fails", async () => {
     trustSenderMock.mockRejectedValueOnce(new Error("write failed"));
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "trust sender" }));
@@ -234,6 +235,7 @@ describe("MessageDetail selected-text context actions", () => {
       messageId: "message-1",
       privacyMode: "LoadOnce",
     });
-    consoleError.mockRestore();
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(privacyMocks.refresh).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,51 @@
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ save: vi.fn(), confirm: vi.fn() }));
+vi.mock("@/lib/api", () => ({ trustSender: mocks.save }));
+vi.mock("@/stores/confirm.store", () => ({ useConfirmStore: { getState: () => ({ confirm: mocks.confirm }) } }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (_key: string, fallback: string) => fallback }) }));
+import { useSenderTrust } from "@/hooks/useSenderTrust";
+const message = { id: "m", account_id: "a", from_address: "sender@example.invalid" };
+afterEach(cleanup);
+beforeEach(() => { vi.resetAllMocks(); mocks.save.mockResolvedValue(undefined); mocks.confirm.mockResolvedValue(true); });
+it("confirms full trust and never persists after cancellation", async () => {
+  mocks.confirm.mockResolvedValueOnce(false);
+  const saved = vi.fn();
+  const { result } = renderHook(() => useSenderTrust(message, saved));
+  await act(async () => { await result.current.save("all"); });
+  expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("IP address") }));
+  expect(mocks.save).not.toHaveBeenCalled(); expect(saved).not.toHaveBeenCalled();
+});
+it("blocks duplicate actions and only refreshes after durable success", async () => {
+  let finish!: () => void;
+  mocks.save.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+  const saved = vi.fn();
+  const { result } = renderHook(() => useSenderTrust(message, saved));
+  let pending!: Promise<void>;
+  act(() => { pending = result.current.save("images"); });
+  expect(result.current.busy).toBe(true);
+  await act(async () => { await result.current.save("images"); });
+  expect(mocks.save).toHaveBeenCalledTimes(1); expect(saved).not.toHaveBeenCalled();
+  await act(async () => { finish(); await pending; });
+  expect(saved).toHaveBeenCalledTimes(1); expect(result.current.busy).toBe(false);
+});
+it("does not persist or update a new message after switching during confirmation", async () => {
+  let confirm!: (answer: boolean) => void;
+  mocks.confirm.mockImplementationOnce(() => new Promise<boolean>((resolve) => { confirm = resolve; }));
+  const saved = vi.fn();
+  const { result, rerender } = renderHook(({ current }) => useSenderTrust(current, saved), { initialProps: { current: message } });
+  let pending!: Promise<void>;
+  act(() => { pending = result.current.save("all"); });
+  rerender({ current: { ...message, id: "other" } });
+  await act(async () => { confirm(true); await pending; });
+  expect(mocks.save).not.toHaveBeenCalled(); expect(saved).not.toHaveBeenCalled();
+});
+it("keeps failures visible without relaxing policy", async () => {
+  mocks.save.mockRejectedValueOnce(new Error("private diagnostics"));
+  const saved = vi.fn();
+  const { result } = renderHook(() => useSenderTrust(message, saved));
+  await act(async () => { await result.current.save("images"); });
+  expect(result.current.error).toContain("not relaxed");
+  expect(result.current.error).not.toContain("private diagnostics");
+  expect(saved).not.toHaveBeenCalled();
+});

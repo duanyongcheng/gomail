@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import ThreadMessageBubble from "../../src/components/ThreadMessageBubble";
 import type { Message } from "../../src/lib/api";
 import { getRenderedHtml, getMessage, updateMessageFlags } from "../../src/lib/api";
-const mocks = vi.hoisted(() => ({ openCompose: vi.fn(), invalidate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ openCompose: vi.fn(), invalidate: vi.fn(), changed: undefined as undefined | ((event: { payload: { accountId: string; email: string } }) => void) }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: (_name: string, callback: typeof mocks.changed) => { mocks.changed = callback; return Promise.resolve(() => {}); } }));
 vi.mock("../../src/stores/compose.store", () => ({ useComposeStore: { getState: () => ({ openCompose: mocks.openCompose }) } }));
 
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: mocks.invalidate }) }));
@@ -99,6 +100,17 @@ describe("ThreadMessageBubble", () => {
     expect(await screen.findByRole("alert")).toBeTruthy();
     await act(async () => finish({ html: "STALE", trackers_blocked: [], images_blocked: 0 } as never));
     expect(document.body.textContent).not.toContain("STALE");
+  });
+
+  it("re-renders on trust revocation and discards the old response", async () => {
+    let old!: (value: never) => void;
+    vi.mocked(getRenderedHtml).mockImplementationOnce(() => new Promise((resolve) => { old = resolve; }))
+      .mockResolvedValueOnce({ html: "NEW STRICT", trackers_blocked: [], images_blocked: 0 });
+    render(<ThreadMessageBubble message={message} defaultExpanded />);
+    act(() => mocks.changed?.({ payload: { accountId: "account-1", email: "sender@example.com" } }));
+    await screen.findByText("NEW STRICT");
+    await act(async () => old({ html: "OLD TRUST", trackers_blocked: [], images_blocked: 0 } as never));
+    expect(document.body.textContent).not.toContain("OLD TRUST");
   });
 
   it("offers contact actions for expanded message participants", async () => {

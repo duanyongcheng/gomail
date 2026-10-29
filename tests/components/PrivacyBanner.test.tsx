@@ -52,6 +52,14 @@ describe("privacy banner", () => {
     expect(screen.getByRole("button", { name: "Trust sender" })).toBeTruthy();
   });
 
+  it("disables actions while saving and exposes persistence failure", () => {
+    const save = vi.fn();
+    render(<PrivacyBanner rendered={rendered({ images_blocked: 1 })} onLoadImages={vi.fn()} onTrustSender={save} busy error="Trust save failed" />);
+    expect(screen.getByRole("alert").textContent).toBe("Trust save failed");
+    fireEvent.click(screen.getByRole("button", { name: "Trust sender" }));
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("sends full trust for the trust-sender action", () => {
     const onTrustSender = vi.fn();
     render(

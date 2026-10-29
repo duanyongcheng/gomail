@@ -1,4 +1,4 @@
-import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, OutboxService, PendingOpsService, SearchService, SyncService, ThreadService } from "@/mygo";
+import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, OutboxService, PendingOpsService, SearchService, SyncService, ThreadService, TrustService } from "@/mygo";
 import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest, SendRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
@@ -18,6 +18,10 @@ export const implementedCommands = {
   }),
   delete_account: implemented((a: AccountRequest) => AccountService.delete(a)),
   list_folders: implemented((a: AccountRequest) => FolderService.list(a)),
+  trust_sender: implemented(async (a: { accountId: string; email: string; trustType: string }) => { await TrustService.set(a); }, "M1"),
+  remove_trusted_sender: implemented(async (a: { accountId: string; email: string }) => { await TrustService.remove(a); }, "M1"),
+  list_trusted_senders: implemented((a: AccountRequest) => TrustService.list(a), "M1"),
+  is_trusted_sender: implemented((a: { accountId: string; email: string }) => TrustService.isTrusted(a), "M1"),
   list_threads: implemented((a: { folderId?: string; folderIds?: string[]; limit?: number; offset?: number }) => ThreadService.list({ folderId: a.folderId ?? "", folderIds: a.folderIds ?? [], limit: a.limit ?? 50, offset: a.offset ?? 0 }), "M1"),
   list_thread_messages: implemented((a: { threadId: string }) => ThreadService.messages(a), "M1"),
   list_messages: implemented((a: Partial<MessagesRequest>) => MessageService.list({ folderId: a.folderId ?? "", accountId: a.accountId ?? "", limit: a.limit ?? 50, offset: a.offset ?? 0, starred: false })),

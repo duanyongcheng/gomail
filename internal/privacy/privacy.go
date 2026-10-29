@@ -58,6 +58,8 @@ func ParseMode(raw json.RawMessage) Mode {
 	return Strict
 }
 
+func (m Mode) TrustedEmail() (string, bool) { return strings.CutPrefix(string(m), "trusted:") }
+
 func (m Mode) trusted() bool                   { return strings.HasPrefix(string(m), "trusted:") }
 func (m Mode) allowsRemoteImages() bool        { return m == LoadOnce || m == Off || m.trusted() }
 func (m Mode) allowsStyles() bool              { return m == LoadOnce || m == Off || m.trusted() }

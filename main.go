@@ -23,6 +23,7 @@ var pendingOpsChanged = mygo.NewEvent[struct{}]("mail:pending-ops-changed")
 var attachmentProgress = mygo.NewEvent[app.AttachmentProgress]("attachment:download-progress")
 var outboxChanged = mygo.NewEvent[struct{}]("mail:outbox-changed")
 var foldersChanged = mygo.NewEvent[app.AccountRequest]("mail:folders-changed")
+var trustChanged = mygo.NewEvent[app.SenderRequest]("mail:trusted-senders-changed")
 
 func main() {
 	mygo.App.SetName("Pebble Go")
@@ -37,9 +38,10 @@ func main() {
 	runtime.OnAttachmentProgress = func(event app.AttachmentProgress) { _ = attachmentProgress.Broadcast(event) }
 	runtime.OnOutboxChanged = func() { _ = outboxChanged.Broadcast(struct{}{}) }
 	runtime.OnFoldersChanged = func(event app.AccountRequest) { _ = foldersChanged.Broadcast(event) }
+	runtime.OnTrustChanged = func(event app.SenderRequest) { _ = trustChanged.Broadcast(event) }
 	windowService := &desktop.AppService{}
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
-	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
+	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog

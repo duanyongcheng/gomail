@@ -137,7 +137,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false, "sender trust persisted and revoked through UI": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -281,4 +281,6 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		waitSelftestPage(ctx, window, `(() => { const s=Array.from(document.querySelectorAll('summary')).find(s => /发件箱|Outbox/.test(s.textContent)); if (!s) return false; s.parentElement.open=true; return /Gmail 已接收|Accepted by Gmail/.test(s.parentElement.innerText); })()`, 10*time.Second)
 		capture("outbox-sent.png")
 	}
+	checks["sender trust persisted and revoked through UI"] = selftestTrust(ctx, runtime, window)
+	capture("trusted-senders.png")
 }

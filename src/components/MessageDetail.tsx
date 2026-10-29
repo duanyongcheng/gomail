@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowLeft, Clock, Languages, Palette, Sparkles } from "lucide-react";
-import { trustSender } from "@/lib/api";
+import { useSenderTrust } from "@/hooks/useSenderTrust";
+import { PRIVACY_SETTINGS_CHANGED } from "@/lib/privacyEvents";
 import { useTranslation } from "react-i18next";
 import type { PrivacyMode, TranslateResult } from "@/lib/api";
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -84,7 +85,13 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   const translateRef = useRef<HTMLDivElement>(null);
   const themePickerRef = useRef<HTMLDivElement>(null);
 
-  const { message, setMessage, rendered, loading, error } = useMessageLoader(messageId, privacyMode);
+  const { message, setMessage, rendered, loading, error, refreshPrivacy } = useMessageLoader(messageId, privacyMode);
+  const trust = useSenderTrust(message, () => refreshPrivacy());
+  useEffect(() => {
+    const changed = () => setPrivacyOverride({ messageId, mode: defaultPrivacyMode() });
+    window.addEventListener(PRIVACY_SETTINGS_CHANGED, changed);
+    return () => window.removeEventListener(PRIVACY_SETTINGS_CHANGED, changed);
+  }, [messageId]);
   const {
     bilingualMode,
     bilingualResult,
@@ -111,25 +118,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
     setPrivacyOverride({ messageId, mode: "LoadOnce" });
   }
 
-  async function handleTrustSender(trustType: "images" | "all") {
-    if (message) {
-      try {
-        await trustSender(message.account_id, message.from_address, trustType);
-        // "images" only widens this render to LoadOnce; the backend re-reads the
-        // persisted trust level and can raise it later. "all" asks for full
-        // trust, which the backend confirms against the stored row before
-        // letting trackers load.
-        setPrivacyOverride({
-          messageId,
-          mode: trustType === "all"
-            ? { TrustedSender: message.from_address }
-            : "LoadOnce",
-        });
-      } catch (err) {
-        console.error("Failed to persist trusted sender:", err);
-      }
-    }
-  }
+  function handleTrustSender(trustType: "images" | "all") { void trust.save(trustType); }
 
   function getCurrentSelectedText() {
     const selection = window.getSelection();
@@ -496,6 +485,8 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
               rendered={rendered}
               onLoadImages={handleLoadImages}
               onTrustSender={handleTrustSender}
+              busy={trust.busy}
+              error={trust.error}
             />
           )}
 

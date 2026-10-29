@@ -33,6 +33,7 @@ type Runtime struct {
 	OnAttachmentProgress func(AttachmentProgress)
 	OnOutboxChanged      func()
 	OnFoldersChanged     func(AccountRequest)
+	OnTrustChanged       func(SenderRequest)
 	labelManagementMu    sync.Mutex
 	outboxWake           chan struct{}
 	outboxMu             sync.Mutex
@@ -299,7 +300,11 @@ func (s *MessageService) Rendered(ctx context.Context, a MessageRequest) (Messag
 			refs = append(refs, privacy.Attachment{ID: attachment.ID, ContentID: *attachment.ContentID})
 		}
 	}
-	rendered := privacy.Render(m.BodyHTML, m.BodyText, m.AccountID, m.ID, refs, privacy.ParseMode(a.PrivacyMode))
+	mode, err := s.effectivePrivacyMode(ctx, m, privacy.ParseMode(a.PrivacyMode))
+	if err != nil {
+		return MessageWithHTML{}, err
+	}
+	rendered := privacy.Render(m.BodyHTML, m.BodyText, m.AccountID, m.ID, refs, mode)
 	trackers := make([]Tracker, 0, len(rendered.TrackersBlocked))
 	for _, tracker := range rendered.TrackersBlocked {
 		trackers = append(trackers, Tracker{Domain: tracker.Domain, TrackerType: tracker.Type})

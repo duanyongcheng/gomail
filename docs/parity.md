@@ -72,7 +72,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `import_background_image` | not-implemented | M3 |
 | `import_backup_file` | not-implemented | M5 |
 | `import_contacts_vcard` | not-implemented | M3 |
-| `is_trusted_sender` | startup-stub | M3 |
+| `is_trusted_sender` | implemented | M1 |
 | `list_accounts` | implemented | M0 |
 | `list_attachments` | implemented | M0 |
 | `list_contacts` | startup-stub | M3 |
@@ -89,7 +89,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `list_thread_messages` | implemented | M1 |
 | `list_threads` | implemented | M1 |
 | `list_translate_models` | not-implemented | M5 |
-| `list_trusted_senders` | startup-stub | M3 |
+| `list_trusted_senders` | implemented | M1 |
 | `load_auto_backup_config` | startup-stub | M5 |
 | `mark_account_all_read` | implemented | M1 |
 | `mark_folder_all_read` | implemented | M1 |
@@ -106,7 +106,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `read_app_log` | not-implemented | M4 |
 | `remove_from_kanban` | not-implemented | M3 |
 | `remove_message_label` | not-implemented | M3 |
-| `remove_trusted_sender` | not-implemented | M3 |
+| `remove_trusted_sender` | implemented | M1 |
 | `reorder_accounts` | not-implemented | M3 |
 | `restore_from_webdav` | not-implemented | M5 |
 | `restore_message` | implemented | M1 |
@@ -142,7 +142,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `test_webdav_connection` | not-implemented | M5 |
 | `translate_text` | not-implemented | M5 |
 | `trigger_sync` | implemented | M1 |
-| `trust_sender` | not-implemented | M1 |
+| `trust_sender` | implemented | M1 |
 | `unsnooze_message` | not-implemented | M3 |
 | `update_account` | not-implemented | M3 |
 | `update_account_proxy` | not-implemented | M2 |

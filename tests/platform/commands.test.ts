@@ -11,6 +11,7 @@ vi.mock("@/mygo", () => ({
   FileService: { downloads: vi.fn(), saveAttachment: vi.fn() },
   FolderService: { list: vi.fn() },
   ThreadService: { list: vi.fn(), messages: vi.fn() },
+  TrustService: { list: vi.fn(), set: vi.fn(), remove: vi.fn(), isTrusted: vi.fn() },
   MessageService: {
     list: vi.fn(), get: vi.fn(), rendered: vi.fn(), flags: vi.fn(), attachments: vi.fn(), unreadCounts: vi.fn(),
     archive: vi.fn().mockResolvedValue("archived"), delete: vi.fn().mockResolvedValue({}), restore: vi.fn().mockResolvedValue({}),
@@ -22,7 +23,7 @@ vi.mock("@/mygo", () => ({
   SearchService: { search: vi.fn() },
   SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
-import { AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService, ThreadService } from "@/mygo";
+import { AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService, ThreadService, TrustService } from "@/mygo";
 import { downloadDir } from "../../src/lib/platform/path";
 import { saveAttachmentAs } from "../../src/lib/platform/attachments";
 import { invoke } from "../../src/lib/platform/core";
@@ -80,6 +81,17 @@ describe("MyGO command adapter", () => {
   it("queues sending through the durable service without claiming remote delivery", async () => {
     expect(await invoke("send_email", { accountId: "a", to: ["to@example.invalid"], clientKey: "k" })).toBeUndefined();
     expect(OutboxService.queue).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", clientKey: "k", attachmentPaths: [] }));
+  });
+
+  it("routes persistent sender trust with account and requested level", async () => {
+    await invoke("trust_sender", { accountId: "a", email: "sender@example.invalid", trustType: "images" });
+    expect(TrustService.set).toHaveBeenCalledWith({ accountId: "a", email: "sender@example.invalid", trustType: "images" });
+    await invoke("remove_trusted_sender", { accountId: "a", email: "sender@example.invalid" });
+    expect(TrustService.remove).toHaveBeenCalledWith({ accountId: "a", email: "sender@example.invalid" });
+    vi.mocked(TrustService.isTrusted).mockResolvedValueOnce(true);
+    expect(await invoke("is_trusted_sender", { accountId: "a", email: "sender@example.invalid" })).toBe(true);
+    await invoke("list_trusted_senders", { accountId: "a" });
+    expect(TrustService.list).toHaveBeenCalledWith({ accountId: "a" });
   });
 
   it("routes account-scoped thread handles and multiple folders", async () => {
