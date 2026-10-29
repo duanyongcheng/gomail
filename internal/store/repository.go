@@ -270,31 +270,41 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 				return err
 			}
 		}
+		rebuildThreads := false
 		for _, cached := range s.Messages {
 			m := cached.Message
 			if m.AccountID != s.AccountID {
 				return errors.New("message account mismatch")
 			}
 			var owner string
-			err := tx.QueryRowContext(ctx, "SELECT account_id FROM messages WHERE id=?", m.ID).Scan(&owner)
+			var oldThread, oldMID, oldReply, oldRefs sql.NullString
+			err := tx.QueryRowContext(ctx, "SELECT account_id,thread_id,message_id_header,in_reply_to,references_header FROM messages WHERE id=?", m.ID).Scan(&owner, &oldThread, &oldMID, &oldReply, &oldRefs)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}
 			if err == nil && owner != s.AccountID {
 				return errors.New("message identity belongs to another account")
 			}
+			if nativeThread(m.ThreadID) == "" && (owner == "" || oldThread.String != "" || oldMID.String != textValue(m.MessageIDHeader) || oldReply.String != textValue(m.InReplyTo) || oldRefs.String != textValue(m.ReferencesHeader)) {
+				rebuildThreads = true
+			}
 			to, _ := json.Marshal(m.To)
 			cc, _ := json.Marshal(m.CC)
 			bcc, _ := json.Marshal(m.BCC)
 			if owner != "" {
-				_, err = tx.ExecContext(ctx, `UPDATE messages SET remote_id=?,thread_id=?,message_id_header=?,subject=?,snippet=?,from_address=?,from_name=?,to_list=?,cc_list=?,bcc_list=?,body_text=?,body_html_raw=?,has_attachments=?,is_read=?,is_starred=?,is_draft=?,date=?,is_deleted=0,updated_at=? WHERE id=? AND account_id=?`, m.RemoteID, m.ThreadID, m.MessageIDHeader, m.Subject, m.Snippet, m.FromAddress, m.FromName, string(to), string(cc), string(bcc), m.BodyText, m.BodyHTML, len(cached.Attachments) > 0, m.IsRead, m.IsStarred, m.IsDraft, m.Date, m.UpdatedAt, m.ID, s.AccountID)
+				_, err = tx.ExecContext(ctx, `UPDATE messages SET remote_id=?,thread_id=?,message_id_header=?,in_reply_to=?,references_header=?,subject=?,snippet=?,from_address=?,from_name=?,to_list=?,cc_list=?,bcc_list=?,body_text=?,body_html_raw=?,has_attachments=?,is_read=?,is_starred=?,is_draft=?,date=?,is_deleted=0,updated_at=? WHERE id=? AND account_id=?`, m.RemoteID, m.ThreadID, m.MessageIDHeader, m.InReplyTo, m.ReferencesHeader, m.Subject, m.Snippet, m.FromAddress, m.FromName, string(to), string(cc), string(bcc), m.BodyText, m.BodyHTML, len(cached.Attachments) > 0, m.IsRead, m.IsStarred, m.IsDraft, m.Date, m.UpdatedAt, m.ID, s.AccountID)
 			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO messages(id,account_id,remote_id,thread_id,message_id_header,subject,snippet,from_address,from_name,to_list,cc_list,bcc_list,body_text,body_html_raw,has_attachments,is_read,is_starred,is_draft,date,created_at,updated_at)
- VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, m.ID, m.AccountID, m.RemoteID, m.ThreadID, m.MessageIDHeader, m.Subject, m.Snippet, m.FromAddress, m.FromName, string(to), string(cc), string(bcc), m.BodyText, m.BodyHTML, len(cached.Attachments) > 0, m.IsRead, m.IsStarred, m.IsDraft, m.Date, m.CreatedAt, m.UpdatedAt)
+				_, err = tx.ExecContext(ctx, `INSERT INTO messages(id,account_id,remote_id,thread_id,message_id_header,in_reply_to,references_header,subject,snippet,from_address,from_name,to_list,cc_list,bcc_list,body_text,body_html_raw,has_attachments,is_read,is_starred,is_draft,date,created_at,updated_at)
+ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, m.ID, m.AccountID, m.RemoteID, m.ThreadID, m.MessageIDHeader, m.InReplyTo, m.ReferencesHeader, m.Subject, m.Snippet, m.FromAddress, m.FromName, string(to), string(cc), string(bcc), m.BodyText, m.BodyHTML, len(cached.Attachments) > 0, m.IsRead, m.IsStarred, m.IsDraft, m.Date, m.CreatedAt, m.UpdatedAt)
 			}
 			if err != nil {
 				return err
 			}
+			changed, err := updateMessageThread(ctx, tx, m)
+			if err != nil {
+				return err
+			}
+			rebuildThreads = rebuildThreads || changed
 			if _, err := tx.ExecContext(ctx, "DELETE FROM message_folders WHERE message_id=?", m.ID); err != nil {
 				return err
 			}
@@ -314,6 +324,11 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 				if _, err := tx.ExecContext(ctx, "INSERT INTO attachments(id,message_id,filename,mime_type,size,local_path,content_id,is_inline) VALUES(?,?,?,?,?,?,?,?)", a.ID, m.ID, a.Filename, a.MIMEType, a.Size, a.LocalPath, a.ContentID, a.Inline); err != nil {
 					return err
 				}
+			}
+		}
+		if rebuildThreads {
+			if err := rebuildHeaderThreads(ctx, tx, s.AccountID); err != nil {
+				return err
 			}
 		}
 		if s.ResetBackfill {

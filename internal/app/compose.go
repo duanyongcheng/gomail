@@ -29,6 +29,7 @@ type SaveDraftRequest struct {
 	BodyText        string   `json:"bodyText"`
 	BodyHTML        string   `json:"bodyHtml"`
 	InReplyTo       string   `json:"inReplyTo"`
+	ReplyMessageID  string   `json:"replyMessageId,omitempty"`
 	QuotedReplyHTML string   `json:"quotedReplyHtml"`
 	ExistingDraftID string   `json:"existingDraftId"`
 	AttachmentPaths []string `json:"attachmentPaths"`
@@ -62,6 +63,7 @@ type LocalDraft struct {
 	BodyText        string            `json:"bodyText"`
 	BodyHTML        string            `json:"bodyHtml"`
 	InReplyTo       string            `json:"inReplyTo"`
+	ReplyMessageID  string            `json:"replyMessageId,omitempty"`
 	QuotedReplyHTML string            `json:"quotedReplyHtml"`
 	EditorMode      string            `json:"editorMode"`
 	RawSource       string            `json:"rawSource"`
@@ -110,6 +112,12 @@ func composeID(path string) (string, error) {
 	return id, nil
 }
 func draftRecord(account, id string) string { return account + "\x00" + id }
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
 
 func (s *ComposeService) Stage(ctx context.Context, request StageComposeRequest) (string, error) {
 	if err := ctx.Err(); err != nil {
@@ -189,7 +197,7 @@ func (s *ComposeService) attachmentData(ctx context.Context, cipher *crypto.Serv
 	return data, nil
 }
 func validateDraft(request SaveDraftRequest) error {
-	if request.AccountID == "" || len(request.ClientKey) > 200 || len(request.ExistingDraftID) > 200 {
+	if request.AccountID == "" || len(request.ClientKey) > 200 || len(request.ExistingDraftID) > 200 || len(request.ReplyMessageID) > 1024 {
 		return errors.New("invalid draft identity")
 	}
 	if len(request.Subject) > 8192 || len(request.InReplyTo) > 2048 || len(request.RawSource)+len(request.BodyText)+len(request.BodyHTML)+len(request.QuotedReplyHTML) > maxDraftBodyBytes {
@@ -262,7 +270,7 @@ func (s *ComposeService) Save(ctx context.Context, request SaveDraftRequest) (st
 			return "", errors.New("cannot decrypt existing draft; data preserved")
 		}
 	}
-	draft := LocalDraft{ID: stored.ID, AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, QuotedReplyHTML: request.QuotedReplyHTML, EditorMode: request.EditorMode, RawSource: request.RawSource, Attachments: []DraftAttachment{}}
+	draft := LocalDraft{ID: stored.ID, AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, ReplyMessageID: request.ReplyMessageID, QuotedReplyHTML: request.QuotedReplyHTML, EditorMode: request.EditorMode, RawSource: request.RawSource, Attachments: []DraftAttachment{}}
 	if draft.EditorMode == "" {
 		draft.EditorMode = "rich"
 	}

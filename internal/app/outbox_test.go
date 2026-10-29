@@ -308,7 +308,7 @@ func (b *blockedSender) Flags(context.Context, string, *bool, *bool) error { ret
 func (b *blockedSender) CheckSent(context.Context, string, string) (string, error) {
 	return "", errors.New("unknown")
 }
-func (b *blockedSender) Send(ctx context.Context, _ string, _ []byte, start func() error) domain.SendResult {
+func (b *blockedSender) Send(ctx context.Context, _ domain.OutgoingMail, start func() error) domain.SendResult {
 	if err := start(); err != nil {
 		return domain.SendResult{Message: "no send"}
 	}

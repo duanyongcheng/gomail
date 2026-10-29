@@ -1,7 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ThreadSummary } from "../../../src/lib/api";
 
+const threadQuery = vi.hoisted(() => ({ isError: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn(), refetch: vi.fn() }));
 const mockMailState = {
   activeAccountId: "account-1",
   activeFolderId: "folder-inbox",
@@ -86,6 +87,7 @@ vi.mock("../../../src/hooks/queries", () => ({
     fetchNextPage: vi.fn(),
   }),
   useThreadsQuery: () => ({
+    ...threadQuery,
     data: threads,
     isLoading: false,
   }),
@@ -146,6 +148,19 @@ describe("InboxView thread list", () => {
     mockMailState.selectedMessageId = null;
     mockMailState.selectedThreadId = "thread-1";
     mockMailState.threadView = true;
+    threadQuery.isError = false; threadQuery.hasNextPage = false;
+  });
+
+  it("offers more pages and a retry instead of treating failures as empty", () => {
+    threadQuery.hasNextPage = true;
+    const view = render(<InboxView />);
+    fireEvent.click(screen.getByRole("button", { name: "Load more conversations" }));
+    expect(threadQuery.fetchNextPage).toHaveBeenCalled();
+    threadQuery.isError = true;
+    view.rerender(<InboxView />);
+    expect(screen.getByRole("alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(threadQuery.refetch).toHaveBeenCalled();
   });
 
   it("groups virtualized thread options in a named listbox", () => {

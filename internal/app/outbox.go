@@ -32,12 +32,14 @@ type SendRequest struct {
 	BodyText        string   `json:"bodyText"`
 	BodyHTML        string   `json:"bodyHtml"`
 	InReplyTo       string   `json:"inReplyTo"`
+	ReplyMessageID  string   `json:"replyMessageId,omitempty"`
 	AttachmentPaths []string `json:"attachmentPaths"`
 	ClientKey       string   `json:"clientKey"`
 }
 type outboxPayload struct {
 	Email, Subject, MessageID, Fingerprint string
 	Raw                                    []byte
+	ThreadID                               string
 }
 type OutboxItem struct {
 	ID          string `json:"id"`
@@ -65,7 +67,7 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	if request.AccountID == "" || len(request.ClientKey) > 200 {
 		return Empty{}, errors.New("invalid send identity")
 	}
-	if err := validateDraft(SaveDraftRequest{AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, AttachmentPaths: request.AttachmentPaths}); err != nil {
+	if err := validateDraft(SaveDraftRequest{AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, ReplyMessageID: request.ReplyMessageID, AttachmentPaths: request.AttachmentPaths}); err != nil {
 		return Empty{}, err
 	}
 	r.composeMu.Lock()
@@ -138,7 +140,23 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	}
 	outgoing := mailmime.Outgoing{From: mail.Address{Name: account.DisplayName, Address: account.Email}, To: to, CC: cc, BCC: bcc, IncludeBcc: true, Subject: request.Subject, Text: request.BodyText, HTML: request.BodyHTML, MessageID: messageID, InReplyTo: request.InReplyTo, Date: time.Now()}
 	if request.InReplyTo != "" {
-		outgoing.References = []string{request.InReplyTo}
+		outgoing.References = mailmime.ReplyReferences("", "", request.InReplyTo)
+	}
+	threadID := ""
+	if request.ReplyMessageID != "" {
+		parent, err := r.DB.Message(ctx, request.ReplyMessageID)
+		if err != nil || parent.AccountID != account.ID {
+			return Empty{}, errors.New("reply message does not belong to selected account")
+		}
+		ids := mailmime.ThreadHeaderIDs(stringValue(parent.MessageIDHeader))
+		if len(ids) != 1 {
+			return Empty{}, errors.New("original message has no usable Message-ID")
+		}
+		outgoing.InReplyTo = ids[0]
+		outgoing.References = mailmime.ReplyReferences(stringValue(parent.ReferencesHeader), stringValue(parent.InReplyTo), ids[0])
+		if mailmime.NormalizeSubject(request.Subject) == mailmime.NormalizeSubject(parent.Subject) {
+			threadID = stringValue(parent.ThreadID)
+		}
 	}
 	compose := &ComposeService{Runtime: r}
 	var total int
@@ -166,7 +184,7 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	if err != nil {
 		return Empty{}, errors.New("invalid outgoing message or size limit exceeded")
 	}
-	plain, err := json.Marshal(outboxPayload{Email: account.Email, Subject: request.Subject, MessageID: messageID, Fingerprint: fingerprint, Raw: raw})
+	plain, err := json.Marshal(outboxPayload{Email: account.Email, Subject: request.Subject, MessageID: messageID, Fingerprint: fingerprint, Raw: raw, ThreadID: threadID})
 	if err != nil {
 		return Empty{}, err
 	}
@@ -328,7 +346,7 @@ func (r *Runtime) sendOutbox(ctx context.Context, record store.OutboxRecord) dom
 	if !ok {
 		return domain.SendResult{Message: "Provider does not support sending."}
 	}
-	return sender.Send(ctx, payload.Email, payload.Raw, func() error { return r.DB.BeginOutboxSend(ctx, record.ID) })
+	return sender.Send(ctx, domain.OutgoingMail{Email: payload.Email, Raw: payload.Raw, ThreadID: payload.ThreadID}, func() error { return r.DB.BeginOutboxSend(ctx, record.ID) })
 }
 func (r *Runtime) RunOutboxWorker(ctx context.Context) {
 	r.outboxWorkerMu.Lock()

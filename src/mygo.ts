@@ -163,6 +163,7 @@ export interface LocalDraft {
   bodyText: string;
   bodyHtml: string;
   inReplyTo: string;
+  replyMessageId?: string;
   quotedReplyHtml: string;
   editorMode: string;
   rawSource: string;
@@ -322,6 +323,7 @@ export interface SaveDraftRequest {
   bodyText: string;
   bodyHtml: string;
   inReplyTo: string;
+  replyMessageId?: string;
   quotedReplyHtml: string;
   existingDraftId: string;
   attachmentPaths: string[];
@@ -354,6 +356,7 @@ export interface SendRequest {
   bodyText: string;
   bodyHtml: string;
   inReplyTo: string;
+  replyMessageId?: string;
   attachmentPaths: string[];
   clientKey: string;
 }
@@ -391,6 +394,30 @@ export interface SyncResult {
 
 export interface SyncStarted {
   value: string;
+}
+
+export interface ThreadRequest {
+  threadId: string;
+}
+
+export interface ThreadSummary {
+  thread_id: string;
+  account_id: string;
+  subject: string;
+  snippet: string;
+  last_date: number;
+  message_count: number;
+  unread_count: number;
+  is_starred: boolean;
+  participants: string[];
+  has_attachments: boolean;
+}
+
+export interface ThreadsRequest {
+  folderId: string;
+  folderIds: string[];
+  limit: number;
+  offset: number;
 }
 
 export interface Tracker {
@@ -492,6 +519,15 @@ export const MessageService = {
   },
   unreadCounts(a: CountsRequest): Promise<Record<string, number>> {
     return call("MessageService.UnreadCounts", a);
+  },
+} as const;
+
+export const ThreadService = {
+  list(request: ThreadsRequest): Promise<ThreadSummary[]> {
+    return call("ThreadService.List", request);
+  },
+  messages(request: ThreadRequest): Promise<Message[]> {
+    return call("ThreadService.Messages", request);
   },
 } as const;
 

@@ -22,21 +22,26 @@ export default function ThreadView() {
   const selectedFolderIds = folderIdsForSelection(activeFolderId, folders);
   const queryFolderId = selectedFolderIds[0] ?? null;
   const queryFolderIds = selectedFolderIds.length > 1 ? selectedFolderIds : undefined;
-  const { data: threadMessages = [], isLoading } = useThreadMessagesQuery(selectedThreadId);
+  const { data: threadMessages = [], isLoading, isError, refetch } = useThreadMessagesQuery(selectedThreadId);
   const { data: threads = [] } = useThreadsQuery(queryFolderId, 50, 0, queryFolderIds);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const thread = threads.find((t) => t.thread_id === selectedThreadId);
 
+  const lastMessageId = threadMessages[threadMessages.length - 1]?.id;
   useEffect(() => {
-    if (scrollRef.current && threadMessages.length > 0) {
+    if (scrollRef.current && lastMessageId) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [threadMessages]);
+  }, [selectedThreadId, lastMessageId]);
 
-  if (isLoading) {
-    return <Spinner />;
-  }
+  if (isLoading) return <Spinner />;
+  if (isError) return <div role="alert">
+    <p>{t("thread.loadFailed", "Could not load conversation. Try again.")}</p>
+    <p>{t("thread.largeHint", "Conversations over 500 cached messages must be opened in message view.")}</p>
+    <button onClick={() => void refetch()}>{t("common.retry", "Retry")}</button>
+    <button onClick={() => setSelectedThreadId(null)}>{t("thread.back", "Back")}</button>
+  </div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: "var(--color-bg)" }}>
@@ -57,7 +62,7 @@ export default function ThreadView() {
             fontSize: "15px", fontWeight: "600", color: "var(--color-text-primary)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0, flex: 1,
           }}>
-            {thread?.subject || t("thread.title")}
+            {thread?.subject || threadMessages[threadMessages.length - 1]?.subject || t("thread.title")}
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--color-text-secondary)", fontSize: "12px" }}>
             <MessageSquare size={14} />
@@ -68,6 +73,7 @@ export default function ThreadView() {
 
       {/* Messages */}
       <div ref={scrollRef} className="scroll-region thread-message-scroll" style={{ flex: 1, overflow: "auto", padding: "16px" }}>
+        {threadMessages.length === 0 && <p>{t("common.noThreads")}</p>}
         {threadMessages.map((msg, i) => (
           <ThreadMessageBubble
             key={msg.id}

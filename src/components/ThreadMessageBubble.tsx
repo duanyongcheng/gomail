@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useComposeStore } from "@/stores/compose.store";
+import AttachmentList from "./AttachmentList";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { getRenderedHtml } from "@/lib/api";
+import { getRenderedHtml, getMessage, updateMessageFlags } from "@/lib/api";
 import type { Message, RenderedHtml } from "@/lib/api";
 import { defaultPrivacyMode } from "@/lib/privacyMode";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
@@ -21,10 +24,24 @@ function formatFullDate(timestamp: number): string {
   });
 }
 
-export default function ThreadMessageBubble({ message, defaultExpanded = false }: Props) {
+export default function ThreadMessageBubble(props: Props) {
+  return <ThreadBubble key={props.message.id} {...props} />;
+}
+
+function ThreadBubble({ message, defaultExpanded = false }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [rendered, setRendered] = useState<RenderedHtml | null>(null);
+  const [renderError, setRenderError] = useState(false);
+  const [renderLoading, setRenderLoading] = useState(false);
+  const [actionError, setActionError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const actionBusy = useRef(false);
+  const readMarked = useRef(false);
+  const alive = useRef(true);
+  const client = useQueryClient();
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const contactParticipants = uniqueContactParticipants(
     { name: message.from_name, address: message.from_address },
     message.to_list,
@@ -32,12 +49,35 @@ export default function ThreadMessageBubble({ message, defaultExpanded = false }
   );
 
   useEffect(() => {
-    if (expanded && !rendered) {
-      getRenderedHtml(message.id, defaultPrivacyMode())
-        .then((html) => setRendered({ ...html, html: sanitizeHtml(html.html) }))
-        .catch((err) => console.warn("Failed to render thread message HTML", err));
-    }
-  }, [expanded, rendered, message.id]);
+    if (!expanded) return;
+    let cancelled = false;
+    setRenderError(false); setRenderLoading(true);
+    getRenderedHtml(message.id, defaultPrivacyMode())
+      .then((html) => { if (!cancelled) setRendered({ ...html, html: sanitizeHtml(html.html) }); })
+      .catch(() => { if (!cancelled) setRenderError(true); })
+      .finally(() => { if (!cancelled) setRenderLoading(false); });
+    return () => { cancelled = true; };
+  }, [expanded, message.id, message.updated_at, retry]);
+
+  useEffect(() => {
+    if (message.is_read) readMarked.current = false;
+    if (!expanded || message.is_read || message.capabilities?.modify_flags === false || readMarked.current) return;
+    readMarked.current = true;
+    updateMessageFlags(message.id, true).then(() => {
+      for (const key of ["threads", "threadMessages", "messages", "folder-unread-counts", "account-unread-counts"]) void client.invalidateQueries({ queryKey: [key] });
+    }).catch(() => { readMarked.current = false; if (alive.current) setActionError(true); });
+  }, [expanded, message.id, message.is_read, message.capabilities?.modify_flags, client, retry]);
+
+  async function compose(mode: "reply" | "reply-all" | "forward") {
+    if (actionBusy.current) return;
+    actionBusy.current = true; setBusy(true); setActionError(false);
+    try {
+      // Thread list messages are metadata-only. Quotes need the full message.
+      const full = await getMessage(message.id);
+      if (alive.current) useComposeStore.getState().openCompose(mode, full);
+    } catch { if (alive.current) setActionError(true); }
+    finally { actionBusy.current = false; if (alive.current) setBusy(false); }
+  }
 
   return (
     <div
@@ -103,6 +143,9 @@ export default function ThreadMessageBubble({ message, defaultExpanded = false }
               ))}
             </div>
           </div>
+          {renderLoading && !rendered && <p role="status">{t("common.loading", "Loading...")}</p>}
+          {renderError && <p role="alert">{t("thread.renderFailed", "Could not render this message.")} <button onClick={() => setRetry((v) => v + 1)}>{t("common.retry", "Retry")}</button></p>}
+          {actionError && <p role="alert">{t("thread.actionFailed", "Could not update or open this message.")} <button onClick={() => { setActionError(false); setRetry((v) => v + 1); }}>{t("common.retry", "Retry")}</button></p>}
           {/* Body content */}
           {rendered?.html ? (
             <ShadowDomEmail html={rendered.html} />
@@ -115,6 +158,12 @@ export default function ThreadMessageBubble({ message, defaultExpanded = false }
               {message.body_text}
             </pre>
           )}
+          <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+            {(["reply", "reply-all", "forward"] as const).map((mode) => <button key={mode} disabled={busy} onClick={() => void compose(mode)}>
+              {t(mode === "reply-all" ? "messageActions.replyAll" : `messageActions.${mode}`)}
+            </button>)}
+          </div>
+          {message.has_attachments && <AttachmentList messageId={message.id} />}
         </div>
       )}
     </div>

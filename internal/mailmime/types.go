@@ -20,6 +20,10 @@ type Message struct {
 	Snippet     string       `json:"snippet"`
 	From        Address      `json:"from"`
 	To          []Address    `json:"to_list"`
+	CC          []Address    `json:"cc_list"`
+	BCC         []Address    `json:"bcc_list"`
+	InReplyTo   string       `json:"in_reply_to"`
+	References  string       `json:"references_header"`
 	BodyText    string       `json:"body_text"`
 	BodyHTML    string       `json:"body_html_raw"`
 	Date        int64        `json:"date"`

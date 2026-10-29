@@ -37,12 +37,17 @@ type SendResponse struct {
 // SendRaw does exactly one POST. A transport/read/malformed success/5xx/408
 // failure cannot prove Gmail did not accept the message, so it is not retryable.
 func (a *API) SendRaw(ctx context.Context, raw []byte) SendResponse {
+	return a.SendMessage(ctx, raw, "")
+}
+
+func (a *API) SendMessage(ctx context.Context, raw []byte, threadID string) SendResponse {
 	if err := ctx.Err(); err != nil {
 		return SendResponse{Retryable: true, Message: "Send cancelled before submission."}
 	}
 	body, err := json.Marshal(struct {
-		Raw string `json:"raw"`
-	}{base64.RawURLEncoding.EncodeToString(raw)})
+		Raw      string `json:"raw"`
+		ThreadID string `json:"threadId,omitempty"`
+	}{base64.RawURLEncoding.EncodeToString(raw), threadID})
 	if err != nil {
 		return SendResponse{Message: "Cannot encode outgoing message."}
 	}

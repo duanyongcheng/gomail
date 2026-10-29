@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { InfiniteData } from "@tanstack/react-query";
 import { useShortcutStore } from "@/stores/shortcut.store";
 import { useCommandStore } from "@/stores/command.store";
 import { useUIStore, type ActiveView } from "@/stores/ui.store";
@@ -34,9 +35,15 @@ function getCachedMessages(): MessageSummary[] {
 
 /** Read the first matching cached threads from React Query */
 function getCachedThreads(): ThreadSummary[] {
-  const entries = queryClient.getQueriesData<ThreadSummary[]>({ queryKey: ["threads"] });
+  const entries = queryClient.getQueriesData<InfiniteData<ThreadSummary[]>>({ queryKey: ["threads"], type: "active" });
   for (const [, data] of entries) {
-    if (data && data.length > 0) return data;
+    if (!data) continue;
+    const seen = new Set<string>();
+    const threads = data.pages.flat().filter((thread) => {
+      if (seen.has(thread.thread_id)) return false;
+      seen.add(thread.thread_id); return true;
+    });
+    if (threads.length > 0) return threads;
   }
   return [];
 }

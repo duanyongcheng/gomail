@@ -78,8 +78,9 @@ keeps its Promise<void> signature with an optional clientKey. The inventory stay
 ## Deferred work
 
 Gmail cloud draft synchronization, aliases, account identity reassignment,
-thread-ID-aware reply grouping/full References chains, automatic content-matching
-reconciliation, outbox pagination and SMTP are separate tasks. Failed payloads
+automatic content-matching reconciliation, outbox pagination and SMTP are separate
+tasks. The [conversation slice](m1-threads.md) now adds account-validated reply
+parents, References chains and native Gmail thread IDs to outgoing replies. Failed payloads
 cannot be edited in-place; cancel then compose a corrected message. An unknown
 send must be checked before creating any replacement. Real Google authorization
 and delivery have not been exercised in this slice; all automated sends use local

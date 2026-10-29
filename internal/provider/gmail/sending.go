@@ -29,7 +29,8 @@ func (p *Provider) sendSession(ctx context.Context, expectedEmail string) (*goog
 
 var errSenderMismatch = errors.New("Gmail mailbox does not match the queued sender; sign in to the correct account.")
 
-func (p *Provider) Send(ctx context.Context, email string, raw []byte, beforeSend func() error) domain.SendResult {
+func (p *Provider) Send(ctx context.Context, message domain.OutgoingMail, beforeSend func() error) domain.SendResult {
+	email, raw := message.Email, message.Raw
 	p.gate.Lock()
 	defer p.gate.Unlock()
 	session, err := p.sendSession(ctx, email)
@@ -50,7 +51,7 @@ func (p *Provider) Send(ctx context.Context, email string, raw []byte, beforeSen
 	if err := beforeSend(); err != nil {
 		return domain.SendResult{Retryable: true, Message: "Could not persist send start; no message was submitted."}
 	}
-	receipt := session.SendRaw(ctx, raw)
+	receipt := session.SendMessage(ctx, raw, message.ThreadID)
 	return domain.SendResult{RemoteID: receipt.RemoteID, Unknown: receipt.Unknown, Retryable: receipt.Retryable, Message: receipt.Message}
 }
 

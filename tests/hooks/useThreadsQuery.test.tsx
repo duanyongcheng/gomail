@@ -1,0 +1,22 @@
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+import { useThreadsQuery } from "@/hooks/queries/useThreadsQuery";
+import { listThreads } from "@/lib/api";
+vi.mock("@/lib/api", () => ({ listThreads: vi.fn() }));
+afterEach(cleanup);
+it("loads later thread pages and deduplicates overlap without mixing folders", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const thread = (id: string) => ({ thread_id: id, subject: id, account_id: "a", snippet: "", last_date: 1, message_count: 1, unread_count: 0, is_starred: false, participants: [], has_attachments: false });
+  vi.mocked(listThreads).mockResolvedValueOnce([thread("1"), thread("2")]).mockResolvedValueOnce([thread("2"), thread("3")]).mockResolvedValueOnce([]);
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { result, unmount } = renderHook(() => useThreadsQuery("a-inbox", 2, 0, ["a-inbox", "b-inbox"]), { wrapper });
+  await waitFor(() => expect(result.current.data).toHaveLength(2));
+  await act(async () => { await result.current.fetchNextPage(); });
+  await waitFor(() => expect(result.current.data.map((x) => x.thread_id)).toEqual(["1", "2", "3"]));
+  expect(listThreads).toHaveBeenLastCalledWith("a-inbox", 2, 2, ["a-inbox", "b-inbox"]);
+  await act(async () => { await result.current.fetchNextPage(); });
+  await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+  unmount(); client.clear();
+});

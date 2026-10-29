@@ -588,10 +588,11 @@ export async function sendEmail(
   inReplyTo?: string,
   attachmentPaths?: string[],
   clientKey?: string,
+  replyMessageId?: string,
 ): Promise<void> {
   // Resolves on durable outbox acceptance, not remote delivery.
   return invoke<void>("send_email", {
-    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths, clientKey,
+    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths, clientKey, replyMessageId,
   });
 }
 
@@ -891,6 +892,7 @@ export async function saveDraft(args: {
   attachmentPaths?: string[];
   clientKey?: string;
   quotedReplyHtml?: string;
+  replyMessageId?: string;
   editorMode?: string;
   rawSource?: string;
 }): Promise<string> {
@@ -907,6 +909,7 @@ export async function saveDraft(args: {
     attachmentPaths: args.attachmentPaths ?? null,
     clientKey: args.clientKey,
     quotedReplyHtml: args.quotedReplyHtml,
+    replyMessageId: args.replyMessageId,
     editorMode: args.editorMode,
     rawSource: args.rawSource,
   });

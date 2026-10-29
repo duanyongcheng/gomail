@@ -72,6 +72,19 @@ type Message struct {
 	UpdatedAt        int64        `json:"updated_at"`
 }
 
+type ThreadSummary struct {
+	ThreadID       string   `json:"thread_id"`
+	AccountID      string   `json:"account_id"`
+	Subject        string   `json:"subject"`
+	Snippet        string   `json:"snippet"`
+	LastDate       int64    `json:"last_date"`
+	MessageCount   int      `json:"message_count"`
+	UnreadCount    int      `json:"unread_count"`
+	IsStarred      bool     `json:"is_starred"`
+	Participants   []string `json:"participants"`
+	HasAttachments bool     `json:"has_attachments"`
+}
+
 type Attachment struct {
 	ID        string  `json:"id"`
 	MessageID string  `json:"message_id"`

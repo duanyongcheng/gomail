@@ -149,6 +149,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     migrateLegacyDraft: Boolean(restoredDraft.current) && !localDraft,
     existingDraftId: localDraft?.id, existingDraftAccountId: localDraft?.accountId,
     inReplyTo: localDraft?.inReplyTo || (isReply ? composeReplyTo?.message_id_header ?? undefined : undefined),
+    replyMessageId: localDraft?.replyMessageId || (isReply ? composeReplyTo?.id : undefined),
     quotedReplyHtml,
   });
 
@@ -398,6 +399,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
         bodyText,
         bodyHtml: outgoingBodyHtml || undefined,
         inReplyTo: inReplyTo || undefined,
+        replyMessageId: localDraft?.replyMessageId || (isReply ? composeReplyTo?.id : undefined),
         attachmentPaths: attachmentsRef.current.length > 0
           ? attachmentsRef.current.map((attachment) => attachment.path)
           : undefined,

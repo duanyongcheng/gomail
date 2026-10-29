@@ -12,6 +12,7 @@ interface SendEmailParams {
   inReplyTo?: string;
   attachmentPaths?: string[];
   clientKey?: string;
+  replyMessageId?: string;
 }
 
 export function useSendEmailMutation() {
@@ -30,6 +31,7 @@ export function useSendEmailMutation() {
         params.inReplyTo,
         params.attachmentPaths,
         params.clientKey,
+        params.replyMessageId,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });

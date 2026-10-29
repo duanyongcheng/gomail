@@ -86,8 +86,8 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `list_rules` | startup-stub | M3 |
 | `list_snoozed` | startup-stub | M3 |
 | `list_starred_messages` | implemented | M0 |
-| `list_thread_messages` | not-implemented | M1 |
-| `list_threads` | startup-stub | M1 |
+| `list_thread_messages` | implemented | M1 |
+| `list_threads` | implemented | M1 |
 | `list_translate_models` | not-implemented | M5 |
 | `list_trusted_senders` | startup-stub | M3 |
 | `load_auto_backup_config` | startup-stub | M5 |

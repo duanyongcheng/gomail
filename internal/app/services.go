@@ -259,11 +259,23 @@ type MessageWithHTML struct {
 }
 
 func (s *MessageService) List(ctx context.Context, a MessagesRequest) ([]domain.Message, error) {
-	return s.Runtime.DB.Messages(ctx, a.FolderID, a.AccountID, a.Starred, a.Limit, a.Offset)
+	messages, err := s.Runtime.DB.Messages(ctx, a.FolderID, a.AccountID, a.Starred, a.Limit, a.Offset)
+	if err != nil {
+		return nil, err
+	}
+	for i := range messages {
+		if thread, e := s.Runtime.DB.PublicThreadID(ctx, messages[i].ID); e == nil {
+			messages[i].ThreadID = &thread
+		}
+	}
+	return messages, nil
 }
 func (s *MessageService) Get(ctx context.Context, a MessageRequest) (domain.Message, error) {
 	m, err := s.Runtime.DB.Message(ctx, a.MessageID)
 	if err == nil {
+		if thread, threadErr := s.Runtime.DB.PublicThreadID(ctx, m.ID); threadErr == nil {
+			m.ThreadID = &thread
+		}
 		if provider, providerErr := s.Runtime.provider(m.AccountID); providerErr == nil {
 			m.Capabilities = provider.Capabilities()
 		}

@@ -135,7 +135,8 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var input struct {
-			Raw string `json:"raw"`
+			Raw      string `json:"raw"`
+			ThreadID string `json:"threadId"`
 		}
 		if json.NewDecoder(io.LimitReader(r.Body, 50<<20)).Decode(&input) != nil {
 			w.WriteHeader(400)
@@ -148,7 +149,11 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		m.SentRaw = append(m.SentRaw, raw)
 		id := fmt.Sprintf("sent-%d", len(m.SentRaw))
-		m.Messages[id] = Message{ID: id, ThreadID: "thread-" + id, Labels: []string{"SENT"}, Raw: input.Raw, Date: "1700000000000", HistoryID: m.HistoryID}
+		thread := input.ThreadID
+		if thread == "" {
+			thread = "thread-" + id
+		}
+		m.Messages[id] = Message{ID: id, ThreadID: thread, Labels: []string{"SENT"}, Raw: input.Raw, Date: "1700000000000", HistoryID: m.HistoryID}
 		if m.LoseSendResponse {
 			conn, _, err := w.(http.Hijacker).Hijack()
 			if err == nil {

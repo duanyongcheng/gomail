@@ -51,8 +51,6 @@ export const commands = {
   list_labels: startup([], "M3"),
   list_rules: startup([], "M3"),
   list_snoozed: startup([], "M3"),
-  list_thread_messages: pending("list_thread_messages", "M1"),
-  list_threads: startup([], "M1"),
   list_translate_models: pending("list_translate_models", "M5"),
   list_trusted_senders: startup([], "M3"),
   load_auto_backup_config: startup(null, "M5"),

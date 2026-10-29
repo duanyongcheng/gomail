@@ -917,6 +917,11 @@
     "close": "关闭"
   },
   "thread": {
+    "loadFailed": "无法加载会话，请重试。",
+    "loadMore": "加载更多会话",
+    "largeHint": "超过 500 封缓存邮件的会话，请切换到邮件视图查看。",
+    "renderFailed": "无法渲染此邮件。",
+    "actionFailed": "无法更新或打开此邮件。",
     "title": "会话",
     "to": "收件人：",
     "cc": "抄送："

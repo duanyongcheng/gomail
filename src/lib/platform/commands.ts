@@ -1,4 +1,4 @@
-import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, OutboxService, PendingOpsService, SearchService, SyncService } from "@/mygo";
+import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, OutboxService, PendingOpsService, SearchService, SyncService, ThreadService } from "@/mygo";
 import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest, SendRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
@@ -18,6 +18,8 @@ export const implementedCommands = {
   }),
   delete_account: implemented((a: AccountRequest) => AccountService.delete(a)),
   list_folders: implemented((a: AccountRequest) => FolderService.list(a)),
+  list_threads: implemented((a: { folderId?: string; folderIds?: string[]; limit?: number; offset?: number }) => ThreadService.list({ folderId: a.folderId ?? "", folderIds: a.folderIds ?? [], limit: a.limit ?? 50, offset: a.offset ?? 0 }), "M1"),
+  list_thread_messages: implemented((a: { threadId: string }) => ThreadService.messages(a), "M1"),
   list_messages: implemented((a: Partial<MessagesRequest>) => MessageService.list({ folderId: a.folderId ?? "", accountId: a.accountId ?? "", limit: a.limit ?? 50, offset: a.offset ?? 0, starred: false })),
   list_starred_messages: implemented((a: Partial<MessagesRequest>) => MessageService.list({ folderId: "", accountId: a.accountId ?? "", limit: a.limit ?? 50, offset: a.offset ?? 0, starred: true })),
   get_message: implemented((a: MessageRequest) => MessageService.get(a)),
@@ -45,12 +47,12 @@ export const implementedCommands = {
   send_email: implemented(async (a: Partial<SendRequest>) => { await OutboxService.queue({
     accountId: a.accountId ?? "", to: a.to ?? [], cc: a.cc ?? [], bcc: a.bcc ?? [],
     subject: a.subject ?? "", bodyText: a.bodyText ?? "", bodyHtml: a.bodyHtml ?? "",
-    inReplyTo: a.inReplyTo ?? "", attachmentPaths: a.attachmentPaths ?? [], clientKey: a.clientKey ?? "",
+    inReplyTo: a.inReplyTo ?? "", replyMessageId: a.replyMessageId, attachmentPaths: a.attachmentPaths ?? [], clientKey: a.clientKey ?? "",
   }); }, "M1"),
   save_draft: implemented((a: Partial<SaveDraftRequest>) => ComposeService.save({
     accountId: a.accountId ?? "", to: a.to ?? [], cc: a.cc ?? [], bcc: a.bcc ?? [],
     subject: a.subject ?? "", bodyText: a.bodyText ?? "", bodyHtml: a.bodyHtml ?? "",
-    inReplyTo: a.inReplyTo ?? "", existingDraftId: a.existingDraftId ?? "",
+    inReplyTo: a.inReplyTo ?? "", replyMessageId: a.replyMessageId, existingDraftId: a.existingDraftId ?? "",
     attachmentPaths: a.attachmentPaths ?? [], clientKey: a.clientKey ?? "",
     editorMode: a.editorMode ?? "rich", rawSource: a.rawSource ?? "", quotedReplyHtml: a.quotedReplyHtml ?? "",
   }), "M1"),

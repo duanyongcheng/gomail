@@ -917,6 +917,11 @@
     "close": "Close"
   },
   "thread": {
+    "loadFailed": "Could not load conversation. Try again.",
+    "loadMore": "Load more conversations",
+    "largeHint": "Conversations over 500 cached messages must be opened in message view.",
+    "renderFailed": "Could not render this message.",
+    "actionFailed": "Could not update or open this message.",
     "title": "Thread",
     "to": "To:",
     "cc": "Cc:"

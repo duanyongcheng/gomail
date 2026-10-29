@@ -84,6 +84,7 @@ export default function StatusBar() {
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["messages"] });
     queryClient.invalidateQueries({ queryKey: ["threads"] });
+    queryClient.invalidateQueries({ queryKey: ["threadMessages"] });
     queryClient.invalidateQueries({ queryKey: ["folder-unread-counts"] });
     queryClient.invalidateQueries({ queryKey: accountUnreadCountsQueryKey });
   }
@@ -130,6 +131,7 @@ export default function StatusBar() {
     const unlisten = listen<MailNewPayload>("mail:new", (event) => {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
       queryClient.invalidateQueries({ queryKey: ["threads"] });
+      queryClient.invalidateQueries({ queryKey: ["threadMessages"] });
       // The sidebar badge reads this key, and nothing else invalidates it on
       // delivery: without it the count only catches up on the next 30s poll, or
       // right after the mail is read (which does refresh every unread view).

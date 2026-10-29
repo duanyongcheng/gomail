@@ -6,7 +6,7 @@ import { useMailStore } from "../../src/stores/mail.store";
 const mocks = vi.hoisted(() => ({
   queryClient: {
     invalidateQueries: vi.fn(),
-    getQueriesData: vi.fn(() => []),
+    getQueriesData: vi.fn(),
   },
   archiveMessage: vi.fn(),
   updateMessageFlags: vi.fn(),
@@ -50,6 +50,7 @@ describe("useKeyboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.archiveMessage.mockResolvedValue("archived");
+    mocks.queryClient.getQueriesData.mockReturnValue([]);
     useShortcutStore.setState({
       bindings: { ...DEFAULT_BINDINGS, "archive-message": "E" },
       recording: null,
@@ -59,6 +60,16 @@ describe("useKeyboard", () => {
       selectedThreadId: null,
       threadView: false,
     });
+  });
+
+  it("navigates across loaded thread pages without using inactive folder caches", () => {
+    useMailStore.setState({ threadView: true, selectedThreadId: "thread-1", selectedMessageId: null });
+    useShortcutStore.setState({ bindings: { ...DEFAULT_BINDINGS, "next-message": "J" } });
+    mocks.queryClient.getQueriesData.mockReturnValue([[ ["threads"], { pages: [[{ thread_id: "thread-1" }], [{ thread_id: "thread-2" }]], pageParams: [0, 50] } ]]);
+    renderHook(() => useKeyboard());
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true })); });
+    expect(useMailStore.getState().selectedThreadId).toBe("thread-2");
+    expect(mocks.queryClient.getQueriesData).toHaveBeenCalledWith({ queryKey: ["threads"], type: "active" });
   });
 
   it("refreshes folder unread counts after the archive shortcut succeeds", async () => {

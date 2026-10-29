@@ -1,8 +1,13 @@
-import { render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ThreadMessageBubble from "../../src/components/ThreadMessageBubble";
 import type { Message } from "../../src/lib/api";
-import { getRenderedHtml } from "../../src/lib/api";
+import { getRenderedHtml, getMessage, updateMessageFlags } from "../../src/lib/api";
+const mocks = vi.hoisted(() => ({ openCompose: vi.fn(), invalidate: vi.fn() }));
+vi.mock("../../src/stores/compose.store", () => ({ useComposeStore: { getState: () => ({ openCompose: mocks.openCompose }) } }));
+
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: mocks.invalidate }) }));
+vi.mock("../../src/components/AttachmentList", () => ({ default: () => <div>Attachments</div> }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -11,6 +16,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("../../src/lib/api", () => ({
+  getMessage: vi.fn(), updateMessageFlags: vi.fn().mockResolvedValue(undefined),
   getRenderedHtml: vi.fn().mockResolvedValue({
     html: "<p>Rendered</p>",
     trackers_blocked: [],
@@ -58,9 +64,10 @@ const message: Message = {
 };
 
 describe("ThreadMessageBubble", () => {
-  it("shows copied recipients when expanded", () => {
+  it("shows copied recipients when expanded", async () => {
     render(<ThreadMessageBubble message={message} defaultExpanded />);
 
+    await waitFor(() => expect(document.body.textContent).toContain("Rendered"));
     expect(document.body.textContent).toContain("Cc: cc@example.com");
   });
 
@@ -74,9 +81,30 @@ describe("ThreadMessageBubble", () => {
     });
   });
 
-  it("offers contact actions for expanded message participants", () => {
+  it("marks only an expanded unread message and fetches full content before replying", async () => {
+    vi.mocked(getMessage).mockResolvedValue({ ...message, body_text: "full quote" });
+    render(<ThreadMessageBubble message={{ ...message, is_read: false, body_text: "" }} defaultExpanded />);
+    await waitFor(() => expect(updateMessageFlags).toHaveBeenCalledWith("message-1", true));
+    fireEvent.click(screen.getByRole("button", { name: "messageActions.reply" }));
+    await waitFor(() => expect(mocks.openCompose).toHaveBeenCalledWith("reply", expect.objectContaining({ body_text: "full quote" })));
+    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["threadMessages"] });
+  });
+
+  it("shows rendering failures and ignores responses after message changes", async () => {
+    let finish!: (value: never) => void;
+    vi.mocked(getRenderedHtml).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const view = render(<ThreadMessageBubble message={message} defaultExpanded />);
+    vi.mocked(getRenderedHtml).mockRejectedValueOnce(new Error("failed"));
+    view.rerender(<ThreadMessageBubble message={{ ...message, id: "other" }} defaultExpanded />);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    await act(async () => finish({ html: "STALE", trackers_blocked: [], images_blocked: 0 } as never));
+    expect(document.body.textContent).not.toContain("STALE");
+  });
+
+  it("offers contact actions for expanded message participants", async () => {
     render(<ThreadMessageBubble message={message} defaultExpanded />);
 
+    await waitFor(() => expect(document.body.textContent).toContain("Rendered"));
     expect(document.querySelectorAll("[data-testid='contact-address-action']")).toHaveLength(3);
   });
 });

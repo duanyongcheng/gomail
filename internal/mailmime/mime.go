@@ -53,6 +53,22 @@ func ParseWithLimit(raw []byte, limit int) (Message, error) {
 		n := a.Name
 		out.To = append(out.To, Address{&n, a.Address})
 	}
+	for _, field := range []struct {
+		name   string
+		target *[]Address
+	}{{"Cc", &out.CC}, {"Bcc", &out.BCC}} {
+		addresses, err := r.Header.AddressList(field.name)
+		if err != nil {
+			return out, err
+		}
+		*field.target = []Address{}
+		for _, a := range addresses {
+			name := a.Name
+			*field.target = append(*field.target, Address{Name: &name, Address: a.Address})
+		}
+	}
+	out.InReplyTo = strings.Join(ThreadHeaderIDs(r.Header.Get("In-Reply-To")), " ")
+	out.References = strings.Join(ThreadHeaderIDs(r.Header.Get("References")), " ")
 	date, err := r.Header.Date()
 	if err != nil {
 		return out, err

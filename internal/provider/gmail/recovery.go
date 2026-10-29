@@ -41,6 +41,11 @@ func (b *pageBatch) flush(checkpoint *store.GmailCheckpoint, cursor *string) err
 		b.counted[cached.Message.ID] = true
 	}
 	b.result.Count = len(b.counted)
+	for i := range b.announcements {
+		if thread, err := b.provider.DB.PublicThreadID(b.ctx, b.announcements[i].MessageID); err == nil {
+			b.announcements[i].ThreadID = &thread
+		}
+	}
 	b.result.NewMessages = append(b.result.NewMessages, b.announcements...)
 	if cursor != nil {
 		b.result.HistoryID = *cursor

@@ -87,7 +87,7 @@ export default function InboxView() {
     threadView ? null : queryFolderId,
     threadView ? undefined : queryFolderIds,
   );
-  const { data: threads = EMPTY_THREADS, isLoading: loadingThreads } = useThreadsQuery(
+  const { data: threads = EMPTY_THREADS, isLoading: loadingThreads, isError: threadsError, refetch: retryThreads, hasNextPage: moreThreads, isFetchingNextPage: loadingMoreThreads, fetchNextPage: loadMoreThreads } = useThreadsQuery(
     threadView ? queryFolderId : null,
     50,
     0,
@@ -252,6 +252,11 @@ export default function InboxView() {
               selectedThreadId={selectedThreadId}
               onSelectThread={setSelectedThreadId}
               loading={loadingThreads}
+              error={threadsError}
+              onRetry={() => { void retryThreads(); }}
+              hasMore={moreThreads}
+              loadingMore={loadingMoreThreads}
+              onLoadMore={() => { void loadMoreThreads(); }}
               accountBadgesById={showAccountBadges ? accountBadgesById : undefined}
             />
           ) : (
@@ -288,11 +293,16 @@ export default function InboxView() {
 }
 
 // Inline ThreadList component using virtualizer
-function ThreadList({ threads, selectedThreadId, onSelectThread, loading, accountBadgesById }: {
+function ThreadList({ threads, selectedThreadId, onSelectThread, loading, error, onRetry, hasMore, loadingMore, onLoadMore, accountBadgesById }: {
   threads: ThreadSummary[];
   selectedThreadId: string | null;
   onSelectThread: (id: string) => void;
   loading: boolean;
+  error?: boolean;
+  onRetry: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore: () => void;
   /** Absent when a single mailbox is selected, where labelling every row is noise. */
   accountBadgesById?: Map<string, AccountBadgeInfo>;
 }) {
@@ -300,6 +310,7 @@ function ThreadList({ threads, selectedThreadId, onSelectThread, loading, accoun
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: threads.length,
+    getItemKey: (index) => threads[index].thread_id,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 76,
     measureElement: (el) => el.getBoundingClientRect().height,
@@ -319,6 +330,7 @@ function ThreadList({ threads, selectedThreadId, onSelectThread, loading, accoun
     return <MessageListSkeleton />;
   }
 
+  if (error) return <div role="alert">{t("thread.loadFailed", "Could not load conversation. Try again.")} <button onClick={onRetry}>{t("common.retry", "Retry")}</button></div>;
   if (threads.length === 0) {
     return (
       <div className="fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-text-secondary)", fontSize: "14px", gap: "8px" }}>
@@ -357,6 +369,7 @@ function ThreadList({ threads, selectedThreadId, onSelectThread, loading, accoun
           );
         })}
       </div>
+      {hasMore && <button disabled={loadingMore} onClick={onLoadMore} style={{ margin: 12 }}>{t("thread.loadMore", "Load more conversations")}</button>}
     </div>
   );
 }

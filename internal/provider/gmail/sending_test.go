@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/mailmime"
 	"github.com/bary/pebble-go/internal/store"
 )
@@ -25,21 +26,22 @@ func TestSenderVerificationAndUnknownReconciliation(t *testing.T) {
 	}
 	countSent := func() int { mock.Lock(); defer mock.Unlock(); return len(mock.SentRaw) }
 	starts := 0
-	result := p.Send(t.Context(), "a@example.invalid", raw, func() error { starts++; return nil })
+	outgoing := domain.OutgoingMail{Email: "a@example.invalid", Raw: raw}
+	result := p.Send(t.Context(), outgoing, func() error { starts++; return nil })
 	if result.RemoteID != "" || result.Unknown || result.Retryable || starts != 0 || countSent() != 0 {
 		t.Fatal("identity mismatch submitted", result, starts)
 	}
 	mock.Lock()
 	mock.ProfileEmail = "a@example.invalid"
 	mock.Unlock()
-	result = p.Send(t.Context(), "a@example.invalid", raw, func() error { return errors.New("DB failure") })
+	result = p.Send(t.Context(), outgoing, func() error { return errors.New("DB failure") })
 	if result.Unknown || !result.Retryable || countSent() != 0 {
 		t.Fatal(result)
 	}
 	mock.Lock()
 	mock.LoseSendResponse = true
 	mock.Unlock()
-	result = p.Send(t.Context(), "a@example.invalid", raw, func() error { starts++; return nil })
+	result = p.Send(t.Context(), outgoing, func() error { starts++; return nil })
 	if !result.Unknown || result.Retryable || starts != 1 || countSent() != 1 {
 		t.Fatal(result, starts)
 	}
@@ -52,7 +54,7 @@ func TestSenderVerificationAndUnknownReconciliation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	result = p.Send(ctx, "a@example.invalid", raw, func() error { t.Error("cancelled send began"); return nil })
+	result = p.Send(ctx, outgoing, func() error { t.Error("cancelled send began"); return nil })
 	if countSent() != 1 || result.RemoteID != "" {
 		t.Fatal(result)
 	}

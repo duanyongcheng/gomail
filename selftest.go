@@ -56,6 +56,12 @@ func prepareSelftest(runtime *app.Runtime) error {
 		return err
 	}
 	fixture.Set("m3", queueRaw, []string{"INBOX", "UNREAD"})
+	fixture.Set("m4", []byte("From: second@example.invalid\r\nTo: demo@example.invalid\r\nMessage-ID: <thread-child@example.invalid>\r\nIn-Reply-To: <selftest@example.invalid>\r\nReferences: <selftest@example.invalid>\r\nSubject: Re: Pebble Go selftest\r\n\r\nThread selftest reply"), []string{"INBOX", "UNREAD"})
+	fixture.Lock()
+	threadChild := fixture.Messages["m4"]
+	threadChild.ThreadID = fixture.Messages["m1"].ThreadID
+	fixture.Messages["m4"] = threadChild
+	fixture.Unlock()
 	account := domain.Account{ID: "selftest-gmail", Email: "demo@example.invalid", DisplayName: "Selftest Gmail", Provider: "gmail", CreatedAt: 1, UpdatedAt: 1}
 	if err := runtime.DB.SaveAccount(runtime.Context, account, nil); err != nil {
 		return err
@@ -131,7 +137,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -156,6 +162,13 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		return
 	}
 	capture("inbox.png")
+	if waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(会话视图|会话模式|Thread view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
+		if waitSelftestPage(ctx, window, `(() => { const row=Array.from(document.querySelectorAll('[role="option"]')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row)return false;row.click();return true; })()`, 5*time.Second) {
+			checks["thread conversation rendered"] = waitSelftestPage(ctx, window, `document.querySelectorAll('.thread-message-scroll button[aria-expanded]').length === 2 && document.querySelector('.thread-message-scroll')?.innerText.includes('second@example.invalid')`, 10*time.Second)
+			capture("thread.png")
+		}
+		waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(邮件视图|Message view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second)
+	}
 	accounts, err := runtime.DB.Accounts(ctx)
 	checks["account restored from store"] = err == nil && len(accounts) > 0
 	hits, err := runtime.DB.Search(ctx, "中文搜索", "selftest-gmail", 10)

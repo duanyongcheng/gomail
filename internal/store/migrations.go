@@ -42,6 +42,7 @@ var migrations = []migrationFunc{
 	24: sqlMigration("024.sql"),
 	25: sqlMigration("025.sql"),
 	26: sqlMigration("026.sql"),
+	27: migrateThreads,
 }
 
 // migrate holds one physical connection throughout the upgrade. V12 must turn

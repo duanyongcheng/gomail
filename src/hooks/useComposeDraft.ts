@@ -100,6 +100,7 @@ interface UseComposeDraftArgs {
   existingDraftId?: string;
   existingDraftAccountId?: string;
   inReplyTo?: string;
+  replyMessageId?: string;
   quotedReplyHtml?: string;
   /** True once the TipTap editor has mounted and populated richTextHtml with
    * its initial content (signature, quoted reply, etc.). Until this flips to
@@ -110,7 +111,7 @@ interface UseComposeDraftArgs {
 
 export function useComposeDraft({
   to, cc, bcc, subject, rawSource, richTextHtml, editorMode, composeMode, fromAccountId, attachments, editorReady,
-  migrateLegacyDraft = false, existingDraftId, existingDraftAccountId, inReplyTo, quotedReplyHtml,
+  migrateLegacyDraft = false, existingDraftId, existingDraftAccountId, inReplyTo, replyMessageId, quotedReplyHtml,
 }: UseComposeDraftArgs) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const mountedRef = useRef(true);
@@ -306,7 +307,7 @@ export function useComposeDraft({
     return {
       accountId: fromAccountId, to, cc, bcc, subject, bodyText,
       bodyHtml, quotedReplyHtml,
-      rawSource, editorMode, inReplyTo,
+      rawSource, editorMode, inReplyTo, replyMessageId,
       attachmentPaths: attachments.map((a) => a.path).filter(Boolean),
     };
   }

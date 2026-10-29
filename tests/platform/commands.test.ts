@@ -10,6 +10,7 @@ vi.mock("@/mygo", () => ({
   OutboxService: { queue: vi.fn().mockResolvedValue({}) },
   FileService: { downloads: vi.fn(), saveAttachment: vi.fn() },
   FolderService: { list: vi.fn() },
+  ThreadService: { list: vi.fn(), messages: vi.fn() },
   MessageService: {
     list: vi.fn(), get: vi.fn(), rendered: vi.fn(), flags: vi.fn(), attachments: vi.fn(), unreadCounts: vi.fn(),
     archive: vi.fn().mockResolvedValue("archived"), delete: vi.fn().mockResolvedValue({}), restore: vi.fn().mockResolvedValue({}),
@@ -21,7 +22,7 @@ vi.mock("@/mygo", () => ({
   SearchService: { search: vi.fn() },
   SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
-import { AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService } from "@/mygo";
+import { AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService, ThreadService } from "@/mygo";
 import { downloadDir } from "../../src/lib/platform/path";
 import { saveAttachmentAs } from "../../src/lib/platform/attachments";
 import { invoke } from "../../src/lib/platform/core";
@@ -79,6 +80,13 @@ describe("MyGO command adapter", () => {
   it("queues sending through the durable service without claiming remote delivery", async () => {
     expect(await invoke("send_email", { accountId: "a", to: ["to@example.invalid"], clientKey: "k" })).toBeUndefined();
     expect(OutboxService.queue).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", clientKey: "k", attachmentPaths: [] }));
+  });
+
+  it("routes account-scoped thread handles and multiple folders", async () => {
+    await invoke("list_threads", { folderId: "a-inbox", folderIds: ["a-inbox", "b-inbox"], limit: 20, offset: 20 });
+    expect(ThreadService.list).toHaveBeenCalledWith({ folderId: "a-inbox", folderIds: ["a-inbox", "b-inbox"], limit: 20, offset: 20 });
+    await invoke("list_thread_messages", { threadId: "thread:opaque" });
+    expect(ThreadService.messages).toHaveBeenCalledWith({ threadId: "thread:opaque" });
   });
 
   it("routes local drafts and staged byte arrays without exposing generic filesystem APIs", async () => {

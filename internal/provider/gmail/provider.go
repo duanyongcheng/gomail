@@ -66,12 +66,18 @@ func (p *Provider) fetch(ctx context.Context, id string) (store.CachedMessage, e
 		}
 		return store.CachedMessage{}, &googleapi.ContentError{Kind: kind}
 	}
-	m := domain.Message{ID: store.ScopedID(p.AccountID, id), AccountID: p.AccountID, RemoteID: id, MessageIDHeader: &parsed.MessageID, ThreadID: &remote.ThreadID, Subject: parsed.Subject, Snippet: parsed.Snippet, FromAddress: parsed.From.Address, To: []domain.Address{}, CC: []domain.Address{}, BCC: []domain.Address{}, BodyText: parsed.BodyText, BodyHTML: parsed.BodyHTML, IsRead: true, Date: parsed.Date, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()}
+	m := domain.Message{ID: store.ScopedID(p.AccountID, id), AccountID: p.AccountID, RemoteID: id, MessageIDHeader: &parsed.MessageID, InReplyTo: &parsed.InReplyTo, ReferencesHeader: &parsed.References, ThreadID: &remote.ThreadID, Subject: parsed.Subject, Snippet: parsed.Snippet, FromAddress: parsed.From.Address, To: []domain.Address{}, CC: []domain.Address{}, BCC: []domain.Address{}, BodyText: parsed.BodyText, BodyHTML: parsed.BodyHTML, IsRead: true, Date: parsed.Date, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()}
 	if parsed.From.Name != nil {
 		m.FromName = *parsed.From.Name
 	}
 	for _, a := range parsed.To {
 		m.To = append(m.To, domain.Address{Name: a.Name, Address: a.Address})
+	}
+	for _, a := range parsed.CC {
+		m.CC = append(m.CC, domain.Address{Name: a.Name, Address: a.Address})
+	}
+	for _, a := range parsed.BCC {
+		m.BCC = append(m.BCC, domain.Address{Name: a.Name, Address: a.Address})
 	}
 	if millis, err := strconv.ParseInt(remote.Date, 10, 64); err == nil {
 		m.Date = millis / 1000
