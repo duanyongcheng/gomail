@@ -46,14 +46,9 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 	if err != nil {
 		return result, err
 	}
-	folders := []domain.Folder{}
-	roles := map[string]string{"INBOX": "inbox", "SENT": "sent", "DRAFT": "drafts", "TRASH": "trash", "SPAM": "spam"}
-	for _, label := range labels {
-		var role *string
-		if value, ok := roles[label.ID]; ok {
-			role = &value
-		}
-		folders = append(folders, domain.Folder{ID: store.ScopedID(p.AccountID, "label:"+label.ID), AccountID: p.AccountID, RemoteID: label.ID, Name: label.Name, FolderType: "label", Role: role, IsSystem: label.Type == "system"})
+	folders := labelFolders(p.AccountID, labels)
+	if err := p.DB.ReconcileGmailLabels(ctx, p.AccountID, folders); err != nil {
+		return result, err
 	}
 	checkpoint := state.Checkpoint
 	reset := func() error {

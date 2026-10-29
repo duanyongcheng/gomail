@@ -249,7 +249,7 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 			if f.AccountID != s.AccountID {
 				return errors.New("folder account mismatch")
 			}
-			_, err := tx.ExecContext(ctx, `INSERT INTO folders(id,account_id,remote_id,name,folder_type,role,is_system) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,role=excluded.role`, f.ID, f.AccountID, f.RemoteID, f.Name, f.FolderType, f.Role, f.IsSystem)
+			_, err := tx.ExecContext(ctx, `INSERT INTO folders(id,account_id,remote_id,name,folder_type,role,is_system) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,role=excluded.role,is_system=excluded.is_system`, f.ID, f.AccountID, f.RemoteID, f.Name, f.FolderType, f.Role, f.IsSystem)
 			if err != nil {
 				return err
 			}

@@ -225,6 +225,9 @@ func (a *API) Labels(ctx context.Context) ([]Label, error) {
 		Labels []Label `json:"labels"`
 	}
 	err := a.request(ctx, "GET", "/labels", nil, nil, &p)
+	if err == nil {
+		err = ValidateLabels(p.Labels)
+	}
 	return p.Labels, err
 }
 func (a *API) List(ctx context.Context, page string, max int) (ListPage, error) {

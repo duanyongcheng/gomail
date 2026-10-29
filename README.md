@@ -17,8 +17,9 @@ through the native Save As dialog. Compose supports local encrypted drafts and
 attachment staging. Gmail sending uses an encrypted durable outbox with primary
 mailbox verification and unknown-outcome protection. Conversation view groups
 cached mail by account-scoped Gmail threads and carries reply context through
-sending. Cloud drafts and labels CRUD remain M1 work. IMAP/SMTP are tested as an isolated protocol prototype and join the app
-in M2.
+sending. Gmail custom labels can be created, renamed and deleted from account
+settings. Cloud drafts and remaining account/privacy polish are still M1 work.
+IMAP/SMTP are tested as an isolated protocol prototype and join the app in M2.
 
 ## Development
 
@@ -91,6 +92,12 @@ header fallback never merges mail by subject alone. Replies preserve parent
 References and, for unchanged subjects, the original Gmail thread ID. See
 [conversations and threading](docs/m1-threads.md).
 
+Settings → Accounts → **Gmail labels** manages server labels online, with system
+label protection and explicit confirmation before deleting a custom label.
+Deleting a label does not delete its messages. Uncertain writes are retained for
+read-only refresh/reconciliation instead of automatic retries. See
+[Gmail labels](docs/m1-gmail-labels.md).
+
 ## Gmail OAuth configuration
 
 Copy `.env.example` to a local `.env` and set your Google Desktop client values:
@@ -146,6 +153,7 @@ Version 25 adds separate encrypted local drafts, staged attachment objects and
 reference tracking; these are not part of remotely synchronized mail or FTS.
 Version 26 adds the encrypted send outbox, independent of idempotent mail mutations.
 Version 27 adds an account-scoped conversation index without modifying legacy tables.
+Version 28 records unresolved Gmail label-management writes for safe reconciliation.
 An unversioned PoC database is rejected instead of being silently rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 
@@ -169,7 +177,8 @@ suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox, conversation view, attachment export, local draft restore/save, failed-download retry and a
+inbox, conversation view, Gmail label CRUD, attachment export, local draft
+restore/save, failed-download retry and a
 single send to the local Gmail fixture through the UI, writes a JSON report and
 screenshots, then exits. It does not
 contact Google or the system keyring; draft checks use an in-memory test keyring:

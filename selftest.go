@@ -137,7 +137,7 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -207,6 +207,8 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		return
 	}
 	capture("download-failure.png")
+	checks["Gmail labels managed through UI"] = selftestLabels(ctx, runtime, window)
+	capture("gmail-labels.png")
 	if !waitSelftestPage(ctx, window, `(() => { const button = document.getElementById('mail-download-failures-title')?.closest('section')?.querySelector('button'); if (!button || button.disabled) return false; button.click(); return true; })()`, 5*time.Second) {
 		return
 	}

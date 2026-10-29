@@ -111,7 +111,7 @@ export default function Sidebar() {
   // once: a group that only filled in once its account was selected could not
   // show what it holds, which is the reason to group in the first place.
   const folderAccountIds = useMemo(() => accounts.map((account) => account.id), [accounts]);
-  const { data: folders = EMPTY_FOLDERS } = useFoldersForAccountsQuery(folderAccountIds);
+  const { data: folders = EMPTY_FOLDERS, isFetched: foldersFetched, isError: foldersError } = useFoldersForAccountsQuery(folderAccountIds);
   const { data: unreadCounts = {} } = useFolderUnreadCountsForAccounts(folderAccountIds);
   const accountUnreadCounts = useAccountUnreadCounts();
   const [folderMenu, setFolderMenu] = useState<FolderMenuTarget | null>(null);
@@ -237,12 +237,15 @@ export default function Sidebar() {
   // finished impossible to select at all: clicking it bounced the selection away.
   // InboxView shows a sync prompt for that case instead.
   useEffect(() => {
-    if (activeFolderId) return;
     const pool = groups.find((group) => group.selected)?.folders ?? [];
+    if (activeFolderId) {
+      if (foldersFetched && !foldersError && !pool.some((f) => f.id === activeFolderId)) setActiveFolderId(null);
+      return;
+    }
     if (pool.length === 0) return;
     const inbox = pool.find((folder) => folder.role === "inbox");
     setActiveFolderId((inbox ?? pool[0]).id);
-  }, [groups, activeFolderId, setActiveFolderId]);
+  }, [groups, activeFolderId, setActiveFolderId, foldersFetched, foldersError]);
 
   async function confirmDiscardDraft() {
     if (isComposeDirty()) {

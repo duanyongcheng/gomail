@@ -32,6 +32,8 @@ type Runtime struct {
 	OnPendingOpsChanged  func()
 	OnAttachmentProgress func(AttachmentProgress)
 	OnOutboxChanged      func()
+	OnFoldersChanged     func(AccountRequest)
+	labelManagementMu    sync.Mutex
 	outboxWake           chan struct{}
 	outboxMu             sync.Mutex
 	outboxWorkerMu       sync.Mutex
@@ -350,6 +352,11 @@ func (r *Runtime) performSync(ctx context.Context, account string) (domain.SyncR
 		result, err = provider.SyncWithProgress(ctx, r.OnProgress)
 	} else {
 		result, err = p.Sync(ctx)
+	}
+	// Label reconciliation commits independently of message pages. Refresh the
+	// sidebar even if a later message fetch failed during this sync pass.
+	if r.OnFoldersChanged != nil {
+		r.OnFoldersChanged(AccountRequest{AccountID: account})
 	}
 	// NewMessages only contains pages already committed, including when a
 	// later page failed. Replaying a checkpoint will not announce them twice.

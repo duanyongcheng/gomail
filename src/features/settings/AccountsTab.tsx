@@ -1,5 +1,6 @@
 import { accountLabel } from "@/lib/accountIdentity";
 import MailDownloadFailures from "./MailDownloadFailures";
+import GmailLabels from "./GmailLabels";
 import OAuthIdentityPanel from "./OAuthIdentityPanel";
 import XOAuth2Panel from "./XOAuth2Panel";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -460,7 +461,10 @@ export default function AccountsTab() {
       )}
 
       {accounts.some((account) => account.provider === "gmail") && (
-        <MailDownloadFailures accounts={accounts.filter((account) => account.provider === "gmail")} />
+        <>
+          <MailDownloadFailures accounts={accounts.filter((account) => account.provider === "gmail")} />
+          <GmailLabels accounts={accounts.filter((account) => account.provider === "gmail")} />
+        </>
       )}
 
       {/* Test result */}

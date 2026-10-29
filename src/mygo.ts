@@ -153,6 +153,27 @@ export interface Geometry {
   y: number;
 }
 
+export interface GmailLabelChange {
+  id: string;
+  action: string;
+  remoteId: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface GmailLabelRequest {
+  accountId: string;
+  action: string;
+  folderId: string;
+  name: string;
+  pendingId: string;
+}
+
+export interface GmailLabelsView {
+  folders: Folder[];
+  pending: GmailLabelChange | null;
+}
+
 export interface LocalDraft {
   id: string;
   accountId: string;
@@ -461,6 +482,15 @@ export const FolderService = {
   },
 } as const;
 
+export const GmailLabelService = {
+  change(request: GmailLabelRequest): Promise<GmailLabelsView> {
+    return call("GmailLabelService.Change", request);
+  },
+  list(request: AccountRequest): Promise<GmailLabelsView> {
+    return call("GmailLabelService.List", request);
+  },
+} as const;
+
 export const MessageService = {
   /** Archive keeps upstream's toggle semantics, decided inside the transaction. */
   archive(request: ArchiveRequest): Promise<string> {
@@ -671,4 +701,5 @@ export const events = {
   mailPendingOpsChanged: event<{}>("mail:pending-ops-changed"),
   attachmentDownloadProgress: event<AttachmentProgress>("attachment:download-progress"),
   mailOutboxChanged: event<{}>("mail:outbox-changed"),
+  mailFoldersChanged: event<AccountRequest>("mail:folders-changed"),
 } as const;

@@ -99,6 +99,18 @@
     "threadView": "会话视图",
     "messageList": "邮件列表"
   },
+  "gmailLabels": {
+    "title": "Gmail 标签", "account": "标签所属账户",
+    "notice": "联网管理 Gmail 服务端标签。删除标签不会删除邮件；应用本地标签是另一项功能。",
+    "refresh": "从 Gmail 刷新", "create": "创建", "rename": "重命名", "delete": "删除",
+    "newName": "新标签名称", "renameName": "重命名标签", "system": "系统标签",
+    "deleteTitle": "删除 Gmail 标签？", "deleteWarning": "仅从 Gmail 邮件上移除此标签，不会删除任何邮件。",
+    "resolveTitle": "处理结果未确认的标签操作？", "resolve": "已在 Gmail 核对，清除记录",
+    "resolveWarning": "请先在 Gmail 核对。上次操作可能已成功，清除记录不会撤销操作；再次重试可能重复创建标签。",
+    "uncertain": "上次标签操作需要确认。刷新只核对结果，不会重复执行。",
+    "loadFailed": "无法读取缓存标签。", "changeFailed": "标签操作失败，请刷新后再尝试。",
+    "empty": "没有缓存标签，请从 Gmail 刷新。"
+  },
   "outbox": {
     "allAccounts": "所有账户", "title": "发件箱", "notice": "入队不等于已发送。结果未知的邮件不会自动重发。",
     "queuedNotice": "已加入发件箱，尚不代表发送成功；请在发件箱查看状态。",

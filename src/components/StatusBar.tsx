@@ -93,6 +93,16 @@ export default function StatusBar() {
     return !accountId || !activeAccountId || accountId === activeAccountId;
   }
 
+  useEffect(() => {
+    const unlisten = listen("mail:folders-changed", () => {
+      refreshMailQueries();
+      void queryClient.invalidateQueries({ queryKey: ["gmail-labels"] });
+      void queryClient.invalidateQueries({ queryKey: ["pendingMailOps"] });
+      void queryClient.invalidateQueries({ queryKey: ["pendingMailOpsList"] });
+    });
+    return () => { void unlisten.then((off) => off()); };
+  }, [queryClient]);
+
   // Listen for sync-complete: legacy worker-exit event used by one-shot syncs.
   useEffect(() => {
     const unlisten = listen<SyncCompletePayload>("mail:sync-complete", (event) => {

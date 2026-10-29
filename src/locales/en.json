@@ -99,6 +99,18 @@
     "threadView": "Thread view",
     "messageList": "Message list"
   },
+  "gmailLabels": {
+    "title": "Gmail labels", "account": "Label account",
+    "notice": "Manage Gmail server labels online. Deleting a label does not delete its messages. Local app tags are separate.",
+    "refresh": "Refresh from Gmail", "create": "Create", "rename": "Rename", "delete": "Delete",
+    "newName": "New label name", "renameName": "Rename label", "system": "System",
+    "deleteTitle": "Delete Gmail label?", "deleteWarning": "Only this label is removed from Gmail messages. No messages are deleted.",
+    "resolveTitle": "Resolve uncertain label change?", "resolve": "I checked Gmail; clear record",
+    "resolveWarning": "Check Gmail first. The previous change may have succeeded. Clearing this record does not undo it; a later retry may create a duplicate.",
+    "uncertain": "A previous label change needs confirmation. Refresh checks its outcome without repeating it.",
+    "loadFailed": "Could not read cached labels.", "changeFailed": "Label change failed. Refresh before retrying.",
+    "empty": "No cached labels. Refresh from Gmail to load them."
+  },
   "outbox": {
     "allAccounts": "All accounts", "title": "Outbox", "notice": "Queued is not sent. Unknown outcomes are never resent automatically.",
     "queuedNotice": "Added to Outbox. This does not mean sent yet; check Outbox for status.",

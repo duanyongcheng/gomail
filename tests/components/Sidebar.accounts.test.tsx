@@ -148,6 +148,13 @@ describe("Sidebar account list", () => {
     useConfirmStore.setState({ confirm: vi.fn().mockResolvedValue(true) });
   });
 
+  it("returns to Inbox if the selected server label was removed", () => {
+    useMailStore.setState({ activeFolderId: "deleted-label", selectedMessageId: "old-message" });
+    renderSidebar();
+    expect(useMailStore.getState().activeFolderId).toBe("folder-inbox-account-work");
+    expect(useMailStore.getState().selectedMessageId).toBeNull();
+  });
+
   it("lists every account at once instead of hiding them behind a picker", () => {
     renderSidebar();
 

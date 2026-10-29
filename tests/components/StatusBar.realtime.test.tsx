@@ -136,6 +136,15 @@ describe("StatusBar realtime mail events", () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["account-unread-counts"] });
   });
 
+  it("refreshes folders and mail counts after a label-management event", async () => {
+    render(<StatusBar />);
+    await waitFor(() => expect(mocks.listeners.has("mail:folders-changed")).toBe(true));
+    mocks.listeners.get("mail:folders-changed")?.({ payload: { accountId: "account-1" } });
+    for (const key of ["folders", "messages", "threads", "threadMessages", "folder-unread-counts", "account-unread-counts", "pendingMailOpsList", "gmail-labels"]) {
+      expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: [key] });
+    }
+  });
+
   it("refreshes mail and unread counts after queued local writes or dismiss", async () => {
     render(<StatusBar />);
     await waitFor(() => expect(mocks.listeners.has("mail:pending-ops-changed")).toBe(true));

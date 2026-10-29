@@ -8,6 +8,7 @@ import {
 } from "../../../src/lib/api";
 
 vi.mock("../../../src/features/settings/MailDownloadFailures", () => ({ default: () => null }));
+vi.mock("../../../src/features/settings/GmailLabels", () => ({ default: () => null }));
 
 vi.mock("react-i18next", () => ({
   initReactI18next: {

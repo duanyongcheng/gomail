@@ -42,13 +42,20 @@ type Mock struct {
 	SentRaw           [][]byte
 	SendStatus        int
 	LoseSendResponse  bool
+	LabelItems        map[string]Label
+	LabelWrites       int
+	LoseLabelResponse bool
+	LabelWriteStatus  int
 }
 
 func (m *Mock) Lock()   { m.mu.Lock() }
 func (m *Mock) Unlock() { m.mu.Unlock() }
 
 func NewMock() *Mock {
-	m := &Mock{Messages: map[string]Message{}, HistoryID: "900719925474099312345"}
+	m := &Mock{Messages: map[string]Message{}, HistoryID: "900719925474099312345", LabelItems: map[string]Label{
+		"INBOX": {ID: "INBOX", Name: "INBOX", Type: "system"}, "UNREAD": {ID: "UNREAD", Name: "UNREAD", Type: "system"},
+		"STARRED": {ID: "STARRED", Name: "STARRED", Type: "system"}, "Label_work": {ID: "Label_work", Name: "工作", Type: "user"},
+	}}
 	m.Server = httptest.NewServer(http.HandlerFunc(m.serve))
 	return m
 }
@@ -116,6 +123,10 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/gmail/v1/users/me")
+	if (path == "/labels" && r.Method == http.MethodPost) || strings.HasPrefix(path, "/labels/") {
+		m.serveLabelWrite(w, r, path)
+		return
+	}
 	switch path {
 	case "/profile":
 		email := m.ProfileEmail
@@ -124,7 +135,12 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(Profile{Email: email, HistoryID: m.HistoryID})
 	case "/labels":
-		_ = json.NewEncoder(w).Encode(map[string]any{"labels": []Label{{ID: "INBOX", Name: "INBOX", Type: "system"}, {ID: "UNREAD", Name: "UNREAD", Type: "system"}, {ID: "STARRED", Name: "STARRED", Type: "system"}, {ID: "Label_work", Name: "工作", Type: "user"}}})
+		labels := []Label{}
+		for _, label := range m.LabelItems {
+			labels = append(labels, label)
+		}
+		sort.Slice(labels, func(i, j int) bool { return labels[i].ID < labels[j].ID })
+		_ = json.NewEncoder(w).Encode(map[string]any{"labels": labels})
 	case "/messages/send":
 		if r.Method != http.MethodPost {
 			w.WriteHeader(405)

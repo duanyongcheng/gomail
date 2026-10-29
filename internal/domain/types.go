@@ -164,7 +164,13 @@ type FolderProvider interface {
 	Folders(context.Context) ([]Folder, error)
 }
 type LabelProvider interface {
-	CreateLabel(context.Context, string) (Folder, error)
+	RefreshLabels(context.Context) error
+	ChangeLabel(context.Context, LabelChange) error
+}
+type LabelChange struct {
+	Action   string
+	FolderID string
+	Name     string
 }
 type DraftProvider interface {
 	SaveDraft(context.Context, Message) (string, error)

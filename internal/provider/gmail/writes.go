@@ -33,6 +33,9 @@ func (p *Provider) Replay(ctx context.Context, opType string, raw json.RawMessag
 	if err := ctx.Err(); err != nil {
 		return false, err
 	}
+	if err := p.DB.ValidateGmailLabelTargets(ctx, p.AccountID, payload); err != nil {
+		return false, err
+	}
 	if err := p.API.Modify(ctx, payload.RemoteID, payload.AddLabels, payload.RemoveLabels); err != nil {
 		var remote *googleapi.HTTPError
 		if errors.As(err, &remote) && remote.Status >= 400 && remote.Status < 500 && remote.Status != 401 && remote.Status != 403 && remote.Status != 429 {

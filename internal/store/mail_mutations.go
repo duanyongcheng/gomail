@@ -146,6 +146,13 @@ func (db *DB) QueueMailMutation(ctx context.Context, request MailMutation) (Mail
 				if owner != m.AccountID {
 					return errors.New("target folder belongs to another account")
 				}
+				var deleting bool
+				if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM gmail_label_changes WHERE account_id=? AND action='delete' AND remote_id=?)", m.AccountID, remote).Scan(&deleting); err != nil {
+					return err
+				}
+				if deleting {
+					return errors.New("target label is being deleted; refresh Gmail labels first")
+				}
 				payload.AddLabels = []string{remote}
 				if remote == "INBOX" {
 					payload.RemoveLabels = []string{"TRASH", "SPAM"}
