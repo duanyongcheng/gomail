@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { isActionAvailable, isViewAvailable } from "@/lib/availability";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useShortcutStore } from "@/stores/shortcut.store";
 import { useCommandStore } from "@/stores/command.store";
@@ -7,7 +8,8 @@ import { useComposeStore, isComposeDirty } from "@/stores/compose.store";
 import { useConfirmStore } from "@/stores/confirm.store";
 import { useMailStore } from "@/stores/mail.store";
 import { useToastStore } from "@/stores/toast.store";
-import { updateMessageFlags, archiveMessage, getMessage } from "@/lib/api";
+import { archiveMessage, getMessage } from "@/lib/api";
+import { executeMessageFlags } from "@/hooks/mutations/messageFlagsMutation";
 import { queryClient } from "@/lib/query-client";
 import type { MessageSummary, ThreadSummary } from "@/lib/api";
 import { patchMessagesCache, readFirstCachedMessages } from "@/hooks/queries";
@@ -70,6 +72,7 @@ function closeOpenMessageDetail(): boolean {
 }
 
 function navigateAfterComposeConfirm(view: ActiveView) {
+  if (!isViewAvailable(view)) return;
   if (isComposeDirty()) {
     useComposeStore.getState().discardComposeAndSetActiveView(view);
     return;
@@ -93,7 +96,7 @@ export function useKeyboard() {
     const bindings = useShortcutStore.getState().bindings;
     const map = new Map<string, string>();
     for (const [actionId, keys] of Object.entries(bindings)) {
-      map.set(keys.toLowerCase(), actionId);
+      if (isActionAvailable(actionId)) map.set(keys.toLowerCase(), actionId);
     }
     keyToActionRef.current = map;
 
@@ -101,7 +104,7 @@ export function useKeyboard() {
     const unsubscribe = useShortcutStore.subscribe((state) => {
       const updated = new Map<string, string>();
       for (const [actionId, keys] of Object.entries(state.bindings)) {
-        updated.set(keys.toLowerCase(), actionId);
+        if (isActionAvailable(actionId)) updated.set(keys.toLowerCase(), actionId);
       }
       keyToActionRef.current = updated;
     });
@@ -121,7 +124,7 @@ export function useKeyboard() {
 
       const actionId = keyToActionRef.current.get(keyString.toLowerCase());
 
-      if (!actionId) return;
+      if (!actionId || !isActionAvailable(actionId)) return;
 
       // Command palette always works even in inputs
       if (actionId === "command-palette") {
@@ -173,27 +176,8 @@ export function useKeyboard() {
         case "toggle-star": {
           const { selectedMessageId } = useMailStore.getState();
           if (selectedMessageId) {
-            const messages = getCachedMessages();
-            const msg = messages.find((m) => m.id === selectedMessageId);
-            if (msg) {
-              const newStarred = !msg.is_starred;
-              // Optimistic update in React Query cache
-              patchMessagesCache(queryClient, (page) =>
-                page.map((m) =>
-                  m.id === selectedMessageId ? { ...m, is_starred: newStarred } : m,
-                ),
-              );
-              updateMessageFlags(selectedMessageId, undefined, newStarred)
-                .then(() => queryClient.invalidateQueries({ queryKey: ["messages"] }))
-                .catch(() => {
-                  // Rollback on error
-                  patchMessagesCache(queryClient, (page) =>
-                    page.map((m) =>
-                      m.id === selectedMessageId ? { ...m, is_starred: !newStarred } : m,
-                    ),
-                  );
-                });
-            }
+            // The shared lifecycle owns rollback and the static error toast.
+            void executeMessageFlags(queryClient, { messageId: selectedMessageId, toggleStarred: true }, (key, fallback) => i18n.t(key, fallback)).catch(() => {});
           }
           break;
         }

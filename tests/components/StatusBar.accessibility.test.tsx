@@ -67,6 +67,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({
     invalidateQueries: vi.fn(),
+    isMutating: () => 0,
   }),
 }));
 

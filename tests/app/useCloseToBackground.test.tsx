@@ -1,115 +1,88 @@
-import { render, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
+import { act, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { quitApp, startSync, stopSync } from "../../src/lib/api";
 
 const mocks = vi.hoisted(() => ({
-  accounts: [{ id: "account-1" }, { id: "account-2" }],
-  closeHandler: undefined as undefined | ((event: { preventDefault: () => void }) => void | Promise<void>),
-  focusHandler: undefined as undefined | ((event: { payload: boolean }) => void),
-  hide: vi.fn().mockResolvedValue(undefined),
-  onCloseRequested: vi.fn((handler: (event: { preventDefault: () => void }) => void | Promise<void>) => {
-    mocks.closeHandler = handler;
-    return Promise.resolve(vi.fn());
-  }),
-  onFocusChanged: vi.fn((handler: (event: { payload: boolean }) => void) => {
-    mocks.focusHandler = handler;
-    return Promise.resolve(vi.fn());
-  }),
-  uiState: {
-    keepRunningInBackground: false,
-    pollInterval: 5,
-    realtimeMode: "realtime" as "realtime" | "balanced" | "battery" | "manual",
-  },
+  call: vi.fn().mockResolvedValue({}),
+  uiState: { keepRunningInBackground: false },
 }));
 
-vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({
-    hide: mocks.hide,
-    onCloseRequested: mocks.onCloseRequested,
-    onFocusChanged: mocks.onFocusChanged,
-  }),
+// Keep the real window adapter AND generated service; mock only native transport.
+vi.mock("mygo-runtime", () => ({ call: mocks.call, currentWindow: {}, event: vi.fn() }));
+vi.mock("@/stores/ui.store", () => ({
+  useUIStore: (selector: (state: typeof mocks.uiState) => unknown) => selector(mocks.uiState),
 }));
 
-vi.mock("../../src/lib/api", () => ({
-  quitApp: vi.fn().mockResolvedValue(undefined),
-  startSync: vi.fn().mockResolvedValue(undefined),
-  stopSync: vi.fn().mockResolvedValue(undefined),
-}));
+import { useCloseToBackground } from "@/app/useCloseToBackground";
+import { initializeProfileStorageNamespace, resetProfileStorageNamespaceForTests } from "@/lib/profileStorage";
+import { getCurrentWindow } from "@/lib/platform/window";
+import { useToastStore } from "@/stores/toast.store";
 
-vi.mock("../../src/hooks/queries", () => ({
-  useAccountsQuery: () => ({ data: mocks.accounts }),
-}));
+function Harness() { useCloseToBackground(); return null; }
 
-vi.mock("../../src/stores/ui.store", () => {
-  const useUIStore = (selector: (state: typeof mocks.uiState) => unknown) => selector(mocks.uiState);
-  useUIStore.getState = () => mocks.uiState;
-  return { useUIStore };
-});
-
-import { useCloseToBackground } from "../../src/app/useCloseToBackground";
-
-function Harness() {
-  useCloseToBackground();
-  return null;
-}
-
-describe("useCloseToBackground", () => {
+describe("native close preference adapter", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.closeHandler = undefined;
-    mocks.focusHandler = undefined;
-    mocks.accounts = [{ id: "account-1" }, { id: "account-2" }];
+    mocks.call.mockReset().mockResolvedValue({});
     mocks.uiState.keepRunningInBackground = false;
-    mocks.uiState.pollInterval = 5;
-    mocks.uiState.realtimeMode = "realtime";
+    resetProfileStorageNamespaceForTests();
+    localStorage.clear();
+    useToastStore.setState({ toasts: [] });
   });
 
-  it("quits on purpose when background mode is disabled", async () => {
+  it("does not send an unscoped preference before profile readiness", async () => {
     render(<Harness />);
-
-    await waitFor(() => expect(mocks.onCloseRequested).toHaveBeenCalledOnce());
-    const preventDefault = vi.fn();
-    await mocks.closeHandler?.({ preventDefault });
-
-    // The event is claimed even here: letting Tauri's wrapper run its default
-    // would destroy the window instead of quitting through the backend, which
-    // is the difference between a clean exit and losing the window state.
-    expect(preventDefault).toHaveBeenCalledOnce();
-    expect(quitApp).toHaveBeenCalledOnce();
-    expect(mocks.hide).not.toHaveBeenCalled();
+    await act(async () => {});
+    expect(mocks.call).not.toHaveBeenCalled();
   });
 
-  it("keeps sync workers running when hiding the window to tray", async () => {
+  it("sends the hydrated close preference once through the generated service, including StrictMode", async () => {
+    await initializeProfileStorageNamespace(async () => "synthetic-profile");
+    const view = render(<StrictMode><Harness /></StrictMode>);
+    await waitFor(() => expect(mocks.call).toHaveBeenCalledExactlyOnceWith("AppService.ClosePreference", {
+      profileNamespace: "synthetic-profile", keepRunningInBackground: false,
+    }));
     mocks.uiState.keepRunningInBackground = true;
-    render(<Harness />);
-
-    await waitFor(() => expect(mocks.onCloseRequested).toHaveBeenCalledOnce());
-    const preventDefault = vi.fn();
-    await mocks.closeHandler?.({ preventDefault });
-
-    expect(preventDefault).toHaveBeenCalledOnce();
-    expect(mocks.hide).toHaveBeenCalledOnce();
-    expect(quitApp).not.toHaveBeenCalled();
-    expect(stopSync).not.toHaveBeenCalled();
+    view.rerender(<StrictMode><Harness /></StrictMode>);
+    await waitFor(() => expect(mocks.call).toHaveBeenLastCalledWith("AppService.ClosePreference", {
+      profileNamespace: "synthetic-profile", keepRunningInBackground: true,
+    }));
+    expect(mocks.call).toHaveBeenCalledTimes(2);
   });
 
-  it("resumes sync when the hidden window regains focus", async () => {
-    render(<Harness />);
-
-    await waitFor(() => expect(mocks.onFocusChanged).toHaveBeenCalledOnce());
-    mocks.focusHandler?.({ payload: true });
-
-    expect(startSync).toHaveBeenCalledWith("account-1", 5);
-    expect(startSync).toHaveBeenCalledWith("account-2", 5);
+  it("serializes updates so slow old calls cannot overwrite new preferences", async () => {
+    await initializeProfileStorageNamespace(async () => "synthetic-profile");
+    let finish!: (value: object) => void;
+    mocks.call.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const view = render(<Harness />);
+    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(1));
+    mocks.uiState.keepRunningInBackground = true;
+    view.rerender(<Harness />);
+    await act(async () => {});
+    expect(mocks.call).toHaveBeenCalledTimes(1);
+    await act(async () => finish({}));
+    expect(mocks.call).toHaveBeenLastCalledWith("AppService.ClosePreference", {
+      profileNamespace: "synthetic-profile", keepRunningInBackground: true,
+    });
   });
 
-  it("does not resume sync in manual realtime mode", async () => {
-    mocks.uiState.realtimeMode = "manual";
+  it("shows only a static error if preference sync fails", async () => {
+    await initializeProfileStorageNamespace(async () => "synthetic-profile");
+    mocks.call.mockRejectedValueOnce(new Error("private transport diagnostic"));
     render(<Harness />);
+    await waitFor(() => expect(useToastStore.getState().toasts).toHaveLength(1));
+    expect(useToastStore.getState().toasts[0].message).toContain("Could not apply");
+    expect(useToastStore.getState().toasts[0].message).not.toContain("private");
+  });
 
-    await waitFor(() => expect(mocks.onFocusChanged).toHaveBeenCalledOnce());
-    mocks.focusHandler?.({ payload: true });
-
-    expect(startSync).not.toHaveBeenCalled();
+  it("routes close/restore to real Go window actions without JS close/focus shims or sync restarts", async () => {
+    const window = getCurrentWindow();
+    expect(window).not.toHaveProperty("onCloseRequested");
+    expect(window).not.toHaveProperty("onFocusChanged");
+    await window.close();
+    await window.restore();
+    expect(mocks.call.mock.calls).toEqual([
+      ["AppService.WindowAction", { action: "close", width: 0, height: 0, x: 0, y: 0 }],
+      ["AppService.WindowAction", { action: "restore", width: 0, height: 0, x: 0, y: 0 }],
+    ]);
   });
 });

@@ -42,3 +42,18 @@ it("keeps unknown state when the read-only check fails", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Check Sent" }));
   expect((await screen.findByRole("alert")).textContent).toContain("No resend was attempted");
 });
+it("retains the reconciliation identity for an unknown cloud-draft send", async () => {
+  mocks.list.mockResolvedValue([{ ...item("outcome_unknown"), cloudDraft: true }]);
+  show(); fireEvent.click(screen.getByText(/Outbox/));
+  const check = await screen.findByRole("button", { name: "Check Sent" });
+  expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  expect(screen.getByText(/linked to a Gmail draft/)).toBeTruthy();
+  fireEvent.click(check);
+  await waitFor(() => expect(mocks.action).toHaveBeenCalledWith({ accountId: "a", id: "id", action: "check" }));
+});
+it("still allows dismissal of confirmed cloud sends and ordinary unknown sends", async () => {
+  mocks.list.mockResolvedValue([{ ...item("sent"), cloudDraft: true }, { ...item("outcome_unknown"), id: "ordinary" }]);
+  show(); fireEvent.click(screen.getByText(/Outbox/));
+  expect(await screen.findAllByRole("button", { name: "Dismiss" })).toHaveLength(2);
+});

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,37 +14,47 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bary/pebble-go/internal/googleapi"
 	"golang.org/x/oauth2"
 )
 
 // Mock is a local OAuth/Gmail fixture server, never Google's real service.
 type Mock struct {
-	Server            *httptest.Server
-	mu                sync.Mutex
-	Messages          map[string]Message
-	HistoryID         string
-	Expired           bool
-	FailStatus        int
-	PageLoop          bool
-	Refreshes         int
-	RejectRefresh     bool
-	HistoryPages      bool
-	HistoryRefs       []Ref
-	HistoryPageSize   int
-	RequestURIs       []string
-	FailMessage       string
-	ExpectedChallenge string
-	PageSize          int
-	OmitFromList      map[string]bool
-	Requests          []string
-	ProfileEmail      string
-	SentRaw           [][]byte
-	SendStatus        int
-	LoseSendResponse  bool
-	LabelItems        map[string]Label
-	LabelWrites       int
-	LoseLabelResponse bool
-	LabelWriteStatus  int
+	Server                  *httptest.Server
+	mu                      sync.Mutex
+	Messages                map[string]Message
+	HistoryID               string
+	Expired                 bool
+	FailStatus              int
+	PageLoop                bool
+	Refreshes               int
+	RejectRefresh           bool
+	HistoryPages            bool
+	HistoryRefs             []Ref
+	HistoryPageSize         int
+	RequestURIs             []string
+	FailMessage             string
+	ExpectedChallenge       string
+	PageSize                int
+	OmitFromList            map[string]bool
+	Requests                []string
+	ProfileEmail            string
+	SentRaw                 [][]byte
+	SendStatus              int
+	LoseSendResponse        bool
+	LabelItems              map[string]Label
+	LabelWrites             int
+	LoseLabelResponse       bool
+	LabelWriteStatus        int
+	Drafts                  map[string]googleapi.Draft
+	DraftWrites             int
+	DraftDeletes            int
+	DraftSends              int
+	DraftPageSize           int
+	DraftDeleteStatus       int
+	LoseDraftDeleteResponse bool
+	draftSequence           int
+	draftRevision           int
 }
 
 func (m *Mock) Lock()   { m.mu.Lock() }
@@ -123,6 +132,10 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/gmail/v1/users/me")
+	if path == "/drafts" || strings.HasPrefix(path, "/drafts/") {
+		m.serveDraft(w, r, path)
+		return
+	}
 	if (path == "/labels" && r.Method == http.MethodPost) || strings.HasPrefix(path, "/labels/") {
 		m.serveLabelWrite(w, r, path)
 		return
@@ -146,10 +159,6 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(405)
 			return
 		}
-		if m.SendStatus != 0 {
-			w.WriteHeader(m.SendStatus)
-			return
-		}
 		var input struct {
 			Raw      string `json:"raw"`
 			ThreadID string `json:"threadId"`
@@ -158,26 +167,7 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(400)
 			return
 		}
-		raw, err := base64.RawURLEncoding.DecodeString(input.Raw)
-		if err != nil {
-			w.WriteHeader(400)
-			return
-		}
-		m.SentRaw = append(m.SentRaw, raw)
-		id := fmt.Sprintf("sent-%d", len(m.SentRaw))
-		thread := input.ThreadID
-		if thread == "" {
-			thread = "thread-" + id
-		}
-		m.Messages[id] = Message{ID: id, ThreadID: thread, Labels: []string{"SENT"}, Raw: input.Raw, Date: "1700000000000", HistoryID: m.HistoryID}
-		if m.LoseSendResponse {
-			conn, _, err := w.(http.Hijacker).Hijack()
-			if err == nil {
-				conn.Close()
-			}
-			return
-		}
-		_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
+		m.recordSent(w, input.Raw, input.ThreadID, "")
 	case "/messages":
 		ids := make([]string, 0, len(m.Messages))
 		for id, message := range m.Messages {

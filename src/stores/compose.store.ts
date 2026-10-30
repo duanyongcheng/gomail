@@ -7,6 +7,7 @@ export type ComposeMode = "new" | "reply" | "reply-all" | "forward";
 
 export interface ComposePrefill {
   localDraft?: LocalDraft;
+  gmailDraftsAccountId?: string;
   to?: string[];
   cc?: string[];
   bcc?: string[];

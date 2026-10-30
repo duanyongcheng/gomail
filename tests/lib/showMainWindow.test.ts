@@ -17,7 +17,7 @@ describe("showMainWindow", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows the current Tauri window when the frontend entrypoint loads", async () => {
+  it("shows the current desktop window when the frontend entrypoint loads", async () => {
     const show = vi.fn().mockResolvedValue(undefined);
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     mockGetCurrentWindow.mockReturnValue({ show } as never);
@@ -31,7 +31,7 @@ describe("showMainWindow", () => {
     expect(info).toHaveBeenCalledWith("[startup] main window shown: 180ms since splash start");
   });
 
-  it("keeps the window hidden when startup-to-tray is enabled", async () => {
+  it("shows the window despite a stored unsupported startup-to-tray preference", async () => {
     const show = vi.fn().mockResolvedValue(undefined);
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     mockGetCurrentWindow.mockReturnValue({ show } as never);
@@ -41,8 +41,9 @@ describe("showMainWindow", () => {
 
     await showMainWindow();
 
-    expect(mockGetCurrentWindow).not.toHaveBeenCalled();
-    expect(show).not.toHaveBeenCalled();
-    expect(info).toHaveBeenCalledWith("[startup] main window left hidden for tray startup: 220ms since splash start");
+    expect(mockGetCurrentWindow).toHaveBeenCalledOnce();
+    expect(show).toHaveBeenCalledOnce();
+    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("true");
+    expect(info).toHaveBeenCalledWith("[startup] main window shown: 220ms since splash start");
   });
 });

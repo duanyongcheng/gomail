@@ -1,4 +1,5 @@
 import { useMailStore } from "@/stores/mail.store";
+import { useComposeStore } from "@/stores/compose.store";
 import { useAccountsQuery, useMessagesQuery, useThreadsQuery, useFoldersForAccountsQuery, patchMessagesCache } from "@/hooks/queries";
 import { useUIStore } from "@/stores/ui.store";
 import { useToastStore } from "@/stores/toast.store";
@@ -20,6 +21,7 @@ import { folderIdsForSelection, roleForSelection } from "@/lib/folderAggregation
 import { accountBadges, type AccountBadgeInfo } from "@/lib/accountIdentity";
 import { useCloseMessageDetail } from "@/hooks/useCloseMessageDetail";
 import type { ThreadSummary } from "@/lib/api";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
 const EMPTY_THREADS: ThreadSummary[] = [];
 
@@ -76,6 +78,9 @@ export default function InboxView() {
   const selectedFolderIds = folderIdsForSelection(activeFolderId, folders);
   const queryFolderId = selectedFolderIds[0] ?? null;
   const queryFolderIds = selectedFolderIds.length > 1 ? selectedFolderIds : undefined;
+  const draftAccounts = activeFolderRole === "drafts" && isFeatureAvailable("cloudDraftCopies")
+    ? accounts.filter((account) => account.provider === "gmail" && folders.some((folder) => folder.account_id === account.id && selectedFolderIds.includes(folder.id)))
+    : [];
 
   const {
     data: messages,
@@ -177,27 +182,38 @@ export default function InboxView() {
         <div className="inbox-toolbar-search">
           <SearchBar onSearch={() => {}} onClear={() => {}} />
         </div>
+        {draftAccounts.map((account) => <button
+          key={account.id}
+          type="button"
+          onClick={() => useComposeStore.getState().openCompose("new", null, { gmailDraftsAccountId: account.id })}
+          style={{ padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-bg-primary)", color: "var(--color-text-primary)", fontSize: 12 }}
+          title={account.email}
+        >
+          {t("cloudDrafts.manage", "Manage Gmail drafts")}{draftAccounts.length > 1 ? `: ${account.email}` : ""}
+        </button>)}
         {isTrashFolder && messages.length > 0 && (
           <>
             <button
-              onClick={() => setShowTrashConfirm(true)}
+              disabled={!isFeatureAvailable("permanentDelete")}
+              onClick={() => { if (isFeatureAvailable("permanentDelete")) setShowTrashConfirm(true); }}
               style={{
                 background: "none", border: "1px solid var(--color-border)", cursor: "pointer",
                 padding: "4px 10px", borderRadius: "4px", color: "var(--color-text-secondary)",
                 display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", marginRight: "4px",
               }}
-              title={t("messageActions.emptyTrash", "Empty Trash")}
+              title={isFeatureAvailable("permanentDelete") ? t("messageActions.emptyTrash", "Empty Trash") : unavailableReason()}
             >
               <Trash2 size={14} />
               {t("messageActions.emptyTrash", "Empty Trash")}
             </button>
-            {showTrashConfirm && (
+            {isFeatureAvailable("permanentDelete") && showTrashConfirm && (
               <ConfirmDialog
                 title={t("messageActions.emptyTrash", "Empty Trash")}
                 message={t("messageActions.emptyTrashConfirm", "Permanently delete all messages in Trash?")}
                 destructive
                 onCancel={() => setShowTrashConfirm(false)}
                 onConfirm={async () => {
+                  if (!isFeatureAvailable("permanentDelete")) return;
                   setShowTrashConfirm(false);
                   try {
                     const targetAccountIds = activeAccountId ? [activeAccountId] : accounts.map((account) => account.id);

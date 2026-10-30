@@ -36,10 +36,10 @@ const loadStarredView = () => import("../features/starred/StarredView");
 const preloadLazyViews = createLazyViewPreloader([
   loadSettingsView,
   loadComposeView,
-  loadKanbanView,
-  loadContactsView,
+  ...(isFeatureAvailable("kanban") ? [loadKanbanView] : []),
+  ...(isFeatureAvailable("contacts") ? [loadContactsView] : []),
   loadSearchView,
-  loadSnoozedView,
+  ...(isFeatureAvailable("snooze") ? [loadSnoozedView] : []),
   loadStarredView,
 ]);
 
@@ -55,24 +55,31 @@ import i18next from "i18next";
 import { WifiOff } from "lucide-react";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
-import { setNotificationsEnabled as setBackendNotificationsEnabled, syncTitlebarTheme } from "@/lib/api";
+import { syncTitlebarTheme } from "@/lib/api";
+import { isCommandAvailable, isFeatureAvailable, isViewAvailable, unavailableReason } from "@/lib/availability";
+import { useToastStore } from "@/stores/toast.store";
 
 export default function Layout() {
   const activeView = useUIStore((s) => s.activeView);
-  const displayedView = activeView;
+  const displayedView = isViewAvailable(activeView) ? activeView : "inbox";
   const composeKey = useComposeStore((s) => s.composeKey);
   const setActiveView = useUIStore((s) => s.setActiveView);
   const theme = useUIStore((s) => s.theme);
   const backgroundImage = useUIStore((s) => s.backgroundImage);
-  const notificationsEnabled = useUIStore((s) => s.notificationsEnabled);
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   useKeyboard();
 
-  // Load kanban cards at startup so MessageItem can show kanban indicators
+  // Restored or external store state must not mount an unsupported view.
   useEffect(() => {
-    useKanbanStore.getState().fetchCards();
+    if (isViewAvailable(activeView)) return;
+    useUIStore.setState({ activeView: "inbox" });
+    useToastStore.getState().addToast({ message: unavailableReason(), type: "info" });
+  }, [activeView]);
+
+  useEffect(() => {
+    if (isFeatureAvailable("kanban")) useKanbanStore.getState().fetchCards();
   }, []);
 
   useEffect(() => scheduleLazyViewPreload(preloadLazyViews), []);
@@ -90,14 +97,9 @@ export default function Layout() {
     useCommandStore.getState().registerCommands(buildCommands(t));
   }, [t]);
 
-  // Keep the Rust notification gate aligned with the single frontend preference source.
-  useEffect(() => {
-    setBackendNotificationsEnabled(notificationsEnabled)
-      .catch((err) => console.warn("Failed to sync notification preference to backend", err));
-  }, [notificationsEnabled]);
-
   // Global listener: refresh data when snoozed messages are restored
   useEffect(() => {
+    if (!isFeatureAvailable("snooze")) return;
     const unlisten = listen<{ message_id: string; return_to?: string }>("mail:unsnoozed", (event) => {
       queryClient.invalidateQueries({ queryKey: ["messages"] });
       queryClient.invalidateQueries({ queryKey: ["snoozed"] });
@@ -116,12 +118,12 @@ export default function Layout() {
 
   useEffect(() => {
     applyThemeToDom(theme);
-    syncTitlebarTheme(resolveTheme(theme)).catch(() => {});
+    if (isCommandAvailable("sync_titlebar_theme")) syncTitlebarTheme(resolveTheme(theme)).catch(() => {});
     if (theme === "system") {
       const mql = window.matchMedia("(prefers-color-scheme: dark)");
       const listener = () => {
         applyThemeToDom("system");
-        syncTitlebarTheme(resolveTheme("system")).catch(() => {});
+        if (isCommandAvailable("sync_titlebar_theme")) syncTitlebarTheme(resolveTheme("system")).catch(() => {});
       };
       mql.addEventListener("change", listener);
       return () => mql.removeEventListener("change", listener);
@@ -130,9 +132,9 @@ export default function Layout() {
 
   return (
     <div
-      className={`app-shell flex flex-col h-screen overflow-hidden${backgroundImage ? " app-shell--with-background" : ""}`}
+      className={`app-shell flex flex-col h-screen overflow-hidden${isFeatureAvailable("backgroundImage") && backgroundImage ? " app-shell--with-background" : ""}`}
     >
-      <AppBackground image={backgroundImage} />
+      <AppBackground image={isFeatureAvailable("backgroundImage") ? backgroundImage : null} />
       <WindowResizeHandles />
       <TitleBar />
       <SenderIdentityNotice />

@@ -1,4 +1,5 @@
 import { senderIdentityLabel } from "@/lib/accountIdentity";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { useState, useEffect, useRef } from "react";
 import { EditorContent } from "@tiptap/react";
 import {
@@ -32,6 +33,8 @@ import { ModeButton, EditorToolbar, MarkdownToolbar, composeStyles } from "./Com
 import ComposeAiAssistant from "../ai/ComposeAiAssistant";
 import { subjectAfterAddingAttachments } from "./attachment-subject";
 import { isValidEmailAddress, mergePendingRecipient } from "./recipient-utils";
+import { renderMarkdownSnapshot } from "./markdown-snapshot";
+import { composeHtmlText } from "./html-text";
 
 export default function ComposeView() {
   const composeMode = useComposeStore((s) => s.composeMode);
@@ -70,7 +73,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
       subject: localDraft.subject, rawSource: localDraft.rawSource,
       richTextHtml: localDraft.bodyHtml, quotedReplyHtml: localDraft.quotedReplyHtml, editorMode: localDraft.editorMode === "markdown" || localDraft.editorMode === "html" ? localDraft.editorMode : "rich",
       attachments: localDraft.attachments, savedAt: localDraft.updatedAt * 1000,
-    } : composeMode === "new"
+    } : composeMode === "new" && !composePrefill?.gmailDraftsAccountId
       ? loadDraftFromStorage(accountsLoaded ? accounts.map((account) => account.id) : undefined)
       : null,
   );
@@ -107,7 +110,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   const {
     editor, editorMode, rawSource, setRawSource,
     richTextHtml, htmlPreview, setHtmlPreview,
-    switchMode, textareaRef, quotedReplyHtml,
+    switchMode, textareaRef, quotedReplyHtml, editorReady, bodyIsPristine, signatureError, retrySignature, conversionError,
   } = useComposeEditor({
     fromAccountId, composeMode, composeReplyTo, isReply, t,
     restoredDraft: restoredDraft.current,
@@ -115,11 +118,8 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   });
 
   // ─── Draft persistence ───────────────────────────────────────────────────────
-  // Delay the dirty-snapshot until the editor has run its initial setContent
-  // cycle — otherwise the snapshot captures an empty richTextHtml and then
-  // flips dirty when signature/quoted-reply text populates.
-  // For "new" composes with no signature the editor stays empty but is still
-  // "ready" once mounted, so we gate on editor presence plus one effect tick.
+  // Editor readiness includes signature loading and initial content application;
+  // mounting TipTap alone is not enough to safely snapshot/save the body.
   // Attachments are part of the draft snapshot and must be declared before
   // the draft persistence hook.
   const attachInputRef = useRef<HTMLInputElement>(null);
@@ -136,10 +136,6 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   const [pendingAttachmentStagingCount, setPendingAttachmentStagingCount] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  const [editorReady, setEditorReady] = useState(false);
-  useEffect(() => {
-    if (editor && !editorReady) setEditorReady(true);
-  }, [editor, editorReady]);
   const withPendingRecipient = (values: string[], input: string) => input.trim() ? [...values, input.trim()] : values;
   const { cancelPendingDraftSaves, saveNow, saveStatus, resumeDraftSaves } = useComposeDraft({
     to: withPendingRecipient(to, toInputValue), cc: withPendingRecipient(cc, ccInputValue), bcc: withPendingRecipient(bcc, bccInputValue),
@@ -161,6 +157,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   const [showQuotedReply, setShowQuotedReply] = useState(false);
 
   async function refreshTemplates() {
+    if (!isFeatureAvailable("templates")) return [];
     try {
       const next = await listTemplates();
       setTemplates(next);
@@ -241,8 +238,12 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
 
   async function cleanupSavedDrafts(context: "send" | "discard") {
     const draftIdsToDelete = await cancelPendingDraftSaves();
+    // After queueing a linked send, Delete intentionally retains the protected
+    // snapshot and attachment refs until cancellation or Gmail acceptance.
     const deletionResults = await Promise.allSettled(
-      Object.entries(draftIdsToDelete).map(([draftAccountId, draftId]) =>
+      Object.entries(draftIdsToDelete)
+        .filter(([draftAccountId]) => context !== "send" || draftAccountId === fromAccountId)
+        .map(([draftAccountId, draftId]) =>
         deleteDraft(draftAccountId, draftId),
       ),
     );
@@ -312,7 +313,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   }
 
   async function handleSaveTemplate() {
-    if (!templateName.trim()) return;
+    if (!isFeatureAvailable("templates") || !templateName.trim()) return;
     const bodyContent = editorMode === "rich" && editor ? editor.getHTML() : rawSource;
     await saveTemplate({ name: templateName.trim(), subject, body: bodyContent });
     setTemplateName("");
@@ -327,6 +328,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   }, [sendError]);
 
   async function handleSend() {
+    if (!editorReady) return;
     if (accounts.find((a) => a.id === fromAccountId)?.capabilities?.send === false) return;
     if (sendInProgressRef.current || discardInProgressRef.current || saveClosingRef.current) return;
     const finalTo = mergePendingRecipient(to, toInputValue).filter(Boolean);
@@ -373,25 +375,42 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
       bodyText = editor.getText();
     } else if (editorMode === "html") {
       bodyHtml = rawSource;
-      const tmp = document.createElement("div");
-      tmp.innerHTML = rawSource;
-      bodyText = tmp.textContent || tmp.innerText || "";
-    } else {
-      if (editor) {
-        editor.commands.setContent(rawSource);
-        bodyHtml = editor.getHTML();
-        bodyText = rawSource;
-      }
+      bodyText = composeHtmlText(rawSource);
+    } else if (editorMode === "markdown") {
+      const rendered = renderMarkdownSnapshot(rawSource);
+      bodyHtml = rendered.html;
+      bodyText = rendered.text;
     }
     const outgoingBodyHtml = appendReplyQuoteHtml(bodyHtml, quotedReplyHtml);
 
     const inReplyTo = localDraft?.inReplyTo || (isReply ? composeReplyTo?.message_id_header ?? undefined : undefined);
+    let savedDraftId: string | undefined;
+    try {
+      // Queue the same frozen snapshot we persist, then stop autosave until the
+      // queue result is known. This carries the correct account's cloud binding.
+      const saved = await saveNow({
+        to: finalTo, cc: finalCc, bcc: finalBcc, subject: finalSubject,
+        bodyText, bodyHtml, attachmentPaths: attachmentsRef.current.map((attachment) => attachment.path),
+      });
+      if (!saved) throw new Error(t("compose.saveBeforeSendFailed", "Could not save this draft. Nothing was queued; keep editing or retry."));
+      const savedDrafts = await cancelPendingDraftSaves();
+      if (!acceptsStagedAttachmentsRef.current) return;
+      savedDraftId = savedDrafts[fromAccountId];
+      if (!savedDraftId) throw new Error(t("compose.saveBeforeSendFailed", "Could not save this draft. Nothing was queued; keep editing or retry."));
+    } catch (error) {
+      resumeDraftSaves();
+      sendInProgressRef.current = false;
+      setSendInProgress(false);
+      setSendError(error instanceof Error ? error.message : t("compose.sendError", "Failed to send"));
+      return;
+    }
     sendClientKeyRef.current ??= crypto.randomUUID();
 
     sendMutation.mutate(
       {
         accountId: fromAccountId,
         clientKey: sendClientKeyRef.current,
+        localDraftId: savedDraftId,
         to: finalTo,
         cc: finalCc,
         bcc: finalBcc,
@@ -419,6 +438,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           })();
         },
         onError: (e) => {
+          resumeDraftSaves();
           sendInProgressRef.current = false;
           setSendInProgress(false);
           const msg = e instanceof Error ? e.message : String(e);
@@ -449,6 +469,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
   }
 
   async function handleSaveAndClose() {
+    if (!editorReady) return;
     if (saveClosingRef.current || sendInProgressRef.current || discardInProgressRef.current) return;
     saveClosingRef.current = true; setSavingAndClosing(true);
     try {
@@ -460,7 +481,15 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     } finally { saveClosingRef.current = false; setSavingAndClosing(false); }
   }
 
-  const hasContent = Boolean(toInputValue.trim() || ccInputValue.trim() || bccInputValue.trim()) || hasComposeDraft({ to, cc, bcc, subject, rawSource, richTextHtml, attachments });
+  // Switching drafts may replace only untouched, generated editor content.
+  // Keep the actual body in autosave/save snapshots (including signatures), and
+  // protect restored drafts, user edits, pending recipient input and staging.
+  const draftSwitchBlocked = !editorReady || !bodyIsPristine || Boolean(restoredDraft.current)
+    || pendingAttachmentStagingCount > 0 || sendInProgress || savingAndClosing || isDiscarding
+    || hasComposeDraft({
+      to: withPendingRecipient(to, toInputValue), cc: withPendingRecipient(cc, ccInputValue), bcc: withPendingRecipient(bcc, bccInputValue),
+      subject, rawSource: "", richTextHtml: "", attachments,
+    });
   const title =
     composeMode === "reply"
       ? t("compose.reply", "Reply")
@@ -471,7 +500,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           : t("compose.newMessage", "New Message");
   const hasToRecipient = to.some(Boolean) || isValidEmailAddress(toInputValue);
   const sendingUnavailable = accounts.find((a) => a.id === fromAccountId)?.capabilities?.send === false;
-  const sendDisabled = sendingUnavailable || sendInProgress
+  const sendDisabled = !editorReady || sendingUnavailable || sendInProgress
     || sendMutation.isPending
     || pendingAttachmentStagingCount > 0
     || !fromAccountId
@@ -540,7 +569,13 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           : saveStatus === "error" ? t("compose.draftSaveError", "Could not save the draft. Keep this window open and try again.")
           : t("compose.localDraftsNotice", "Encrypted on this device only; not synced to Gmail.")}
       </div>
-      <LocalDrafts accountId={fromAccountId} disabled={hasContent || Boolean(localDraft)} />
+      {!editorReady && <div role={signatureError ? "alert" : "status"} style={{ padding: "6px 20px", fontSize: 12 }}>
+        {signatureError
+          ? t("compose.signatureReadFailed", "Could not load the signature. Retry before editing or sending.")
+          : t("compose.signatureLoading", "Loading signature…")}
+        {signatureError && <button type="button" onClick={retrySignature}>{t("common.retry", "Retry")}</button>}
+      </div>}
+      <LocalDrafts accountId={fromAccountId} disabled={draftSwitchBlocked} initialGmailAccountId={composePrefill?.gmailDraftsAccountId} />
       <OutboxPanel accountId={fromAccountId} />
       {/* Error banner */}
       {sendError && (
@@ -600,7 +635,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           )}
 
           {/* To */}
-          <div style={composeStyles.fieldRow}>
+          <div style={composeStyles.fieldRow} inert={!editorReady}>
             <label id="compose-to-label" htmlFor="compose-to-input" style={composeStyles.fieldLabel}>
               {t("compose.to", "To")}
             </label>
@@ -622,7 +657,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           </div>
 
           {showCc && (
-            <div style={composeStyles.fieldRow}>
+            <div style={composeStyles.fieldRow} inert={!editorReady}>
               <label id="compose-cc-label" htmlFor="compose-cc-input" style={composeStyles.fieldLabel}>
                 {t("compose.cc", "Cc")}
               </label>
@@ -641,7 +676,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           )}
 
           {showBcc && (
-            <div style={composeStyles.fieldRow}>
+            <div style={composeStyles.fieldRow} inert={!editorReady}>
               <label id="compose-bcc-label" htmlFor="compose-bcc-input" style={composeStyles.fieldLabel}>
                 {t("compose.bcc", "Bcc")}
               </label>
@@ -660,7 +695,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           )}
 
           {/* Subject */}
-          <div style={composeStyles.fieldRow}>
+          <div style={composeStyles.fieldRow} inert={!editorReady}>
             <label htmlFor="compose-subject" style={composeStyles.fieldLabel}>
               {t("compose.subject", "Subject")}
             </label>
@@ -678,7 +713,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           </div>
 
           {/* Toolbar */}
-          <div className="compose-editor-toolbar-row">
+          <div className="compose-editor-toolbar-row" inert={!editorReady}>
             <div className="compose-toolbar-tools">
               <div className="compose-toolbar-actions">
                 <button
@@ -712,16 +747,17 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
                 <div style={{ position: "relative" }}>
                   <button
                     type="button"
-                    onClick={() => { void refreshTemplates(); setShowTemplates((v) => !v); }}
+                    disabled={!isFeatureAvailable("templates")}
+                    onClick={() => { if (!isFeatureAvailable("templates")) return; void refreshTemplates(); setShowTemplates((v) => !v); }}
                     aria-haspopup="listbox"
                     aria-expanded={showTemplates}
                     aria-label={t("compose.templates", "Templates")}
-                    title={t("compose.templates", "Templates")}
+                    title={isFeatureAvailable("templates") ? t("compose.templates", "Templates") : unavailableReason()}
                     className={`compose-toolbar-icon-button${showTemplates ? " is-active" : ""}`}
                   >
                     <BookTemplate size={13} />
                   </button>
-                  {showTemplates && (
+                  {isFeatureAvailable("templates") && showTemplates && (
                     <div className="scroll-region compose-template-scroll" style={{
                       position: "absolute", top: "100%", left: 0, zIndex: 100,
                       backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)",
@@ -750,6 +786,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
                         >
                           {templates.map((tpl) => {
                             const applyTemplate = () => {
+                              if (!isFeatureAvailable("templates")) return;
                               subjectRef.current = tpl.subject;
                               setSubject(tpl.subject);
                               setRawSource(tpl.body);
@@ -783,6 +820,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
                                   type="button"
                                   onClick={async (e) => {
                                     e.stopPropagation();
+                                    if (!isFeatureAvailable("templates")) return;
                                     const confirmed = await useConfirmStore.getState().confirm({
                                       title: t("compose.deleteTemplate", "Delete template"),
                                       message: t("compose.deleteTemplate", "Delete template") + ` "${tpl.name}"?`,
@@ -849,6 +887,10 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
             </div>
           </div>
 
+          {conversionError && <p role="alert" style={{ margin: "8px 0", color: "var(--color-error, #dc2626)", fontSize: 13 }}>
+            {t("compose.mode.conversionBlocked", "The editor mode was not changed because the chosen editor cannot preserve this message's images, tables, or formatting. Continue editing, saving, or sending in the current source mode.")}
+          </p>}
+
           {/* Attachment list */}
           {attachments.length > 0 && (
             <div className="compose-inline-panel">
@@ -878,7 +920,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           )}
 
           {/* Save template dialog */}
-          {showSaveTemplate && (
+          {isFeatureAvailable("templates") && showSaveTemplate && (
             <div className="compose-inline-panel">
               <input
                 type="text" value={templateName} onChange={(e) => setTemplateName(e.target.value)}
@@ -927,6 +969,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
           {/* Editor area */}
           <div
             className="compose-editor-area"
+            inert={!editorReady}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={async (e) => {
@@ -980,6 +1023,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
                     placeholder={t("compose.mode.htmlPlaceholder", "Write HTML source...")}
                     spellCheck={false}
                     className="compose-source-input compose-source-input--split is-code"
+                    disabled={!editorReady}
                   />
                   <iframe
                     sandbox="allow-same-origin"
@@ -998,6 +1042,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
                     : t("compose.mode.htmlPlaceholder", "Write HTML source...")}
                   spellCheck={editorMode === "markdown"}
                   className={`compose-source-input${editorMode === "html" ? " is-code" : ""}`}
+                  disabled={!editorReady}
                 />
               )}
             </div>

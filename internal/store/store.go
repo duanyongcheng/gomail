@@ -16,7 +16,7 @@ import _ "modernc.org/sqlite"
 
 const (
 	LegacySchemaVersion = 20
-	SchemaVersion       = 28
+	SchemaVersion       = 31
 	readConnections     = 4
 )
 
@@ -84,14 +84,19 @@ func Open(ctx context.Context, path string) (_ *DB, err error) {
 func dsn(path string, readOnly bool) string {
 	uri := url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
 	query := url.Values{
-		"_pragma": {"busy_timeout(15000)", "foreign_keys(ON)", "synchronous(NORMAL)"},
+		"_pragma": {"busy_timeout(15000)", "foreign_keys(ON)"},
 	}
 	if readOnly {
 		query.Set("mode", "ro")
 		query.Add("_pragma", "query_only(ON)")
+		query.Add("_pragma", "synchronous(NORMAL)")
 	} else {
 		query.Set("mode", "rwc")
 		query.Add("_pragma", "journal_mode(WAL)")
+		// synchronous is connection-local, unlike WAL mode. Keep FULL in the
+		// DSN so database/sql replacement connections also sync each commit
+		// before outbox/cloud/label intent can authorize an external write.
+		query.Add("_pragma", "synchronous(FULL)")
 		query.Set("_txlock", "immediate")
 	}
 	uri.RawQuery = query.Encode()

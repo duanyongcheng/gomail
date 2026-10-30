@@ -6,12 +6,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { Copy, RefreshCw, X } from "lucide-react";
 import iconUrl from "@/assets/app-icon.png";
 import { readAppLog, type AppLogSnapshot } from "@/lib/api";
+import { openExternalLink } from "@/lib/external-links";
+import { isCommandAvailable, unavailableReason } from "@/lib/availability";
 
 const REPO = "QingJ01/Pebble";
 const RELEASES_URL = `https://github.com/${REPO}/releases`;
 
 function openUrl(url: string) {
-  invoke("open_external_url", { url }).catch((err) => console.warn("Failed to open external URL", err));
+  void openExternalLink(url);
 }
 
 interface UpdateState {
@@ -32,6 +34,8 @@ const DIAGNOSTIC_LOG_MAX_BYTES = 64 * 1024;
 
 export default function AboutTab() {
   const { t } = useTranslation();
+  const updatesAvailable = isCommandAvailable("check_for_update");
+  const diagnosticsAvailable = isCommandAvailable("read_app_log");
   const [appVersion, setAppVersion] = useState<string>("");
   const [update, setUpdate] = useState<UpdateState>({ status: "idle" });
   const [diagnosticLog, setDiagnosticLog] = useState<DiagnosticLogState | null>(null);
@@ -49,6 +53,7 @@ export default function AboutTab() {
   }, []);
 
   async function handleCheckUpdate() {
+    if (!updatesAvailable) return;
     setUpdate({ status: "checking" });
     try {
       const info = await invoke<{
@@ -74,6 +79,7 @@ export default function AboutTab() {
   }
 
   async function loadDiagnosticLog() {
+    if (!diagnosticsAvailable) return;
     setDiagnosticLog({ status: "loading" });
     try {
       const snapshot = await readAppLog(DIAGNOSTIC_LOG_MAX_BYTES);
@@ -87,6 +93,7 @@ export default function AboutTab() {
   }
 
   function handleDiagnosticIconClick() {
+    if (!diagnosticsAvailable) return;
     diagnosticClickCount.current += 1;
 
     if (diagnosticClickTimer.current !== null) {
@@ -126,7 +133,8 @@ export default function AboutTab() {
             type="button"
             onClick={handleDiagnosticIconClick}
             aria-label={t("about.openDiagnosticLog", "Open diagnostic log")}
-            title="Pebble"
+            disabled={!diagnosticsAvailable}
+            title={diagnosticsAvailable ? "Pebble Go" : unavailableReason()}
             style={{
               width: "56px",
               height: "56px",
@@ -147,7 +155,7 @@ export default function AboutTab() {
           </button>
           <div>
             <div style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-              Pebble
+              Pebble Go
             </div>
             <div style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
               {t("about.version", "Version")} {appVersion || "..."}
@@ -157,14 +165,14 @@ export default function AboutTab() {
 
         <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7, margin: "0 0 8px" }}>
           {t(
-            "about.description",
-            "A local-first desktop email client built with Rust and React. Mail, search index, and attachments stay on your device. No telemetry. Outbound traffic happens only when you use a feature that requires it: mail sync with your provider, translation (sends the selected text to the service you configure), or WebDAV settings backup (runs against the server you provide).",
+            "about.goDescription",
+            "A local-first Gmail desktop client built with Go, MyGO and React. Mail, search and encrypted drafts stay on your device. Sync and queued Gmail writes contact your provider; clicked web links open in your default browser.",
           )}
         </p>
         <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7, margin: "0 0 8px" }}>
           {t(
-            "about.features",
-            "Supports Gmail, Outlook (experimental), IMAP, and POP3 accounts. Includes Kanban board, full-text search, snooze, rules engine, built-in translation, and WebDAV settings backup.",
+            "about.goFeatures",
+            "Supports Gmail, local search, conversations, encrypted local drafts, explicit Gmail draft copies and a durable send outbox. Other providers, Kanban, snooze, rules, AI, translation and backup are not available yet.",
           )}
         </p>
         <p style={{ fontSize: "12px", color: "var(--color-text-tertiary, var(--color-text-secondary))", lineHeight: 1.5, margin: 0 }}>
@@ -189,7 +197,8 @@ export default function AboutTab() {
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button
             onClick={handleCheckUpdate}
-            disabled={update.status === "checking"}
+            disabled={!updatesAvailable || update.status === "checking"}
+            title={!updatesAvailable ? unavailableReason() : undefined}
             style={{
               padding: "8px 18px",
               fontSize: "13px",
@@ -213,6 +222,12 @@ export default function AboutTab() {
             </span>
           )}
         </div>
+
+        {!updatesAvailable && (
+          <p style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
+            {unavailableReason()}
+          </p>
+        )}
 
         {update.status === "available" && (
           <div

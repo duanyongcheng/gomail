@@ -35,9 +35,12 @@ export function unreadCountForAccount(
  * changes unread mail, alongside the app badge which the backend updates itself.
  */
 export function invalidateUnreadViews(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: ["message"] });
   queryClient.invalidateQueries({ queryKey: ["messages"] });
   queryClient.invalidateQueries({ queryKey: ["threads"] });
+  queryClient.invalidateQueries({ queryKey: ["threadMessages"] });
   queryClient.invalidateQueries({ queryKey: ["starred-messages"] });
+  queryClient.invalidateQueries({ queryKey: ["search"] });
   queryClient.invalidateQueries({ queryKey: ["folder-unread-counts"] });
   queryClient.invalidateQueries({ queryKey: accountUnreadCountsQueryKey });
 }

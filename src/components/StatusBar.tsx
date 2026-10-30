@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { isFeatureAvailable } from "@/lib/availability";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { listen } from "@tauri-apps/api/event";
@@ -8,6 +9,7 @@ import { useUIStore, type RealtimeStatus } from "../stores/ui.store";
 import { useMailStore } from "@/stores/mail.store";
 import { stopSync } from "@/lib/api";
 import { useSyncMutation } from "@/hooks/mutations/useSyncMutation";
+import { refreshMessageFlagViews } from "@/hooks/mutations/messageFlagsMutation";
 import {
   accountUnreadCountsQueryKey,
   pendingMailOpsSummaryQueryKey,
@@ -82,9 +84,7 @@ export default function StatusBar() {
 
   function refreshMailQueries() {
     queryClient.invalidateQueries({ queryKey: ["folders"] });
-    queryClient.invalidateQueries({ queryKey: ["messages"] });
-    queryClient.invalidateQueries({ queryKey: ["threads"] });
-    queryClient.invalidateQueries({ queryKey: ["threadMessages"] });
+    refreshMessageFlagViews(queryClient);
     queryClient.invalidateQueries({ queryKey: ["folder-unread-counts"] });
     queryClient.invalidateQueries({ queryKey: accountUnreadCountsQueryKey });
   }
@@ -139,9 +139,7 @@ export default function StatusBar() {
   // Listen for new mail events: incremental data refresh
   useEffect(() => {
     const unlisten = listen<MailNewPayload>("mail:new", (event) => {
-      queryClient.invalidateQueries({ queryKey: ["messages"] });
-      queryClient.invalidateQueries({ queryKey: ["threads"] });
-      queryClient.invalidateQueries({ queryKey: ["threadMessages"] });
+      refreshMessageFlagViews(queryClient);
       // The sidebar badge reads this key, and nothing else invalidates it on
       // delivery: without it the count only catches up on the next 30s poll, or
       // right after the mail is read (which does refresh every unread view).
@@ -332,7 +330,7 @@ export default function StatusBar() {
         >
           <AppWindow aria-hidden="true" size={13} />
         </button>
-        {notificationsEnabled && (
+        {isFeatureAvailable("notifications") && notificationsEnabled && (
           <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />

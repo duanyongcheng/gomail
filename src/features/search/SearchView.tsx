@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTranslation } from "react-i18next";
@@ -37,7 +38,8 @@ export default function SearchView() {
   const activeAccountId = useMailStore((s) => s.activeAccountId);
 
   const trimmed = query.trim();
-  const filtersActive = hasActiveFilters(filters);
+  const advancedAvailable = isFeatureAvailable("advancedSearch");
+  const filtersActive = advancedAvailable && hasActiveFilters(filters);
   const searchEnabled = hasSearched && (trimmed.length > 0 || filtersActive);
 
   useCloseMessageDetail(selectedId !== null, () => setSelectedId(null));
@@ -73,7 +75,7 @@ export default function SearchView() {
 
   const doSearch = useCallback(() => {
     const t = query.trim();
-    if (!t && !hasActiveFilters(filters)) {
+    if (!t && !(isFeatureAvailable("advancedSearch") && hasActiveFilters(filters))) {
       setHasSearched(false);
       setSelectedId(null);
       return;
@@ -144,8 +146,9 @@ export default function SearchView() {
         </button>
         <button
           type="button"
-          onClick={() => setShowFilters(!showFilters)}
-          title={t("search.filters")}
+          disabled={!advancedAvailable}
+          onClick={() => { if (advancedAvailable) setShowFilters(!showFilters); }}
+          title={advancedAvailable ? t("search.filters") : unavailableReason()}
           aria-label={t("search.filters")}
           className={`search-toolbar-button search-toolbar-icon-button ${
             showFilters || hasActiveFilters(filters) ? "is-active" : ""
@@ -156,7 +159,7 @@ export default function SearchView() {
       </form>
 
       {/* Filters panel */}
-      {showFilters && (
+      {advancedAvailable && showFilters && (
         <SearchFilters
           filters={filters}
           onChange={setFilters}

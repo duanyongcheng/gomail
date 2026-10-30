@@ -1,4 +1,6 @@
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
+import { isSettingsTabAvailable, unavailableReason } from "@/lib/availability";
 import { useUIStore, type SettingsTab } from "@/stores/ui.store";
 import AccountsTab from "./AccountsTab";
 import GeneralTab from "./GeneralTab";
@@ -33,7 +35,12 @@ const TAB_LABEL_KEYS: Record<string, string> = {
 
 export default function SettingsView() {
   const { t } = useTranslation();
-  const activeTab = useUIStore((s) => s.settingsTab);
+  const restoredTab = useUIStore((s) => s.settingsTab);
+  const activeTab = isSettingsTabAvailable(restoredTab) ? restoredTab : "accounts";
+  const availableTabs = TAB_IDS.filter(isSettingsTabAvailable);
+  useEffect(() => {
+    if (!isSettingsTabAvailable(restoredTab)) useUIStore.getState().setSettingsTab("accounts");
+  }, [restoredTab]);
   const setSettingsTab = useUIStore((s) => s.setSettingsTab);
 
   function handleTabChange(id: SettingsTab) {
@@ -54,25 +61,28 @@ export default function SettingsView() {
           flexShrink: 0,
         }}
       >
-        {TAB_IDS.map((id, index) => (
+        {TAB_IDS.map((id) => (
           <button
             key={id}
             id={`settings-tab-${id}`}
             role="tab"
+            disabled={!isSettingsTabAvailable(id)}
+            title={!isSettingsTabAvailable(id) ? unavailableReason() : undefined}
             aria-selected={activeTab === id}
             aria-controls={`settings-tabpanel-${id}`}
             tabIndex={activeTab === id ? 0 : -1}
             onClick={() => handleTabChange(id)}
             onKeyDown={(e) => {
+              const index = availableTabs.indexOf(id);
               let nextIndex = index;
-              if (e.key === "ArrowDown") { nextIndex = (index + 1) % TAB_IDS.length; }
-              else if (e.key === "ArrowUp") { nextIndex = (index - 1 + TAB_IDS.length) % TAB_IDS.length; }
+              if (e.key === "ArrowDown") { nextIndex = (index + 1) % availableTabs.length; }
+              else if (e.key === "ArrowUp") { nextIndex = (index - 1 + availableTabs.length) % availableTabs.length; }
               else if (e.key === "Home") { nextIndex = 0; }
-              else if (e.key === "End") { nextIndex = TAB_IDS.length - 1; }
+              else if (e.key === "End") { nextIndex = availableTabs.length - 1; }
               else { return; }
               e.preventDefault();
-              handleTabChange(TAB_IDS[nextIndex]);
-              document.getElementById(`settings-tab-${TAB_IDS[nextIndex]}`)?.focus();
+              handleTabChange(availableTabs[nextIndex]);
+              document.getElementById(`settings-tab-${availableTabs[nextIndex]}`)?.focus();
             }}
             style={{
               display: "block",
@@ -84,7 +94,8 @@ export default function SettingsView() {
               color: activeTab === id ? "var(--color-text-primary)" : "var(--color-text-secondary)",
               fontWeight: activeTab === id ? 600 : 400,
               fontSize: "13px",
-              cursor: "pointer",
+              cursor: isSettingsTabAvailable(id) ? "pointer" : "not-allowed",
+              opacity: isSettingsTabAvailable(id) ? 1 : 0.5,
               borderRight: activeTab === id ? "2px solid var(--color-accent)" : "2px solid transparent",
               transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
             }}
@@ -109,6 +120,9 @@ export default function SettingsView() {
           overflowX: "hidden",
         }}
       >
+        <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+          {t("settings.unavailableHint", "Disabled settings are not available in Pebble Go yet.")}
+        </p>
         {activeTab === "accounts" && <AccountsTab />}
         {activeTab === "general" && <GeneralTab />}
         {activeTab === "proxy" && <ProxyTab />}

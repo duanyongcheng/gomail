@@ -265,11 +265,12 @@ export async function updateAccount(
   proxyPort?: number,
   accountColor?: string,
   accountLabel?: string,
+  signature?: string,
 ): Promise<void> {
   return invoke<void>("update_account", {
     accountId, email, displayName, password,
     imapHost, imapPort, smtpHost, smtpPort, imapSecurity, smtpSecurity,
-    acceptInvalidCerts, proxyHost, proxyPort, accountColor, accountLabel,
+    acceptInvalidCerts, proxyHost, proxyPort, accountColor, accountLabel, signature,
   });
 }
 
@@ -589,10 +590,11 @@ export async function sendEmail(
   attachmentPaths?: string[],
   clientKey?: string,
   replyMessageId?: string,
+  localDraftId?: string,
 ): Promise<void> {
   // Resolves on durable outbox acceptance, not remote delivery.
   return invoke<void>("send_email", {
-    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths, clientKey, replyMessageId,
+    accountId, to, cc, bcc, subject, bodyText, bodyHtml, inReplyTo, attachmentPaths, clientKey, replyMessageId, localDraftId,
   });
 }
 
@@ -895,6 +897,7 @@ export async function saveDraft(args: {
   replyMessageId?: string;
   editorMode?: string;
   rawSource?: string;
+  renderedSource?: string;
 }): Promise<string> {
   return invoke("save_draft", {
     accountId: args.accountId,
@@ -912,6 +915,7 @@ export async function saveDraft(args: {
     replyMessageId: args.replyMessageId,
     editorMode: args.editorMode,
     rawSource: args.rawSource,
+    renderedSource: args.renderedSource,
   });
 }
 

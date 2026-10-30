@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { emptyTrash } from "@/lib/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account, Folder } from "../../../src/lib/api";
 
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   useFoldersForAccountsQuery: vi.fn(),
   useMessagesQuery: vi.fn(),
   useThreadsQuery: vi.fn(),
+  openCompose: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -44,6 +46,9 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("../../../src/stores/mail.store", () => ({
   useMailStore: (selector: (state: typeof mocks.mailState) => unknown) => selector(mocks.mailState),
+}));
+vi.mock("../../../src/stores/compose.store", () => ({
+  useComposeStore: { getState: () => ({ openCompose: mocks.openCompose }) },
 }));
 
 vi.mock("../../../src/stores/ui.store", () => ({
@@ -98,6 +103,10 @@ import InboxView from "../../../src/features/inbox/InboxView";
 describe("InboxView all accounts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.accounts = [
+      { id: "account-1", email: "one@example.com", provider: "gmail" },
+      { id: "account-2", email: "two@example.com", provider: "gmail" },
+    ] as Account[];
     mocks.mailState.activeAccountId = null;
     mocks.mailState.activeFolderId = "all:inbox";
     mocks.mailState.selectedMessageId = null;
@@ -120,10 +129,55 @@ describe("InboxView all accounts", () => {
     });
   });
 
+  it("blocks empty-trash across all accounts despite an implemented command", () => {
+    mocks.mailState.activeFolderId = "all:trash";
+    mocks.useFoldersForAccountsQuery.mockReturnValue({ data: mocks.folders.map((folder) => ({ ...folder, role: "trash" })), isFetched: true });
+    mocks.useMessagesQuery.mockReturnValue({ data: [{ id: "synthetic" }], isLoading: false });
+    render(<InboxView />);
+    const button = screen.getByRole("button", { name: "Empty Trash" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toBeTruthy();
+    fireEvent.click(button);
+    expect(emptyTrash).not.toHaveBeenCalled();
+    expect(screen.queryByText("Confirm dialog")).toBeNull();
+  });
+
   it("queries all matching inbox folders when all accounts are selected", () => {
     render(<InboxView />);
 
     expect(mocks.useFoldersForAccountsQuery).toHaveBeenCalledWith(["account-1", "account-2"]);
     expect(mocks.useMessagesQuery).toHaveBeenCalledWith("a1-inbox", ["a1-inbox", "a2-inbox"]);
+  });
+  it("opens the explicitly selected Gmail draft manager without guessing a remote draft ID", () => {
+    mocks.mailState.activeAccountId = "account-1";
+    mocks.mailState.activeFolderId = "a1-drafts";
+    mocks.useFoldersForAccountsQuery.mockReturnValue({
+      data: [{ id: "a1-drafts", account_id: "account-1", role: "drafts", sort_order: 0 }],
+      isFetched: true,
+    });
+    render(<InboxView />);
+    fireEvent.click(screen.getByRole("button", { name: "Manage Gmail drafts" }));
+    expect(mocks.openCompose).toHaveBeenCalledWith("new", null, { gmailDraftsAccountId: "account-1" });
+  });
+  it("keeps the account choice explicit in a combined drafts folder", () => {
+    mocks.mailState.activeFolderId = "all:drafts";
+    mocks.useFoldersForAccountsQuery.mockReturnValue({
+      data: mocks.folders.map((folder) => ({ ...folder, role: "drafts" })),
+      isFetched: true,
+    });
+    render(<InboxView />);
+    fireEvent.click(screen.getByRole("button", { name: "Manage Gmail drafts: two@example.com" }));
+    expect(mocks.openCompose).toHaveBeenCalledWith("new", null, { gmailDraftsAccountId: "account-2" });
+  });
+  it("does not offer Gmail draft actions for a non-Gmail account", () => {
+    mocks.accounts = [{ id: "account-1", provider: "imap" }] as Account[];
+    mocks.mailState.activeAccountId = "account-1";
+    mocks.mailState.activeFolderId = "a1-drafts";
+    mocks.useFoldersForAccountsQuery.mockReturnValue({
+      data: [{ id: "a1-drafts", account_id: "account-1", role: "drafts", sort_order: 0 }],
+      isFetched: true,
+    });
+    render(<InboxView />);
+    expect(screen.queryByRole("button", { name: /Manage Gmail drafts/ })).toBeNull();
   });
 });

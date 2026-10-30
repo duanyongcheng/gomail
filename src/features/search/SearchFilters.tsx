@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import type { AdvancedSearchQuery, Folder } from "@/lib/api";
 import { listAccounts, listFolders } from "@/lib/api";
 
@@ -28,7 +29,12 @@ function dateInputToTimestamp(value: string, endOfDay = false): number | undefin
   return Math.floor(new Date(`${value}T${endOfDay ? "23:59:59" : "00:00:00"}`).getTime() / 1000);
 }
 
-export default function SearchFilters({ filters, onChange, onClear }: Props) {
+export default function SearchFilters(props: Props) {
+  if (!isFeatureAvailable("advancedSearch")) return <p role="status">{unavailableReason()}</p>;
+  return <AvailableSearchFilters {...props} />;
+}
+
+function AvailableSearchFilters({ filters, onChange, onClear }: Props) {
   const { t } = useTranslation();
   const [folders, setFolders] = useState<FolderWithAccount[]>([]);
 

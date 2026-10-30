@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { snoozeMessage } from "@/lib/api";
 import { useUIStore } from "@/stores/ui.store";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
 interface Props {
   messageId: string;
@@ -53,6 +54,7 @@ export default function SnoozePopover({ messageId, onClose, onSnoozed }: Props) 
   const [error, setError] = useState(false);
 
   async function handleSnooze(getTimestamp: () => number) {
+    if (!isFeatureAvailable("snooze")) return;
     setLoading(true);
     try {
       const returnTo = useUIStore.getState().activeView;
@@ -102,7 +104,8 @@ export default function SnoozePopover({ messageId, onClose, onSnoozed }: Props) 
       {getPresets(t).map((preset) => (
         <button
           key={preset.label}
-          disabled={loading}
+          disabled={loading || !isFeatureAvailable("snooze")}
+          title={isFeatureAvailable("snooze") ? undefined : unavailableReason()}
           onClick={() => handleSnooze(preset.getTimestamp)}
           style={{
             display: "block",

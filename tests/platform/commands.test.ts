@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/mygo", () => ({
-  AccountService: { list: vi.fn(), login: vi.fn(), delete: vi.fn() },
-  AppService: { profile: vi.fn(), quit: vi.fn() },
+  AccountService: { list: vi.fn(), login: vi.fn(), delete: vi.fn(), update: vi.fn(), signature: vi.fn(), setSignature: vi.fn(), migrateSignature: vi.fn() },
+  AppService: { profile: vi.fn(), quit: vi.fn(), openExternal: vi.fn().mockResolvedValue({}) },
   AttachmentService: { path: vi.fn(), download: vi.fn() },
   ComposeService: { save: vi.fn(), delete: vi.fn(), stage: vi.fn(), cleanup: vi.fn() },
   OutboxService: { queue: vi.fn().mockResolvedValue({}) },
@@ -23,7 +23,7 @@ vi.mock("@/mygo", () => ({
   SearchService: { search: vi.fn() },
   SyncService: { sync: vi.fn().mockResolvedValue({ count: 1 }), trigger: vi.fn().mockResolvedValue({ count: 1 }), start: vi.fn().mockResolvedValue({ value: "a" }), stop: vi.fn().mockResolvedValue({}), preference: vi.fn().mockResolvedValue({}) },
 }));
-import { AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService, ThreadService, TrustService } from "@/mygo";
+import { AccountService, AppService, AttachmentService, ComposeService, FileService, MessageService, OutboxService, PendingOpsService, SyncService, ThreadService, TrustService } from "@/mygo";
 import { downloadDir } from "../../src/lib/platform/path";
 import { saveAttachmentAs } from "../../src/lib/platform/attachments";
 import { invoke } from "../../src/lib/platform/core";
@@ -79,8 +79,32 @@ describe("MyGO command adapter", () => {
   });
 
   it("queues sending through the durable service without claiming remote delivery", async () => {
-    expect(await invoke("send_email", { accountId: "a", to: ["to@example.invalid"], clientKey: "k" })).toBeUndefined();
-    expect(OutboxService.queue).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", clientKey: "k", attachmentPaths: [] }));
+    expect(await invoke("send_email", { accountId: "a", to: ["to@example.invalid"], clientKey: "k", localDraftId: "local-draft:a" })).toBeUndefined();
+    expect(OutboxService.queue).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", clientKey: "k", attachmentPaths: [], localDraftId: "local-draft:a" }));
+  });
+
+  it("routes external URLs once and propagates typed service errors", async () => {
+    vi.mocked(AppService.openExternal).mockClear();
+    const request = { url: "https://example.invalid/path?q=private" };
+    expect(await invoke("open_external_url", request)).toBeUndefined();
+    expect(AppService.openExternal).toHaveBeenCalledExactlyOnceWith(request);
+    vi.mocked(AppService.openExternal).mockRejectedValueOnce(new Error("could not open the link"));
+    await expect(invoke("open_external_url", request)).rejects.toThrow("could not open the link");
+    expect(AppService.openExternal).toHaveBeenCalledTimes(2);
+    expect(commands.open_external_url.status).toBe("implemented");
+  });
+
+  it("routes atomic Gmail settings and signature migration through typed services", async () => {
+    const update = { accountId: "a", email: "a@example.invalid", displayName: "Sender", signature: "Regards" };
+    await invoke("update_account", update);
+    expect(AccountService.update).toHaveBeenCalledWith(update);
+    await invoke("set_email_signature", { accountId: "a", signature: "" });
+    expect(AccountService.setSignature).toHaveBeenCalledWith({ accountId: "a", signature: "" });
+    vi.mocked(AccountService.signature).mockResolvedValueOnce("Saved");
+    expect(await invoke("get_email_signature", { accountId: "a" })).toBe("Saved");
+    vi.mocked(AccountService.migrateSignature).mockResolvedValueOnce("");
+    expect(await invoke("migrate_email_signature_if_absent", { accountId: "a", signature: "Legacy" })).toBe("");
+    expect(AccountService.migrateSignature).toHaveBeenCalledWith({ accountId: "a", signature: "Legacy" });
   });
 
   it("routes persistent sender trust with account and requested level", async () => {
@@ -105,6 +129,8 @@ describe("MyGO command adapter", () => {
     vi.mocked(ComposeService.save).mockResolvedValueOnce("local-draft:1");
     expect(await invoke("save_draft", { accountId: "a", subject: "s", clientKey: "key", bodyHtml: null })).toBe("local-draft:1");
     expect(ComposeService.save).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", subject: "s", clientKey: "key", bodyHtml: "", attachmentPaths: [] }));
+    await invoke("save_draft", { accountId: "a", editorMode: "markdown", rawSource: "**body**", renderedSource: "**body**", bodyHtml: "<p><strong>body</strong></p>" });
+    expect(ComposeService.save).toHaveBeenLastCalledWith(expect.objectContaining({ rawSource: "**body**", renderedSource: "**body**", bodyHtml: "<p><strong>body</strong></p>" }));
     await invoke("stage_compose_attachment", { filename: "file", bytes: [0, 255] });
     expect(ComposeService.stage).toHaveBeenCalledWith({ filename: "file", bytes: [0, 255] });
     await invoke("cleanup_staged_compose_attachment", { path: "compose-attachment:opaque" });

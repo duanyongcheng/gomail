@@ -80,6 +80,38 @@ export interface CleanupComposeRequest {
   path: string;
 }
 
+export interface ClosePreferenceRequest {
+  profileNamespace: string;
+  keepRunningInBackground: boolean;
+}
+
+export interface CloudDraftImportRequest {
+  accountId: string;
+  remoteDraftId: string;
+  expectedMessageId: string;
+}
+
+export interface CloudDraftListRequest {
+  accountId: string;
+  pageToken: string;
+}
+
+export interface CloudDraftPage {
+  items: RemoteDraftSummary[];
+  nextPageToken: string;
+}
+
+export interface CloudDraftRequest {
+  accountId: string;
+  draftId: string;
+  action: string;
+}
+
+export interface CloudDraftStatus {
+  state: string;
+  draftId?: string;
+}
+
 /** ConnectionState describes account access, not mailbox freshness or delivery. */
 export type ConnectionState = "available" | "temporary_error" | "reauth_required" | "permission_required" | "credentials_unavailable" | "configuration_required" | "reconnecting";
 
@@ -132,9 +164,15 @@ export interface DraftSummary {
   subject: string;
   updatedAt: number;
   attachmentCount: number;
+  cloudState: string;
+  cloudAvailable: boolean;
 }
 
 export interface Empty {}
+
+export interface ExternalURLRequest {
+  url: string;
+}
 
 export interface FlagsRequest {
   messageId: string;
@@ -197,6 +235,10 @@ export interface LocalDraft {
   quotedReplyHtml: string;
   editorMode: string;
   rawSource: string;
+  renderedSource?: string;
+  references?: string;
+  remoteThreadId?: string;
+  threadSubject?: string;
   attachments: DraftAttachment[];
   updatedAt: number;
 }
@@ -236,6 +278,11 @@ export interface Message {
   deleted_at: number | null;
   created_at: number;
   updated_at: number;
+  /**
+   * InTrash is derived from cached account-owned folder membership, not the current view.
+   * Repository reads populate both true and false; synthetic messages may omit it.
+   */
+  in_trash?: boolean;
 }
 
 export interface MessageRequest {
@@ -295,6 +342,7 @@ export interface OutboxItem {
   nextRetryAt: number | null;
   lastError: string;
   createdAt: number;
+  cloudDraft?: boolean;
 }
 
 export interface PendingMailOp {
@@ -338,6 +386,14 @@ export interface RealtimeStatus {
   message: string;
 }
 
+export interface RemoteDraftSummary {
+  id: string;
+  messageId: string;
+  subject: string;
+  updatedAt: number;
+  localDraftId: string;
+}
+
 export interface RenderedHTML {
   html: string;
   trackers_blocked: Tracker[];
@@ -360,6 +416,7 @@ export interface SaveDraftRequest {
   clientKey: string;
   editorMode: string;
   rawSource: string;
+  renderedSource?: string;
 }
 
 export interface SearchHit {
@@ -387,6 +444,7 @@ export interface SendRequest {
   bodyHtml: string;
   inReplyTo: string;
   replyMessageId?: string;
+  localDraftId?: string;
   attachmentPaths: string[];
   clientKey: string;
 }
@@ -394,6 +452,11 @@ export interface SendRequest {
 export interface SenderRequest {
   accountId: string;
   email: string;
+}
+
+export interface SignatureRequest {
+  accountId: string;
+  signature: string;
 }
 
 export interface StageComposeRequest {
@@ -478,6 +541,25 @@ export interface TrustedSender {
   created_at: number;
 }
 
+export interface UpdateAccountRequest {
+  accountId: string;
+  email: string;
+  displayName: string;
+  accountColor?: string;
+  accountLabel?: string;
+  signature?: string;
+  password?: string;
+  imapHost?: string;
+  imapPort?: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  imapSecurity?: string;
+  smtpSecurity?: string;
+  acceptInvalidCerts?: boolean;
+  proxyHost?: string;
+  proxyPort?: number;
+}
+
 export interface WindowRequest {
   action: string;
   width: number;
@@ -504,11 +586,27 @@ export const AccountService = {
   login(request: LoginRequest): Promise<Account> {
     return call("AccountService.Login", request);
   },
+  migrateSignature(request: SignatureRequest): Promise<string> {
+    return call("AccountService.MigrateSignature", request);
+  },
   reconnect(request: AccountRequest): Promise<Empty> {
     return call("AccountService.Reconnect", request);
   },
+  setSignature(request: SignatureRequest): Promise<Empty> {
+    return call("AccountService.SetSignature", request);
+  },
+  signature(request: AccountRequest): Promise<string> {
+    return call("AccountService.Signature", request);
+  },
   status(arg0: Empty): Promise<OAuthStatus> {
     return call("AccountService.Status", arg0);
+  },
+  /**
+   * Update can be used offline and with expired authorization. No network or
+   * credential mutation is needed to change local account preferences.
+   */
+  update(request: UpdateAccountRequest): Promise<Empty> {
+    return call("AccountService.Update", request);
   },
 } as const;
 
@@ -675,6 +773,33 @@ export const ComposeService = {
   cleanup(request: CleanupComposeRequest): Promise<Empty> {
     return call("ComposeService.Cleanup", request);
   },
+  /**
+   * Cloud changes only an explicitly selected saved snapshot. Save stays local and
+   * offline. composeMu protects only snapshot building; network I/O must not block
+   * local autosave. The store checks the snapshot revision before recording intent.
+   * cloudDraftMu participates in account deletion/reconnection lock ordering.
+   */
+  cloud(request: CloudDraftRequest): Promise<CloudDraftStatus> {
+    return call("ComposeService.Cloud", request);
+  },
+  /**
+   * CloudImport returns an already-linked local draft without overwriting it.
+   * A web-edited version requires the explicit preserve-both recovery action.
+   */
+  cloudImport(request: CloudDraftImportRequest): Promise<LocalDraft> {
+    return call("ComposeService.CloudImport", request);
+  },
+  /**
+   * CloudList is an explicit bounded remote read. Opening local drafts never
+   * invokes it, and summaries fetch metadata rather than twenty large MIME blobs.
+   */
+  cloudList(request: CloudDraftListRequest): Promise<CloudDraftPage> {
+    return call("ComposeService.CloudList", request);
+  },
+  /**
+   * Delete retains sending drafts as a successful no-op for post-queue UI
+   * cleanup. Cancellation makes them editable; confirmed sending removes them.
+   */
   delete(request: DraftRequest): Promise<Empty> {
     return call("ComposeService.Delete", request);
   },
@@ -727,8 +852,14 @@ export const FileService = {
 } as const;
 
 export const AppService = {
+  closePreference(request: ClosePreferenceRequest): Promise<Empty> {
+    return call("AppService.ClosePreference", request);
+  },
   geometry(arg0: Empty): Promise<Geometry> {
     return call("AppService.Geometry", arg0);
+  },
+  openExternal(request: ExternalURLRequest): Promise<Empty> {
+    return call("AppService.OpenExternal", request);
   },
   profile(arg0: Empty): Promise<Namespace> {
     return call("AppService.Profile", arg0);

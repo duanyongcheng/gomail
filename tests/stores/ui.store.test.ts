@@ -11,6 +11,7 @@ import {
 
 describe("UIStore", () => {
   beforeEach(() => {
+    localStorage.clear();
     useUIStore.setState({
       sidebarCollapsed: false,
       activeView: "inbox",
@@ -27,7 +28,7 @@ describe("UIStore", () => {
       settingsTab: "accounts",
       pendingRuleDraftText: null,
       showFolderUnreadCount: false,
-      notificationsEnabled: true,
+      notificationsEnabled: false,
       keepRunningInBackground: true,
       startHiddenToTray: false,
     });
@@ -72,8 +73,8 @@ describe("UIStore", () => {
   });
 
   it("should set active view", () => {
-    useUIStore.getState().setActiveView("kanban");
-    expect(useUIStore.getState().activeView).toBe("kanban");
+    useUIStore.getState().setActiveView("starred");
+    expect(useUIStore.getState().activeView).toBe("starred");
     useUIStore.getState().setActiveView("settings");
     expect(useUIStore.getState().activeView).toBe("settings");
   });
@@ -98,15 +99,15 @@ describe("UIStore", () => {
     expect(useMailStore.getState().batchMode).toBe(false);
   });
 
-  it("stores context navigation state for selected-text actions", () => {
+  it("stores basic search context but refuses unsupported rule drafts", () => {
     useUIStore.getState().setSearchQuery("invoice total");
     useUIStore.getState().setSettingsTab("rules");
     useUIStore.getState().setPendingRuleDraftText("unsubscribe");
 
     const state = useUIStore.getState();
     expect(state.searchQuery).toBe("invoice total");
-    expect(state.settingsTab).toBe("rules");
-    expect(state.pendingRuleDraftText).toBe("unsubscribe");
+    expect(state.settingsTab).toBe("accounts");
+    expect(state.pendingRuleDraftText).toBeNull();
   });
 
   it("keeps the user on compose when dirty and shows confirmation", () => {
@@ -155,7 +156,7 @@ describe("UIStore", () => {
   it("confirmCloseCompose navigates away and clears compose state", () => {
     useUIStore.setState({
       activeView: "compose",
-      previousView: "kanban",
+      previousView: "starred",
     });
     useComposeStore.setState({
       composeMode: "forward",
@@ -169,7 +170,7 @@ describe("UIStore", () => {
 
     const state = useUIStore.getState();
     const composeState = useComposeStore.getState();
-    expect(state.activeView).toBe("kanban");
+    expect(state.activeView).toBe("starred");
     expect(composeState.composeMode).toBe(null);
     expect(composeState.composeReplyTo).toBe(null);
     expect(composeState.composeDirty).toBe(false);
@@ -240,11 +241,11 @@ describe("UIStore", () => {
     expect(realtimePreferenceToPollInterval("manual")).toBe(0);
   });
 
-  it("defaults desktop notifications to enabled when the user has no stored preference", () => {
+  it("defaults unavailable desktop notifications to disabled", () => {
     localStorage.removeItem("pebble-notifications-enabled");
 
-    expect(readNotificationsEnabledPreference()).toBe(true);
-    expect(useUIStore.getState().notificationsEnabled).toBe(true);
+    expect(readNotificationsEnabledPreference()).toBe(false);
+    expect(useUIStore.getState().notificationsEnabled).toBe(false);
   });
 
   it("defaults close-to-background to enabled when the user has no stored preference", () => {
@@ -273,28 +274,17 @@ describe("UIStore", () => {
     expect(readShowUnreadCountPreference()).toBe(false);
   });
 
-  it("persists start-hidden-to-tray preference through the UI store", () => {
+  it("refuses unavailable startup-hidden writes while preserving an existing preference", () => {
+    localStorage.setItem("pebble-start-hidden-to-tray", "legacy");
     useUIStore.getState().setStartHiddenToTray(true);
-
-    expect(useUIStore.getState().startHiddenToTray).toBe(true);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("true");
-
-    useUIStore.getState().setStartHiddenToTray(false);
-
     expect(useUIStore.getState().startHiddenToTray).toBe(false);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("false");
+    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("legacy");
   });
 
-  it("persists desktop notification preference through the UI store", () => {
-    useUIStore.getState().setNotificationsEnabled(false);
-
-    expect(useUIStore.getState().notificationsEnabled).toBe(false);
-    expect(localStorage.getItem("pebble-notifications-enabled")).toBe("false");
-
+  it("refuses unsupported notification preference writes", () => {
     useUIStore.getState().setNotificationsEnabled(true);
-
-    expect(useUIStore.getState().notificationsEnabled).toBe(true);
-    expect(localStorage.getItem("pebble-notifications-enabled")).toBe("true");
+    expect(useUIStore.getState().notificationsEnabled).toBe(false);
+    expect(localStorage.getItem("pebble-notifications-enabled")).toBeNull();
   });
 
   it("persists close-to-background preference through the UI store", () => {

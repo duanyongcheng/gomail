@@ -4,7 +4,7 @@
 
 Implemented entries call generated MyGO bindings. Startup stubs return explicit safe empty values for optional UI startup reads/preferences; they do not claim those features are implemented. Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.
 
-Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue. Account access/reconnection uses generated AccountService methods and mail:account-changed directly; it adds no invoke commands. Confirmed access failures pause the account's sync and queued work; unknown sends stay quarantined.
+Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue. Account access/reconnection uses generated AccountService methods and mail:account-changed directly; confirmed access failures pause the account without resending unknown sends. Gmail account edits save local preferences and encrypted signatures atomically; connection/proxy changes and mailbox rebinding remain unavailable.
 
 | Command | Status | Milestone |
 |---|---|---|
@@ -51,7 +51,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `get_attachment_path` | implemented | M1 |
 | `get_autostart_enabled` | startup-stub | M4 |
 | `get_contact_by_email` | startup-stub | M3 |
-| `get_email_signature` | startup-stub | M3 |
+| `get_email_signature` | implemented | M1 |
 | `get_folder_unread_counts` | implemented | M0 |
 | `get_global_proxy` | startup-stub | M2 |
 | `get_imap_sync_folders` | not-implemented | M2 |
@@ -94,11 +94,11 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `mark_account_all_read` | implemented | M1 |
 | `mark_folder_all_read` | implemented | M1 |
 | `merge_kanban_context_notes` | not-implemented | M3 |
-| `migrate_email_signature_if_absent` | startup-stub | M3 |
+| `migrate_email_signature_if_absent` | implemented | M1 |
 | `move_to_folder` | implemented | M1 |
 | `move_to_kanban` | not-implemented | M3 |
 | `open_default_mail_settings` | not-implemented | M4 |
-| `open_external_url` | not-implemented | M4 |
+| `open_external_url` | implemented | M1 |
 | `preview_backup_file` | not-implemented | M5 |
 | `preview_oauth_identity` | not-implemented | M1 |
 | `preview_webdav_backup` | not-implemented | M5 |
@@ -121,7 +121,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `send_email` | implemented | M1 |
 | `set_autostart_enabled` | not-implemented | M4 |
 | `set_contact_favorite` | not-implemented | M3 |
-| `set_email_signature` | not-implemented | M3 |
+| `set_email_signature` | implemented | M1 |
 | `set_kanban_context_note` | not-implemented | M3 |
 | `set_notifications_enabled` | startup-stub | M4 |
 | `set_realtime_preference` | implemented | M1 |
@@ -144,7 +144,7 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `trigger_sync` | implemented | M1 |
 | `trust_sender` | implemented | M1 |
 | `unsnooze_message` | not-implemented | M3 |
-| `update_account` | not-implemented | M3 |
+| `update_account` | implemented | M1 |
 | `update_account_proxy` | not-implemented | M2 |
 | `update_account_proxy_setting` | not-implemented | M2 |
 | `update_global_proxy` | not-implemented | M2 |

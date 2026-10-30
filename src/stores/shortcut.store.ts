@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { profileLocalStorage } from "@/lib/profileStorage";
+import { isActionAvailable } from "@/lib/availability";
 
 export interface ShortcutBinding {
   actionId: string;
@@ -41,34 +42,44 @@ const DEFAULT_BINDINGS: Record<string, string> = {
 
 const STORAGE_KEY = "pebble-shortcuts";
 
+function availableBindings(bindings: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(bindings).filter(
+    (entry): entry is [string, string] => Object.prototype.hasOwnProperty.call(DEFAULT_BINDINGS, entry[0]) && isActionAvailable(entry[0]) && typeof entry[1] === "string",
+  ));
+}
+
 function loadBindings(): Record<string, string> {
   try {
     const saved = profileLocalStorage.getItem(STORAGE_KEY);
-    if (saved) return { ...DEFAULT_BINDINGS, ...JSON.parse(saved) };
+    if (saved) return availableBindings({ ...DEFAULT_BINDINGS, ...JSON.parse(saved) });
   } catch {
-    // ignore parse errors
+    // Keep unreadable saved preferences intact; use supported defaults.
   }
-  return { ...DEFAULT_BINDINGS };
+  return availableBindings(DEFAULT_BINDINGS);
 }
 
 export const useShortcutStore = create<ShortcutState>((set, get) => ({
   bindings: loadBindings(),
   recording: null,
   updateShortcut: (actionId, keys) => {
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_BINDINGS, actionId) || !isActionAvailable(actionId)) return;
     const newBindings = { ...get().bindings, [actionId]: keys };
     profileLocalStorage.setItem(STORAGE_KEY, JSON.stringify(newBindings));
     set({ bindings: newBindings, recording: null });
   },
   resetToDefaults: () => {
     profileLocalStorage.removeItem(STORAGE_KEY);
-    set({ bindings: { ...DEFAULT_BINDINGS } });
+    set({ bindings: availableBindings(DEFAULT_BINDINGS) });
   },
-  startRecording: (actionId) => set({ recording: actionId }),
+  startRecording: (actionId) => {
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_BINDINGS, actionId) || !isActionAvailable(actionId)) return;
+    set({ recording: actionId });
+  },
   stopRecording: () => set({ recording: null }),
   detectConflict: (keys, excludeAction) => {
     const { bindings } = get();
     for (const [action, bound] of Object.entries(bindings)) {
-      if (action !== excludeAction && bound.toLowerCase() === keys.toLowerCase()) {
+      if (isActionAvailable(action) && action !== excludeAction && bound.toLowerCase() === keys.toLowerCase()) {
         return action;
       }
     }

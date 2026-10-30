@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -44,18 +44,16 @@ describe("useTrayI18n", () => {
     };
   });
 
-  it("syncs localized tray menu labels to the native app", async () => {
+  it("does not write localized labels to a startup stub", () => {
     render(<Harness />);
 
-    await waitFor(() =>
-      expect(mocks.setTrayMenuLabels).toHaveBeenCalledWith("显示窗口", "隐藏窗口", "退出 Pebble"),
-    );
+    expect(mocks.setTrayMenuLabels).not.toHaveBeenCalled();
   });
 
-  it("resyncs labels when the app language changes", async () => {
+  it("does not claim tray support when the app language changes", () => {
     const view = render(<Harness />);
 
-    await waitFor(() => expect(mocks.setTrayMenuLabels).toHaveBeenCalledTimes(1));
+    expect(mocks.setTrayMenuLabels).not.toHaveBeenCalled();
 
     mocks.language = "en";
     mocks.translations = {
@@ -65,8 +63,6 @@ describe("useTrayI18n", () => {
     };
     view.rerender(<Harness />);
 
-    await waitFor(() =>
-      expect(mocks.setTrayMenuLabels).toHaveBeenLastCalledWith("Show Window", "Hide Window", "Quit Pebble"),
-    );
+    expect(mocks.setTrayMenuLabels).not.toHaveBeenCalled();
   });
 });

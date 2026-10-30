@@ -1,81 +1,34 @@
-import { useEffect } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useEffect, useRef } from "react";
 import { useUIStore } from "@/stores/ui.store";
-import { quitApp, startSync } from "@/lib/api";
-import { useAccountsQuery } from "@/hooks/queries";
+import { useToastStore } from "@/stores/toast.store";
+import { getProfileStorageNamespace } from "@/lib/profileStorage";
+import { setClosePreference } from "@/lib/platform/window";
+import i18n from "@/lib/i18n";
 
+/** Native Go events own close/restore. Bootstrap imports the UI store only after
+ * resolving the profile namespace, so this sends the hydrated preference, never
+ * an unscoped startup default. Until then the backend safely hides on close.
+ * Focus scheduling is already handled by the native scheduler callbacks. */
 export function useCloseToBackground() {
-  const { data: accounts } = useAccountsQuery();
-  const pollInterval = useUIStore((s) => s.pollInterval);
-  const realtimeMode = useUIStore((s) => s.realtimeMode);
+  const keepRunning = useUIStore((s) => s.keepRunningInBackground);
+  const lastRequest = useRef<string | null>(null);
+  const pending = useRef(Promise.resolve());
 
   useEffect(() => {
-    const appWindow = getCurrentWindow();
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-
-    appWindow
-      .onCloseRequested((event) => {
-        // Tauri's JS wrapper destroys the window when this handler returns
-        // without `preventDefault`, and `destroy()` never raises Rust's
-        // `CloseRequested` event — the one place the window is hidden instead of
-        // destroyed. Letting the default run would therefore tear the window
-        // down behind the backend's back and take the whole app with it, since
-        // the window is the only one it has. So the event is always claimed and
-        // the outcome chosen here: hide, or leave on purpose.
-        event.preventDefault();
-
-        if (!useUIStore.getState().keepRunningInBackground) {
-          void quitApp().catch((err) => console.warn("Failed to quit on close", err));
-          return;
-        }
-
-        void appWindow
-          .hide()
-          .catch((err) => console.warn("Failed to hide window on close", err));
-      })
-      .then((fn) => {
-        if (disposed) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      })
-      .catch((err) => console.warn("Failed to register close-to-background handler", err));
-
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, []);
-
-  // Resume sync workers when window regains visibility after being hidden to tray
-  useEffect(() => {
-    const appWindow = getCurrentWindow();
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-
-    appWindow
-      .onFocusChanged(({ payload: focused }) => {
-        if (!focused) return;
-        if (realtimeMode === "manual") return;
-        const ids = accounts?.map((a) => a.id) ?? [];
-        for (const id of ids) {
-          startSync(id, pollInterval).catch(() => {});
-        }
-      })
-      .then((fn) => {
-        if (disposed) {
-          fn();
-          return;
-        }
-        unlisten = fn;
-      })
-      .catch(() => {});
-
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [accounts, pollInterval, realtimeMode]);
+    const namespace = getProfileStorageNamespace();
+    if (!namespace) return;
+    const key = JSON.stringify([namespace, keepRunning]);
+    if (lastRequest.current === key) return; // StrictMode must not send twice.
+    lastRequest.current = key;
+    // Bound methods run concurrently. Serialize preference changes so a slow
+    // previous RPC cannot overwrite the latest user choice on the backend.
+    pending.current = pending.current
+      .then(() => setClosePreference(namespace, keepRunning))
+      .catch(() => {
+        useToastStore.getState().addToast({
+          type: "error",
+          message: i18n.t("settings.closePreferenceFailed", "Could not apply the window close preference. Try changing it again."),
+        });
+      });
+  }, [keepRunning]);
 }

@@ -91,14 +91,33 @@ describe("SettingsView", () => {
     expect(screen.getByText("Outbox panel")).toBeTruthy();
   });
 
-  it("exposes global proxy settings as a dedicated settings tab", () => {
+  it("disables proxy settings without mounting an editable form", () => {
     render(<SettingsView />);
 
     const tab = screen.getByRole("tab", { name: "Proxy" });
     fireEvent.click(tab);
 
-    expect(tab.getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByText("Proxy panel")).toBeTruthy();
+    expect((tab as HTMLButtonElement).disabled).toBe(true);
+    expect(tab.getAttribute("aria-selected")).toBe("false");
+    expect(tab.getAttribute("title")).toContain("not available");
+    expect(screen.queryByText("Proxy panel")).toBeNull();
+  });
+
+  it.each(["proxy", "rules", "translation", "ai", "cloudSync"] as const)("guards restored %s settings before mounting", (settingsTab) => {
+    useUIStore.setState({ settingsTab });
+    render(<SettingsView />);
+    expect(screen.getByText("Accounts panel")).toBeTruthy();
+    expect(useUIStore.getState().settingsTab).toBe("accounts");
+    expect(screen.queryByText("Proxy panel")).toBeNull();
+    expect(screen.queryByText("Rules panel")).toBeNull();
+    expect(screen.queryByText("Cloud sync panel")).toBeNull();
+  });
+
+  it("keyboard tab navigation skips disabled settings", () => {
+    render(<SettingsView />);
+    fireEvent.keyDown(screen.getByRole("tab", { name: "General" }), { key: "ArrowDown" });
+    expect(useUIStore.getState().settingsTab).toBe("appearance");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Appearance" }));
   });
 
   it("does not animate all properties on settings tabs", () => {

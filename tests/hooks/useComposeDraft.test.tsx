@@ -44,6 +44,20 @@ describe("useComposeDraft", () => {
     saveDraftMock.mockReset();
   });
 
+  it("does not autosave or explicitly save before editor initialization finishes", async () => {
+    saveDraftMock.mockResolvedValue("draft-1");
+    const { result, rerender } = renderHook((props) => useComposeDraft(props), {
+      initialProps: baseProps({ subject: "Do not save incomplete body", editorReady: false }),
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(await result.current.saveNow()).toBe(false);
+    expect(saveDraftMock).not.toHaveBeenCalled();
+    rerender(baseProps({ subject: "Complete", editorReady: true, richTextHtml: "<p>Body and signature</p>" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(saveDraftMock).toHaveBeenCalledOnce();
+    expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({ bodyHtml: "<p>Body and signature</p>" }));
+  });
+
   it("restores a valid legacy draft without deleting it before migration", () => {
     const legacyDraft = {
       accountId: "account-1",
@@ -322,7 +336,46 @@ describe("useComposeDraft", () => {
     })));
     await act(async () => { await result.current.saveNow(); });
     expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({
-      rawSource: "**answer**", bodyHtml: "", quotedReplyHtml: "<blockquote>original</blockquote>",
+      rawSource: "**answer**", renderedSource: "**answer**", bodyHtml: "<p><strong>answer</strong></p>",
+      bodyText: "answer", quotedReplyHtml: "<blockquote>original</blockquote>",
+    }));
+  });
+  it("keeps imported HTML source intact while saving a decoded plain-text alternative", async () => {
+    saveDraftMock.mockResolvedValue("imported");
+    const source = '<table><tr><td>A &amp; B</td><td>Second</td></tr></table><img src="cid:image-1">';
+    const { result } = renderHook(() => useComposeDraft(baseProps({
+      existingDraftId: "imported", existingDraftAccountId: "account-1",
+      editorMode: "html", rawSource: source, richTextHtml: "<p>Lossy editor representation</p>",
+    })));
+    await act(async () => { expect(await result.current.saveNow()).toBe(true); });
+    expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({
+      rawSource: source, bodyHtml: source, bodyText: "A & B\tSecond", existingDraftId: "imported",
+    }));
+  });
+
+  it("renders each Markdown snapshot without replacing its source or stale rich body", async () => {
+    saveDraftMock.mockResolvedValue("existing");
+    const { result, rerender } = renderHook((props) => useComposeDraft(props), {
+      initialProps: baseProps({
+        existingDraftId: "existing", existingDraftAccountId: "account-1",
+        editorMode: "markdown", rawSource: "# New title\n\n**Body** & details",
+        richTextHtml: "<p>Stale rich content</p>",
+      }),
+    });
+    await act(async () => { expect(await result.current.saveNow()).toBe(true); });
+    expect(saveDraftMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      existingDraftId: "existing", rawSource: "# New title\n\n**Body** & details",
+      renderedSource: "# New title\n\n**Body** & details",
+      bodyHtml: "<h1>New title</h1><p><strong>Body</strong> &amp; details</p>",
+    }));
+    rerender(baseProps({
+      existingDraftId: "existing", existingDraftAccountId: "account-1",
+      editorMode: "markdown", rawSource: "**Edited**", richTextHtml: "<p>Still stale</p>",
+    }));
+    await act(async () => { expect(await result.current.saveNow()).toBe(true); });
+    expect(saveDraftMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      existingDraftId: "existing", renderedSource: "**Edited**",
+      bodyHtml: "<p><strong>Edited</strong></p>", bodyText: "Edited",
     }));
   });
 

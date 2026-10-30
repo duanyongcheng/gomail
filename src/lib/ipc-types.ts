@@ -73,6 +73,8 @@ export interface MessageSummary {
   is_read: boolean;
   is_starred: boolean;
   is_draft: boolean;
+  /** Pebble Go: derived cached Trash membership, independent of the current view. */
+  in_trash?: boolean;
   date: number;
   remote_version: string | null;
   is_deleted: boolean;

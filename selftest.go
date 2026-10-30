@@ -41,13 +41,14 @@ func (k *selftestKeyring) Get(string) ([]byte, error) {
 func (k *selftestKeyring) Set(_ string, key []byte) error { k.key = key; return nil }
 
 func prepareSelftest(runtime *app.Runtime) error {
+	configureSelftestDesktop(desktopAppService)
 	runtime.Keyring = &selftestKeyring{}
 	fixture := testgmail.NewMock()
 	fixture.ProfileEmail = "demo@example.invalid"
 	selftestMailbox = fixture
 	context.AfterFunc(runtime.Context, fixture.Close)
 	png := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130}
-	raw, err := mailmime.Build("sender@example.invalid", "Pebble Go selftest", "中文搜索 selftest message", `<p>中文搜索 selftest message</p><img src="cid:logo">`, "selftest@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, []mailmime.Attachment{{ContentID: "logo", Inline: true, MIMEType: "image/png", Data: png}, {Filename: "selftest-export.txt", MIMEType: "text/plain", Data: []byte("Pebble Go attachment export selftest\n")}})
+	raw, err := mailmime.Build("sender@example.invalid", "Pebble Go selftest", "中文搜索 selftest message", `<p>中文搜索 selftest message</p><img src="cid:logo"><p><a href="`+selftestLinkURL+`">Safe link selftest</a> <a href="`+selftestFailedLinkURL+`">Failed link selftest</a></p>`, "selftest@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, []mailmime.Attachment{{ContentID: "logo", Inline: true, MIMEType: "image/png", Data: png}, {Filename: "selftest-export.txt", MIMEType: "text/plain", Data: []byte("Pebble Go attachment export selftest\n")}})
 	if err != nil {
 		return err
 	}
@@ -176,7 +177,13 @@ func pendingQueueDrained(ctx context.Context, runtime *app.Runtime) bool {
 }
 
 func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window) {
-	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false, "sender trust persisted and revoked through UI": false, "Gmail account access shown through UI": false, "same-mailbox reconnection through UI": false, "reconnection preserves unknown send and draft": false}
+	checks := map[string]bool{"react inbox rendered": false, "account restored from store": false, "typed provider and search": false, "opaque cursor preserved": false, "cid attachment rendered": false, "queued remote write replayed": false, "download failures rendered": false, "failed download retried through UI": false, "attachment exported through UI": false, "archive survives authoritative sync": false, "restore and archive preserve order": false, "local draft restored through UI": false, "local draft saved through UI": false, "Gmail send through durable outbox UI": false, "thread conversation rendered": false, "Gmail labels managed through UI": false, "sender trust persisted and revoked through UI": false, "Gmail account access shown through UI": false, "account edit dialog opened": false, "account edit controls ready": false, "account edit values entered": false, "account edit save submitted": false, "Gmail local account settings saved through UI": false, "same-mailbox reconnection through UI": false, "reconnection preserves unknown send and draft": false, "Gmail cloud draft copy through UI": false}
+	for _, name := range []string{"safe external links through actual UI", "unsupported settings unavailable", "bootstrap does not undo early native close", "close and restore preserves compose", "second instance restores existing window", "quit-on-close reaches native shutdown", "opening unread message updates locally without Gmail", "opening unread conversation updates locally without Gmail", "Gmail uploaded local draft consumed after send", "Gmail remote draft pages loaded through UI", "Gmail remote draft imported through UI", "Gmail imported draft updated through UI", "Gmail linked draft send consumes matching remote copy", "Gmail remote draft deleted through UI"} {
+		checks[name] = false
+	}
+	for _, name := range reviewSelftestChecks {
+		checks[name] = false
+	}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -193,20 +200,41 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	defer func() {
 		data, _ := json.MarshalIndent(checks, "", "  ")
 		_ = os.WriteFile(filepath.Join(directory, "runtime.json"), data, 0600)
-		capture("downloads.png")
-		mygo.App.Quit()
+		// Cancellation may stop the UI loop; skip optional screenshot work.
+		// Main joins us only after App.Run has drained queued UI dispatch.
+		if ctx.Err() == nil {
+			capture("downloads.png")
+			mygo.App.Quit()
+		}
 	}()
 	checks["react inbox rendered"] = waitSelftestPage(ctx, window, `document.body.innerText.includes('Pebble Go selftest')`, 30*time.Second)
 	if !checks["react inbox rendered"] {
 		return
 	}
+	checks["bootstrap does not undo early native close"] = !window.IsVisible() && !window.IsDestroyed()
+	desktopAppService.Lifecycle.Restore()
 	capture("inbox.png")
+	readLatencies := map[string]int64{}
+	_, readFast, readElapsed := selftestOpenUnread(ctx, runtime, window, "selftest-gmail:m1",
+		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row||!row.classList.contains('message-list-row--unread'))return false;row.click();return true; })()`,
+		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('Pebble Go selftest'));return Boolean(row)&&!row.classList.contains('message-list-row--unread'); })()`)
+	checks["opening unread message updates locally without Gmail"] = readFast
+	readLatencies["messageMilliseconds"] = readElapsed.Milliseconds()
+	capture("message-read.png")
 	if waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(会话视图|会话模式|Thread view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
-		if waitSelftestPage(ctx, window, `(() => { const row=Array.from(document.querySelectorAll('[role="option"]')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row)return false;row.click();return true; })()`, 5*time.Second) {
+		opened, threadReadFast, threadReadElapsed := selftestOpenUnread(ctx, runtime, window, "selftest-gmail:m4",
+			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row||!row.classList.contains('thread-list-row--unread'))return false;row.click();return true; })()`,
+			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('Pebble Go selftest'));return Boolean(row)&&!row.classList.contains('thread-list-row--unread'); })()`)
+		checks["opening unread conversation updates locally without Gmail"] = threadReadFast
+		readLatencies["conversationMilliseconds"] = threadReadElapsed.Milliseconds()
+		if opened {
 			checks["thread conversation rendered"] = waitSelftestPage(ctx, window, `document.querySelectorAll('.thread-message-scroll button[aria-expanded]').length === 2 && document.querySelector('.thread-message-scroll')?.innerText.includes('second@example.invalid')`, 10*time.Second)
 			capture("thread.png")
 		}
 		waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(邮件视图|Message view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second)
+	}
+	if timing, err := json.MarshalIndent(readLatencies, "", "  "); err == nil {
+		_ = os.WriteFile(filepath.Join(directory, "read-latency.json"), timing, 0600)
 	}
 	accounts, err := runtime.DB.Accounts(ctx)
 	checks["account restored from store"] = err == nil && len(accounts) > 0
@@ -238,6 +266,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		checks["attachment exported through UI"] = saved && err == nil && string(content) == "Pebble Go attachment export selftest\n"
 		capture("attachment-export.png")
 	}
+	checks["safe external links through actual UI"] = selected && selftestExternalLinks(ctx, window)
 	if !waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(button => /^(设置|Settings)$/.test(button.textContent.trim())); if (!button) return false; button.click(); return true; })()`, 5*time.Second) {
 		return
 	}
@@ -245,6 +274,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	if !checks["download failures rendered"] {
 		return
 	}
+	checks["unsupported settings unavailable"] = selftestUnavailableSettings(ctx, window)
 	capture("download-failure.png")
 	checks["Gmail labels managed through UI"] = selftestLabels(ctx, runtime, window)
 	capture("gmail-labels.png")
@@ -272,6 +302,8 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	if !waitSelftestPage(ctx, window, `(() => { const input=document.getElementById('compose-subject'); if (!input) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Edited local draft selftest'); input.dispatchEvent(new Event('input',{bubbles:true})); return true; })()`, 5*time.Second) {
 		return
 	}
+	checks["close and restore preserves compose"], checks["second instance restores existing window"] = selftestWindowRestore(ctx, window)
+	capture("window-restored.png")
 	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(保存并关闭|Save and close)$/.test(b.textContent.trim())); if (!b || b.disabled) return false; b.click(); return true; })()`, 5*time.Second) {
 		return
 	}
@@ -284,6 +316,8 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(本地草稿|Local drafts)$/.test(b.textContent.trim())); if (!b) return false; b.click(); return true; })()`, 10*time.Second) {
 		return
 	}
+	checks["Gmail cloud draft copy through UI"] = selftestCloudDraft(ctx, runtime, window)
+	capture("cloud-draft.png")
 	if !waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim()==='Edited local draft selftest'); if (!b || b.disabled) return false; b.click(); return true; })()`, 10*time.Second) {
 		return
 	}
@@ -300,6 +334,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		if err == nil && len(items) == 2 && (items[0].Status == "sent" || items[1].Status == "sent") {
 			selftestMailbox.Lock()
 			count := len(selftestMailbox.SentRaw)
+			cloudConsumed := len(selftestMailbox.Drafts) == 0 && selftestMailbox.DraftSends == 1
 			var raw []byte
 			if count == 1 {
 				raw = append([]byte{}, selftestMailbox.SentRaw[0]...)
@@ -307,6 +342,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 			selftestMailbox.Unlock()
 			parsed, parseErr := mailmime.ParseWithLimit(raw, mailmime.MaxOutgoingBytes)
 			checks["Gmail send through durable outbox UI"] = sentClosed && count == 1 && parseErr == nil && parsed.Subject == "Edited local draft selftest" && len(parsed.Attachments) == 1
+			checks["Gmail uploaded local draft consumed after send"] = checks["Gmail send through durable outbox UI"] && cloudConsumed
 			break
 		}
 		select {
@@ -329,6 +365,29 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		return
 	}
 	checks["Gmail account access shown through UI"] = waitSelftestPage(ctx, window, `(() => { const s=document.getElementById('account-connections-title')?.closest('section');return Boolean(s)&&/本地凭据可用|Local credentials available/.test(s.innerText); })()`, 10*time.Second)
+	checks["account edit dialog opened"] = waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(编辑账户|Edit account)$/.test(b.getAttribute('aria-label')||''));if(!b)return false;b.click();return true; })()`, 5*time.Second)
+	if !checks["account edit dialog opened"] {
+		return
+	}
+	checks["account edit controls ready"] = waitSelftestPage(ctx, window, `(() => { const d=document.querySelector('[role="dialog"]');return Boolean(d)&&d.querySelectorAll('input').length>=5&&Boolean(d.querySelector('textarea')); })()`, 5*time.Second)
+	if !checks["account edit controls ready"] {
+		return
+	}
+	checks["account edit values entered"] = waitSelftestPage(ctx, window, `(() => { const d=document.querySelector('[role="dialog"]'), inputs=d?.querySelectorAll('input'), signature=d?.querySelector('textarea');if(!d||!inputs||inputs.length<5||!signature)return false;const set=(el,value)=>{const proto=el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};set(inputs[0],'Selftest local label');set(inputs[1],'Selftest sender');set(inputs[4],'#f97316');set(signature,'Selftest signature');return true; })()`, 5*time.Second)
+	if !checks["account edit values entered"] {
+		return
+	}
+	checks["account edit save submitted"] = waitSelftestPage(ctx, window, `(() => { const d=document.querySelector('[role="dialog"]');const b=Array.from(d?.querySelectorAll('button')||[]).find(b => /^(保存|Save)$/.test(b.textContent.trim()));if(!b||b.disabled)return false;b.click();return true; })()`, 5*time.Second)
+	if !checks["account edit save submitted"] {
+		return
+	}
+	settingsSaved := waitSelftestPage(ctx, window, `!document.querySelector('[role="dialog"]')`, 10*time.Second)
+	updatedAccount, accountSettingsErr := runtime.DB.Account(ctx, "selftest-gmail")
+	savedSignature, signatureErr := (&app.AccountService{Runtime: runtime}).Signature(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
+	checks["Gmail local account settings saved through UI"] = settingsSaved && accountSettingsErr == nil && updatedAccount.DisplayName == "Selftest sender" && updatedAccount.AccountLabel != nil && *updatedAccount.AccountLabel == "Selftest local label" && updatedAccount.Color != nil && *updatedAccount.Color == "#f97316" && signatureErr == nil && savedSignature == "Selftest signature"
+	if !checks["Gmail local account settings saved through UI"] {
+		return
+	}
 	if os.Getenv("PEBBLE_SELFTEST") != "1" {
 		return
 	}
@@ -349,4 +408,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	selftestMailbox.Unlock()
 	checks["reconnection preserves unknown send and draft"] = checks["same-mailbox reconnection through UI"] && beforeAccountErr == nil && afterAccountErr == nil && reflect.DeepEqual(beforeAccount, afterAccount) && outboxErr == nil && len(outboxItems) == 2 && outboxItems[0].Status == "outcome_unknown" && drafts != nil && draftErr == nil && len(drafts) == 1 && drafts[0].Subject == "Draft preserved after reconnect" && sentCount == 1
 	capture("account-reconnected.png")
+	selftestCloudLifecycle(ctx, runtime, window, checks, capture)
+	selftestReviewFixes(ctx, runtime, window, checks, capture)
+	checks["quit-on-close reaches native shutdown"] = selftestQuitOnClose(ctx, window)
 }

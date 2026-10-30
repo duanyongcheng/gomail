@@ -36,6 +36,7 @@ type SaveDraftRequest struct {
 	ClientKey       string   `json:"clientKey"`
 	EditorMode      string   `json:"editorMode"`
 	RawSource       string   `json:"rawSource"`
+	RenderedSource  *string  `json:"renderedSource,omitempty"`
 }
 type DraftRequest struct {
 	AccountID string `json:"accountId"`
@@ -67,6 +68,10 @@ type LocalDraft struct {
 	QuotedReplyHTML string            `json:"quotedReplyHtml"`
 	EditorMode      string            `json:"editorMode"`
 	RawSource       string            `json:"rawSource"`
+	RenderedSource  *string           `json:"renderedSource,omitempty"`
+	References      string            `json:"references,omitempty"`
+	RemoteThreadID  string            `json:"remoteThreadId,omitempty"`
+	ThreadSubject   string            `json:"threadSubject,omitempty"`
 	Attachments     []DraftAttachment `json:"attachments"`
 	UpdatedAt       int64             `json:"updatedAt"`
 }
@@ -76,10 +81,15 @@ type DraftSummary struct {
 	Subject         string `json:"subject"`
 	UpdatedAt       int64  `json:"updatedAt"`
 	AttachmentCount int    `json:"attachmentCount"`
+	CloudState      string `json:"cloudState"`
+	CloudAvailable  bool   `json:"cloudAvailable"`
 }
 type composeAttachmentData struct {
-	Name  string `json:"name"`
-	Bytes []byte `json:"bytes"`
+	Name      string `json:"name"`
+	Bytes     []byte `json:"bytes"`
+	MIMEType  string `json:"mimeType,omitempty"`
+	ContentID string `json:"contentId,omitempty"`
+	Inline    bool   `json:"inline,omitempty"`
 }
 type ComposeService struct{ Runtime *Runtime }
 
@@ -200,7 +210,7 @@ func validateDraft(request SaveDraftRequest) error {
 	if request.AccountID == "" || len(request.ClientKey) > 200 || len(request.ExistingDraftID) > 200 || len(request.ReplyMessageID) > 1024 {
 		return errors.New("invalid draft identity")
 	}
-	if len(request.Subject) > 8192 || len(request.InReplyTo) > 2048 || len(request.RawSource)+len(request.BodyText)+len(request.BodyHTML)+len(request.QuotedReplyHTML) > maxDraftBodyBytes {
+	if len(request.Subject) > 8192 || len(request.InReplyTo) > 2048 || len(request.RawSource)+len(request.BodyText)+len(request.BodyHTML)+len(request.QuotedReplyHTML) > maxDraftBodyBytes || len(stringValue(request.RenderedSource)) > maxDraftBodyBytes {
 		return errors.New("draft text exceeds limit")
 	}
 	if len(request.To)+len(request.CC)+len(request.BCC) > 1000 || len(request.AttachmentPaths) > store.MaxComposeAttachments {
@@ -213,7 +223,7 @@ func validateDraft(request SaveDraftRequest) error {
 			}
 		}
 	}
-	for _, text := range []string{request.Subject, request.BodyText, request.BodyHTML, request.RawSource, request.InReplyTo, request.QuotedReplyHTML} {
+	for _, text := range []string{request.Subject, request.BodyText, request.BodyHTML, request.RawSource, request.InReplyTo, request.QuotedReplyHTML, stringValue(request.RenderedSource)} {
 		if !utf8.ValidString(text) {
 			return errors.New("invalid draft text")
 		}
@@ -265,12 +275,26 @@ func (s *ComposeService) Save(ctx context.Context, request SaveDraftRequest) (st
 	if stored.Deleted {
 		return "", store.ErrDraftConflict
 	}
+	if err := s.editableDraft(ctx, stored.AccountID, stored.ID); err != nil {
+		return "", err
+	}
 	if stored.Data != nil {
 		if _, err := cipher.Decrypt(draftPurpose, draftRecord(stored.AccountID, stored.ID), stored.Data); err != nil {
 			return "", errors.New("cannot decrypt existing draft; data preserved")
 		}
 	}
-	draft := LocalDraft{ID: stored.ID, AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, ReplyMessageID: request.ReplyMessageID, QuotedReplyHTML: request.QuotedReplyHTML, EditorMode: request.EditorMode, RawSource: request.RawSource, Attachments: []DraftAttachment{}}
+	draft := LocalDraft{ID: stored.ID, AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, ReplyMessageID: request.ReplyMessageID, QuotedReplyHTML: request.QuotedReplyHTML, EditorMode: request.EditorMode, RawSource: request.RawSource, RenderedSource: request.RenderedSource, Attachments: []DraftAttachment{}}
+	if stored.Data != nil {
+		previous, err := decodeLocalDraft(cipher, stored)
+		if err != nil {
+			return "", err
+		}
+		// Imported thread identifiers are authenticated storage metadata, not
+		// client-supplied Gmail IDs. Editing keeps them until subject changes.
+		draft.References = previous.References
+		draft.RemoteThreadID = previous.RemoteThreadID
+		draft.ThreadSubject = previous.ThreadSubject
+	}
 	if draft.EditorMode == "" {
 		draft.EditorMode = "rich"
 	}
@@ -298,7 +322,7 @@ func (s *ComposeService) Save(ctx context.Context, request SaveDraftRequest) (st
 		return "", errors.New("cannot encrypt draft")
 	}
 	if err = r.DB.SaveComposeDraft(ctx, stored, ids); err != nil {
-		if errors.Is(err, store.ErrDraftConflict) {
+		if errors.Is(err, store.ErrDraftConflict) || errors.Is(err, store.ErrDraftSendProtected) {
 			return "", err
 		}
 		return "", errors.New("cannot save draft; previous data preserved")
@@ -326,6 +350,24 @@ func decodeLocalDraft(cipher *crypto.Service, stored store.EncryptedDraft) (Loca
 	}
 	return draft, nil
 }
+
+// Public restore paths (including the Gmail browser's Open local shortcut) must
+// not expose a reserved snapshot as an editable compose. Save also checks this,
+// and the store enforces it transactionally against concurrent reservations.
+func (s *ComposeService) editableDraft(ctx context.Context, account, id string) error {
+	copy, err := s.Runtime.DB.GmailDraftCopy(ctx, account, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return errors.New("cannot inspect cloud draft state")
+	}
+	if copy.State == "sending" || copy.State == "sent" || copy.OutboxID != "" {
+		return store.ErrDraftSendProtected
+	}
+	return nil
+}
+
 func (s *ComposeService) Get(ctx context.Context, request DraftRequest) (LocalDraft, error) {
 	r := s.Runtime
 	r.composeMu.Lock()
@@ -333,6 +375,9 @@ func (s *ComposeService) Get(ctx context.Context, request DraftRequest) (LocalDr
 	stored, err := r.DB.ComposeDraft(ctx, request.AccountID, request.DraftID)
 	if err != nil {
 		return LocalDraft{}, errors.New("draft not found in selected account")
+	}
+	if err := s.editableDraft(ctx, request.AccountID, request.DraftID); err != nil {
+		return LocalDraft{}, err
 	}
 	cipher, err := r.composeCrypto(ctx)
 	if err != nil {
@@ -370,14 +415,36 @@ func (s *ComposeService) List(ctx context.Context, request AccountRequest) ([]Dr
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, DraftSummary{ID: d.ID, AccountID: d.AccountID, Subject: d.Subject, UpdatedAt: d.UpdatedAt, AttachmentCount: len(d.Attachments)})
+		item := DraftSummary{ID: d.ID, AccountID: d.AccountID, Subject: d.Subject, UpdatedAt: d.UpdatedAt, AttachmentCount: len(d.Attachments), CloudState: "local"}
+		account, err := r.DB.Account(ctx, d.AccountID)
+		if err != nil {
+			return nil, err
+		}
+		item.CloudAvailable = account.Provider == "gmail"
+		copy, err := r.DB.GmailDraftCopy(ctx, d.AccountID, d.ID)
+		if err == nil {
+			item.CloudState = cloudCopyState(copy, row.Revision)
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		out = append(out, item)
 	}
 	return out, nil
 }
+
+// Delete retains sending drafts as a successful no-op for post-queue UI
+// cleanup. Cancellation makes them editable; confirmed sending removes them.
 func (s *ComposeService) Delete(ctx context.Context, request DraftRequest) (Empty, error) {
 	r := s.Runtime
 	r.composeMu.Lock()
 	defer r.composeMu.Unlock()
+	copy, err := r.DB.GmailDraftCopy(ctx, request.AccountID, request.DraftID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return Empty{}, errors.New("cannot inspect cloud draft state")
+	}
+	if err == nil && copy.State == "pending" {
+		return Empty{}, errors.New("check the unconfirmed Gmail copy before removing its local draft")
+	}
 	if err := r.DB.DeleteComposeDraft(ctx, request.AccountID, request.DraftID); err != nil {
 		return Empty{}, errors.New("cannot delete draft in selected account")
 	}

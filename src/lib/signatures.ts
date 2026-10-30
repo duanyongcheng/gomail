@@ -15,7 +15,7 @@ function readLegacySignatures(): Record<string, string> | null {
   }
 }
 
-function clearLegacySignature(accountId: string) {
+export function clearLegacySignature(accountId: string) {
   try {
     const signatures = readLegacySignatures();
     if (!signatures || !Object.prototype.hasOwnProperty.call(signatures, accountId)) return;

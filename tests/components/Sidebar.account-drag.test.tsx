@@ -180,31 +180,29 @@ describe("Sidebar account drag", () => {
     vi.restoreAllMocks();
   });
 
-  it("saves the new order when a row is dragged past its neighbour", async () => {
+  it("does not reorder when a row is dragged past its neighbour", async () => {
     renderSidebar();
 
     await dragRow("account-row-work", ROW_HEIGHT + 10);
 
-    expect(reorderAccounts).toHaveBeenCalledWith(["personal", "work", "school"]);
+    expect(reorderAccounts).not.toHaveBeenCalled();
   });
 
-  it("saves the order a row is dragged up into", async () => {
+  it("does not reorder when a row is dragged upwards", async () => {
     renderSidebar();
 
     await dragRow("account-row-school", -(ROW_HEIGHT + 10));
 
-    expect(reorderAccounts).toHaveBeenCalledWith(["work", "school", "personal"]);
+    expect(reorderAccounts).not.toHaveBeenCalled();
   });
 
-  it("does not select the mailbox it just moved", async () => {
+  it("keeps mailbox selection working without a drag handle", async () => {
     renderSidebar();
 
     await dragRow("account-row-work", ROW_HEIGHT + 10);
-    // The click a browser delivers after the release; dnd-kit swallows that one
-    // so that moving a row does not also open it.
     fireEvent.click(screen.getByRole("button", { name: /Work/ }));
-
-    expect(useMailStore.getState().activeAccountId).toBeNull();
+    expect(useMailStore.getState().activeAccountId).toBe("work");
+    expect(reorderAccounts).not.toHaveBeenCalled();
   });
 
   it("still selects a mailbox from a press that barely moves", async () => {

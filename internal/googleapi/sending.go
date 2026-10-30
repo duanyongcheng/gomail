@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/bary/pebble-go/internal/domain"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/bary/pebble-go/internal/domain"
+	"github.com/bary/pebble-go/internal/mailmime"
 )
 
 type fixedToken string
@@ -45,11 +47,8 @@ func (a *API) SendRaw(ctx context.Context, raw []byte) SendResponse {
 }
 
 func (a *API) SendMessage(ctx context.Context, raw []byte, threadID string) SendResponse {
-	if err := a.checkAccess(); err != nil {
-		return SendResponse{Retryable: true, Message: err.Error()}
-	}
-	if err := ctx.Err(); err != nil {
-		return SendResponse{Retryable: true, Message: "Send cancelled before submission."}
+	if len(raw) == 0 || len(raw) > mailmime.MaxOutgoingBytes {
+		return SendResponse{Message: "Invalid outgoing message size."}
 	}
 	body, err := json.Marshal(struct {
 		Raw      string `json:"raw"`
@@ -58,12 +57,44 @@ func (a *API) SendMessage(ctx context.Context, raw []byte, threadID string) Send
 	if err != nil {
 		return SendResponse{Message: "Cannot encode outgoing message."}
 	}
+	return a.submitSend(ctx, "/messages/send", body)
+}
+
+// SendDraftRaw sends the queued immutable MIME, not mutable web draft contents.
+// Gmail consumes the draft on acceptance, so no separate cleanup DELETE is used.
+func (a *API) SendDraftRaw(ctx context.Context, id string, raw []byte, threadID string) SendResponse {
+	if !validDraftID(id) || len(raw) == 0 || len(raw) > mailmime.MaxOutgoingBytes {
+		return SendResponse{Message: "Invalid outgoing Gmail draft."}
+	}
+	body, err := json.Marshal(struct {
+		ID      string `json:"id"`
+		Message struct {
+			Raw      string `json:"raw"`
+			ThreadID string `json:"threadId,omitempty"`
+		} `json:"message"`
+	}{ID: id, Message: struct {
+		Raw      string `json:"raw"`
+		ThreadID string `json:"threadId,omitempty"`
+	}{base64.RawURLEncoding.EncodeToString(raw), threadID}})
+	if err != nil {
+		return SendResponse{Message: "Cannot encode outgoing message."}
+	}
+	return a.submitSend(ctx, "/drafts/send", body)
+}
+
+func (a *API) submitSend(ctx context.Context, path string, body []byte) SendResponse {
+	if err := a.checkAccess(); err != nil {
+		return SendResponse{Retryable: true, Message: err.Error()}
+	}
+	if err := ctx.Err(); err != nil {
+		return SendResponse{Retryable: true, Message: "Send cancelled before submission."}
+	}
 	token, err := a.Tokens.Token(ctx)
 	if err != nil {
 		a.report(err)
 		return SendResponse{Retryable: true, Message: "Gmail sign-in required."}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.Base+"/messages/send", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.Base+path, bytes.NewReader(body))
 	if err != nil {
 		return SendResponse{Message: "Invalid Gmail send endpoint."}
 	}

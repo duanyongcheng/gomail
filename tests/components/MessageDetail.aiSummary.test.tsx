@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MessageDetail from "../../src/components/MessageDetail";
+import { aiSummarizeMessage } from "@/lib/api";
 
 vi.mock("react-i18next", () => ({
   initReactI18next: {
@@ -102,27 +103,34 @@ describe("MessageDetail AI summary entry", () => {
     expect(screen.getByRole("button", { name: "ai.summarize" })).toBeTruthy();
   });
 
-  it("opens the summary from the header button and closes it again", () => {
+  it("disables the summary button rather than opening a nonworking card", () => {
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
     const button = screen.getByRole("button", { name: "ai.summarize" });
 
     fireEvent.click(button);
-    expect(screen.getByText("ai.summaryTitle")).toBeTruthy();
-    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("ai.summaryTitle")).toBeNull();
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(button.getAttribute("title")).toBeTruthy();
 
     fireEvent.click(button);
     expect(screen.queryByText("ai.summaryTitle")).toBeNull();
     expect(button.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("can be driven from the keyboard shortcut event", () => {
+  it("guards direct legacy keyboard events for AI and translation", () => {
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
 
     act(() => {
       document.dispatchEvent(new CustomEvent("pebble:ai-summarize"));
+      document.dispatchEvent(new CustomEvent("pebble:toggle-bilingual"));
+      document.dispatchEvent(new CustomEvent("pebble:translate-selection"));
     });
 
-    expect(screen.getByText("ai.summaryTitle")).toBeTruthy();
+    expect(screen.queryByText("ai.summaryTitle")).toBeNull();
+    expect(screen.queryByText("translate popover")).toBeNull();
+    expect(aiSummarizeMessage).not.toHaveBeenCalled();
+    expect((screen.getByRole("button", { name: "Toggle bilingual view" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Snooze message" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("never renders the summary inside the message body", () => {

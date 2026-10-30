@@ -9,6 +9,8 @@ import {
 } from "@/lib/messageThemes";
 import { profileLocalStorage, profileSessionStorage } from "@/lib/profileStorage";
 import { readStartHiddenToTrayPreference, START_HIDDEN_TO_TRAY_KEY } from "@/lib/startupVisibility";
+import { isFeatureAvailable, isViewAvailable, isSettingsTabAvailable, unavailableReason } from "@/lib/availability";
+import { useToastStore } from "./toast.store";
 import { useComposeStore } from "./compose.store";
 import { useMailStore } from "./mail.store";
 
@@ -96,6 +98,7 @@ function persistBackgroundImageSettings(settings: BackgroundImageSettings | null
 }
 
 export function readNotificationsEnabledPreference(): boolean {
+  if (!isFeatureAvailable("notifications")) return false;
   const stored = profileLocalStorage.getItem(NOTIFICATIONS_KEY);
   return stored === null ? true : stored === "true";
 }
@@ -159,9 +162,9 @@ const initialNotificationsEnabled = readNotificationsEnabledPreference();
 const initialKeepRunningInBackground = readKeepRunningInBackgroundPreference();
 const initialShowUnreadCount = readShowUnreadCountPreference();
 const initialCollapsedAccountGroups = readCollapsedAccountGroups();
-const initialStartHiddenToTray = readStartHiddenToTrayPreference();
+const initialStartHiddenToTray = isFeatureAvailable("startHidden") && readStartHiddenToTrayPreference();
 const initialLanguage = getInitialLanguage();
-const initialBackgroundImage = readBackgroundImageSettings();
+const initialBackgroundImage = isFeatureAvailable("backgroundImage") ? readBackgroundImageSettings() : null;
 const initialMessageTheme = readStoredMessageTheme(profileLocalStorage);
 
 /** Resolve "system" theme to an actual "dark" | "light" value. */
@@ -233,6 +236,11 @@ interface UIState {
   toggleAccountGroup: (accountId: string) => void;
 }
 
+function restoredSettingsTab(): SettingsTab {
+  const tab = profileSessionStorage.getItem("pebble-settings-tab") ?? "accounts";
+  return isSettingsTabAvailable(tab) ? tab as SettingsTab : "accounts";
+}
+
 export const useUIStore = create<UIState>((set) => ({
   sidebarCollapsed: false,
   activeView: "inbox",
@@ -247,6 +255,7 @@ export const useUIStore = create<UIState>((set) => ({
   realtimeMode: initialRealtimeMode,
   notificationsEnabled: initialNotificationsEnabled,
   setNotificationsEnabled: (enabled) => {
+    if (!isFeatureAvailable("notifications")) return;
     profileLocalStorage.setItem(NOTIFICATIONS_KEY, String(enabled));
     set({ notificationsEnabled: enabled });
   },
@@ -257,6 +266,7 @@ export const useUIStore = create<UIState>((set) => ({
   },
   startHiddenToTray: initialStartHiddenToTray,
   setStartHiddenToTray: (enabled) => {
+    if (!isFeatureAvailable("startHidden")) return;
     profileLocalStorage.setItem(START_HIDDEN_TO_TRAY_KEY, String(enabled));
     set({ startHiddenToTray: enabled });
   },
@@ -265,6 +275,10 @@ export const useUIStore = create<UIState>((set) => ({
   toggleSidebar: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setActiveView: (view) => {
+    if (!isViewAvailable(view)) {
+      useToastStore.getState().addToast({ message: unavailableReason(), type: "info" });
+      return;
+    }
     const state = useUIStore.getState();
     if (state.activeView === view) {
       return;
@@ -289,10 +303,13 @@ export const useUIStore = create<UIState>((set) => ({
 
     set({ activeView: view });
   },
-  openContactInContacts: (contactId) => set({
-    activeView: "contacts",
-    pendingContactId: contactId,
-  }),
+  openContactInContacts: (contactId) => {
+    if (!isFeatureAvailable("contacts")) {
+      useToastStore.getState().addToast({ message: unavailableReason(), type: "info" });
+      return;
+    }
+    set({ activeView: "contacts", pendingContactId: contactId });
+  },
   clearPendingContact: () => set({ pendingContactId: null }),
   openMessageInInbox: (messageId) => {
     useMailStore.setState({
@@ -315,6 +332,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ messageTheme });
   },
   setBackgroundImage: (image) => {
+    if (!isFeatureAvailable("backgroundImage")) return;
     const current = useUIStore.getState().backgroundImage;
     const next: BackgroundImageSettings = {
       path: image.path,
@@ -327,7 +345,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ backgroundImage: next });
   },
   setBackgroundImageFit: (fit) => {
-    if (!BACKGROUND_IMAGE_FITS.has(fit)) return;
+    if (!isFeatureAvailable("backgroundImage") || !BACKGROUND_IMAGE_FITS.has(fit)) return;
     const current = useUIStore.getState().backgroundImage;
     if (!current) return;
     const next = { ...current, fit, updatedAt: Date.now() };
@@ -335,6 +353,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ backgroundImage: next });
   },
   setBackgroundImageOpacity: (opacity) => {
+    if (!isFeatureAvailable("backgroundImage")) return;
     const current = useUIStore.getState().backgroundImage;
     if (!current) return;
     const next = {
@@ -380,13 +399,20 @@ export const useUIStore = create<UIState>((set) => ({
   },
   searchQuery: "",
   setSearchQuery: (q) => set({ searchQuery: q }),
-  settingsTab: (profileSessionStorage.getItem("pebble-settings-tab") as SettingsTab) || "accounts",
+  settingsTab: restoredSettingsTab(),
   setSettingsTab: (tab) => {
+    if (!isSettingsTabAvailable(tab)) {
+      useToastStore.getState().addToast({ message: unavailableReason(), type: "info" });
+      return;
+    }
     profileSessionStorage.setItem("pebble-settings-tab", tab);
     set({ settingsTab: tab });
   },
   pendingRuleDraftText: null,
-  setPendingRuleDraftText: (text) => set({ pendingRuleDraftText: text }),
+  setPendingRuleDraftText: (text) => {
+    if (text && !isFeatureAvailable("rules")) return;
+    set({ pendingRuleDraftText: text });
+  },
   showFolderUnreadCount: initialShowUnreadCount,
   setShowFolderUnreadCount: (show) => {
     profileLocalStorage.setItem(UNREAD_COUNT_KEY, String(show));

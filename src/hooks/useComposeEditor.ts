@@ -3,15 +3,14 @@ import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown as MarkdownExtension } from "tiptap-markdown";
-import TurndownService from "turndown";
 import { getSignature } from "@/lib/signatures";
+import { ComposeSignature, replaceEditorSignature, replaceSourceSignature, signatureHtml as buildSignatureHtml } from "@/features/compose/signature";
 import { sanitizeComposeQuoteHtml } from "@/lib/sanitizeHtml";
+import { prepareComposeConversion } from "@/features/compose/mode-conversion";
 import type { Message } from "@/lib/ipc-types";
 import type { TFunction } from "i18next";
 
 export type EditorMode = "rich" | "markdown" | "html";
-
-const turndown = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
 
 interface UseComposeEditorArgs {
   fromAccountId: string;
@@ -40,13 +39,6 @@ interface BuildComposeEditorContentArgs {
 interface BuildReplyQuoteHtmlArgs {
   composeReplyTo: Message | null;
   t: TFunction;
-}
-
-interface ShouldApplyInitialEditorContentArgs {
-  editorExists: boolean;
-  initialized: boolean;
-  signatureReady: boolean;
-  hasRestoredDraft: boolean;
 }
 
 export function escapeHtml(s: string) {
@@ -117,12 +109,12 @@ export function buildComposeEditorContent({
       const body = composeReplyTo.body_html_raw
         ? extractComposeBodyHtml(composeReplyTo.body_html_raw)
         : `<p>${escapeHtml(composeReplyTo.body_text || "")}</p>`;
-      return `${signatureHtml}<br/><br/><p>${escapeHtml(t("compose.forwardedHeader"))}</p><p>${escapeHtml(t("compose.forwardedFrom", { sender }))}</p><p>${escapeHtml(t("compose.forwardedSubject", { subject: fwdSubject }))}</p>${body}`;
+      return `<p><br></p>${signatureHtml}<br/><br/><p>${escapeHtml(t("compose.forwardedHeader"))}</p><p>${escapeHtml(t("compose.forwardedFrom", { sender }))}</p><p>${escapeHtml(t("compose.forwardedSubject", { subject: fwdSubject }))}</p>${body}`;
     }
     if (composeMode === "new" && prefillBody?.trim()) {
       return `${plainTextToParagraphs(prefillBody)}${signatureHtml}`;
     }
-    return signatureHtml;
+    return signatureHtml ? `<p><br></p>${signatureHtml}` : "";
   } catch (err) {
     console.error("[ComposeView] Failed to build editor content:", err);
     return "";
@@ -149,16 +141,6 @@ export function appendReplyQuoteHtml(bodyHtml: string, quotedReplyHtml: string) 
   return `${body}<br/><br/>${quote}`;
 }
 
-export function shouldApplyInitialEditorContent({
-  editorExists,
-  initialized,
-  signatureReady,
-  hasRestoredDraft,
-}: ShouldApplyInitialEditorContentArgs) {
-  if (!editorExists || initialized) return false;
-  return hasRestoredDraft || signatureReady;
-}
-
 export function useComposeEditor({
   fromAccountId,
   composeMode,
@@ -170,42 +152,44 @@ export function useComposeEditor({
 }: UseComposeEditorArgs) {
   const [editorMode, setEditorMode] = useState<EditorMode>(restoredDraft?.editorMode ?? "rich");
   const [rawSource, setRawSource] = useState(restoredDraft?.rawSource ?? prefillBody ?? "");
+  const [conversionError, setConversionError] = useState(false);
+  useEffect(() => { setConversionError(false); }, [rawSource]);
   const [richTextHtml, setRichTextHtml] = useState("");
+  // Only a fresh, unprefilled editor can have replaceable automatic content.
+  // Compare the whole active representation, not just the signature marker:
+  // users can edit inside that node, or add non-text content such as a divider.
+  const [pristineBody, setPristineBody] = useState<{ html: string; source: string } | null>(null);
   const [htmlPreview, setHtmlPreview] = useState(false);
-  const [signature, setSignature] = useState("");
-  const [signatureReady, setSignatureReady] = useState(Boolean(restoredDraft));
+  const [signatureLoad, setSignatureLoad] = useState<{ account: string; attempt: number; value: string; failed: boolean } | null>(null);
+  const [signatureAttempt, setSignatureAttempt] = useState(0);
+  const [appliedAccount, setAppliedAccount] = useState<string | null>(null);
+  const restoredAccountRef = useRef(fromAccountId);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const contentInitializedRef = useRef(false);
+  const preserveRestored = Boolean(restoredDraft) && fromAccountId === restoredAccountRef.current
+    && (appliedAccount === null || appliedAccount === fromAccountId);
+  const currentLoad = signatureLoad?.account === fromAccountId && signatureLoad.attempt === signatureAttempt ? signatureLoad : null;
+  const signatureReady = preserveRestored || Boolean(currentLoad && !currentLoad.failed);
+  const signatureError = !preserveRestored && Boolean(currentLoad?.failed);
+  const signature = currentLoad?.value ?? "";
+  // Account identity is checked during render, not just in an effect: no render
+  // may send/save the previous account's signature while a new read is pending.
+  const editorReady = appliedAccount === fromAccountId && signatureReady;
 
   useEffect(() => {
-    if (restoredDraft) {
-      setSignatureReady(true);
-      return;
-    }
+    if (preserveRestored || !fromAccountId) return;
     let cancelled = false;
-    setSignatureReady(false);
     getSignature(fromAccountId)
-      .then((loaded) => {
-        if (!cancelled) setSignature(loaded);
+      .then((value) => {
+        if (!cancelled) setSignatureLoad({ account: fromAccountId, attempt: signatureAttempt, value, failed: false });
       })
-      .catch((err) => {
-        console.warn("Failed to load signature:", err);
-        if (!cancelled) setSignature("");
-      })
-      .finally(() => {
-        if (!cancelled) setSignatureReady(true);
+      .catch(() => {
+        if (!cancelled) setSignatureLoad({ account: fromAccountId, attempt: signatureAttempt, value: "", failed: true });
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [fromAccountId, restoredDraft]);
+    return () => { cancelled = true; };
+  }, [fromAccountId, preserveRestored, signatureAttempt]);
 
-  // Build signature HTML block
-  const signatureHtml = useMemo(() => {
-    const sig = signature;
-    if (!sig) return "";
-    return `<br/><br/><div style="color:var(--color-text-secondary);font-size:13px">--<br/>${escapeHtml(sig).replace(/\n/g, "<br/>")}</div>`;
-  }, [signature]);
+  const signatureHtml = useMemo(() => buildSignatureHtml(signature), [signature]);
 
   const editorContent = useMemo(() => {
     return buildComposeEditorContent({ composeMode, composeReplyTo, isReply, signatureHtml, prefillBody, t });
@@ -220,33 +204,59 @@ export function useComposeEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
+      ComposeSignature,
       Placeholder.configure({ placeholder: t("compose.editorPlaceholder", "Write your message...") }),
       MarkdownExtension.configure({ html: true, transformPastedText: true }),
     ],
     content: "",
+    editable: editorReady,
   });
 
-  // Set editor content after creation to avoid initialization crashes
+  const bodyIsPristine = Boolean(pristineBody && (editorMode === "rich"
+    ? editor?.getHTML() === pristineBody.html
+    : rawSource === pristineBody.source));
+
   useEffect(() => {
-    if (!shouldApplyInitialEditorContent({
-      editorExists: Boolean(editor),
-      initialized: contentInitializedRef.current,
-      signatureReady,
-      hasRestoredDraft: Boolean(restoredDraft),
-    }) || !editor) return;
-    // If restoring a draft, prefer its richTextHtml over generated editorContent
-    if (restoredDraft && restoredDraft.editorMode !== "rich" && restoredDraft.rawSource) {
-      editor.commands.setContent(restoredDraft.rawSource);
-    } else if (restoredDraft?.richTextHtml) {
-      editor.commands.setContent(restoredDraft.richTextHtml);
-    } else if (editorContent) {
-      editor.commands.setContent(editorContent);
+    editor?.setEditable(editorReady);
+  }, [editor, editorReady]);
+
+  // Only the initial, non-editable editor receives a whole-document snapshot.
+  // Subsequent From changes replace the explicitly marked signature only.
+  useEffect(() => {
+    if (!editor || !signatureReady || appliedAccount === fromAccountId) return;
+    const keepPristine = contentInitializedRef.current
+      ? bodyIsPristine
+      : composeMode === "new" && !restoredDraft && !prefillBody && !composeReplyTo;
+    let nextSource = rawSource;
+    if (!contentInitializedRef.current) {
+      if (restoredDraft && editorMode !== "rich") {
+        // Source is authoritative, including intentionally empty HTML. Populate
+        // the inactive rich editor only when the schema can preserve it safely.
+        const restored = prepareComposeConversion(editor, editorMode, "rich", rawSource);
+        if (restored?.content) editor.commands.setContent(restored.content);
+      } else if (restoredDraft?.richTextHtml) {
+        editor.commands.setContent(restoredDraft.richTextHtml);
+      } else if (editorContent) {
+        editor.commands.setContent(editorContent);
+      }
+      if (isReply && !restoredDraft) {
+        requestAnimationFrame(() => { if (!editor.isDestroyed) editor.commands.focus("start"); });
+      }
+      contentInitializedRef.current = true;
+    } else if (editorMode === "rich") {
+      replaceEditorSignature(editor, signature);
+    } else {
+      nextSource = replaceSourceSignature(rawSource, signature);
+      setRawSource(nextSource);
+      const converted = prepareComposeConversion(editor, editorMode, "rich", nextSource);
+      if (converted?.content) editor.commands.setContent(converted.content);
     }
-    if (isReply && !restoredDraft) {
-      requestAnimationFrame(() => editor.commands.focus("start"));
-    }
-    contentInitializedRef.current = true;
-  }, [editor, editorContent, isReply, restoredDraft, signatureReady]);
+    // A From change may replace an edited signature. Never promote that edited
+    // message back to pristine just because the generated result looks blank.
+    setPristineBody(keepPristine ? { html: editor.getHTML(), source: nextSource } : null);
+    setRichTextHtml(editor.getHTML());
+    setAppliedAccount(fromAccountId);
+  }, [editor, editorContent, isReply, restoredDraft, signatureReady, appliedAccount, fromAccountId, editorMode, rawSource, signature, bodyIsPristine, composeMode, prefillBody, composeReplyTo]);
 
   useEffect(() => {
     if (!editor) {
@@ -267,34 +277,31 @@ export function useComposeEditor({
 
   // Switch between modes, syncing content
   function switchMode(newMode: EditorMode) {
-    if (newMode === editorMode || !editor) return;
+    if (newMode === editorMode || !editor || !editorReady) return;
 
-    if (editorMode === "rich") {
-      if (newMode === "markdown") {
-        setRawSource(turndown.turndown(editor.getHTML()));
-      } else {
-        setRawSource(editor.getHTML());
-      }
-    } else if (editorMode === "markdown") {
-      if (newMode === "rich") {
-        editor.commands.setContent(rawSource);
-      } else {
-        editor.commands.setContent(rawSource);
-        setRawSource(editor.getHTML());
-      }
-    } else {
-      if (newMode === "rich") {
-        editor.commands.setContent(rawSource);
-      } else {
-        setRawSource(turndown.turndown(rawSource));
-      }
+    const converted = prepareComposeConversion(editor, editorMode, newMode, rawSource);
+    if (!converted) {
+      // Validate before ANY transaction/state change: no undo entry, selection
+      // reset, autosave snapshot or mode change on refusal.
+      setConversionError(true);
+      return;
     }
-
+    if (converted.content) editor.commands.setContent(converted.content);
+    // Mode conversion alone is not an edit, but conversion must never establish
+    // a new pristine baseline for user-authored source/body content.
+    setPristineBody(bodyIsPristine ? { html: editor.getHTML(), source: converted.source } : null);
+    setRawSource(converted.source);
     setEditorMode(newMode);
+    setConversionError(false);
   }
 
   return {
     editor,
+    editorReady,
+    bodyIsPristine,
+    signatureError,
+    conversionError,
+    retrySignature: () => setSignatureAttempt((attempt) => attempt + 1),
     editorMode,
     rawSource,
     setRawSource,

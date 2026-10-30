@@ -20,3 +20,15 @@ it("uses the original mailbox when replying from the combined inbox", () => {
   expect(result.current.to).toEqual(["sender@example.invalid"]);
   expect(result.current.cc).toEqual(["cc@example.invalid"]);
 });
+it("uses the explicitly selected Gmail drafts mailbox rather than an unrelated active mailbox", () => {
+  const accounts = [
+    { id: "a", email: "a@example.invalid", provider: "gmail" },
+    { id: "b", email: "b@example.invalid", provider: "gmail" },
+  ] as Account[];
+  const { result } = renderHook(() => useComposeRecipients({
+    composeMode: "new", composeReplyTo: null, accounts, activeAccountId: "a",
+    restoredDraft: null, composePrefill: { gmailDraftsAccountId: "b" },
+  }));
+  expect(result.current.fromAccountId).toBe("b");
+  expect(result.current.to).toEqual([]);
+});

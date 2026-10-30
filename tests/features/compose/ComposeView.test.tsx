@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ComposeView from "../../../src/features/compose/ComposeView";
+import { listTemplates, saveTemplate } from "@/lib/templates";
+vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 import {
   cleanupStagedComposeAttachment,
   deleteDraft,
@@ -20,6 +22,12 @@ const mocks = vi.hoisted(() => ({
   cancelCloseCompose: vi.fn(),
   showComposeLeaveConfirm: false,
   quotedReplyHtml: "",
+  editorReady: true,
+  editorMode: "rich",
+  rawSource: "",
+  signatureError: false,
+  retrySignature: vi.fn(),
+  draftReadiness: [] as boolean[],
   accountsQuery: {
     data: [{ id: "account-1", email: "me@example.com", display_name: "Me" }],
     isLoading: false,
@@ -97,27 +105,33 @@ vi.mock("../../../src/hooks/useComposeRecipients", () => ({
 }));
 
 vi.mock("../../../src/hooks/useComposeDraft", () => ({
-  useComposeDraft: () => ({
-    draftIdRef: { current: "draft-1" },
-    draftIdsByAccountRef: { current: { "account-1": "draft-1" } },
-    cancelPendingDraftSaves: mocks.cancelPendingDraftSaves,
-    saveNow: mocks.saveNow,
-    saveStatus: "idle",
-    resumeDraftSaves: mocks.resumeDraftSaves,
-  }),
+  useComposeDraft: ({ editorReady }: { editorReady: boolean }) => {
+    mocks.draftReadiness.push(editorReady);
+    return {
+      draftIdRef: { current: "draft-1" },
+      draftIdsByAccountRef: { current: { "account-1": "draft-1" } },
+      cancelPendingDraftSaves: mocks.cancelPendingDraftSaves,
+      saveNow: mocks.saveNow,
+      saveStatus: "idle",
+      resumeDraftSaves: mocks.resumeDraftSaves,
+    };
+  },
   loadDraftFromStorage: mocks.loadDraftFromStorage,
   clearDraftStorage: vi.fn(),
 }));
 
 vi.mock("../../../src/hooks/useComposeEditor", () => ({
   useComposeEditor: () => ({
+    editorReady: mocks.editorReady,
+    signatureError: mocks.signatureError,
+    retrySignature: mocks.retrySignature,
     editor: {
       getHTML: () => "<p>Hello</p>",
       getText: () => "Hello",
       commands: { setContent: vi.fn() },
     },
-    editorMode: "rich",
-    rawSource: "",
+    editorMode: mocks.editorMode,
+    rawSource: mocks.rawSource,
     setRawSource: vi.fn(),
     richTextHtml: "<p>Hello</p>",
     htmlPreview: false,
@@ -172,12 +186,13 @@ vi.mock("../../../src/features/compose/ComposeToolbar", () => ({
   },
 }));
 
-vi.mock("@tiptap/react", () => ({
+vi.mock("@tiptap/react", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@tiptap/react")>(),
   EditorContent: () => <div data-testid="editor" />,
 }));
 
 vi.mock("../../../src/lib/templates", () => ({
-  listTemplates: () => [],
+  listTemplates: vi.fn(() => []),
   saveTemplate: vi.fn(),
   deleteTemplate: vi.fn(),
 }));
@@ -213,6 +228,58 @@ function deferred<T>() {
 }
 
 describe("ComposeView", () => {
+  it("blocks unsupported templates and AI while keeping compose controls available", () => {
+    render(<ComposeView />);
+    for (const name of ["Templates", "ai.menuTooltip"]) {
+      const button = screen.getByRole("button", { name }) as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+      expect(button.title).toMatch(/not available/);
+      fireEvent.click(button);
+    }
+    expect(listTemplates).not.toHaveBeenCalled();
+    expect(saveTemplate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect((screen.getByRole("button", { name: "Attach file" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Save and close" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+  it("blocks send, save and draft snapshots while signature initialization is pending", () => {
+    mocks.editorReady = false;
+    const { rerender } = render(<ComposeView />);
+    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Save and close" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(mocks.draftReadiness.every((ready) => !ready)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(mocks.saveNow).not.toHaveBeenCalled();
+    expect(screen.getByText("Loading signature…")).toBeTruthy();
+    mocks.signatureError = true;
+    rerender(<ComposeView />);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(mocks.retrySignature).toHaveBeenCalledOnce();
+    mocks.signatureError = false;
+    mocks.editorReady = true;
+    rerender(<ComposeView />);
+    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(mocks.draftReadiness.at(-1)).toBe(true);
+  });
+
+  it("uses rendered plain text instead of signature HTML markers for Markdown sends", async () => {
+    mocks.editorMode = "markdown";
+    mocks.rawSource = '<p data-pebble-signature="auto">Hello</p>';
+    render(<ComposeView />);
+    fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Signature" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(mocks.mutate).toHaveBeenCalledOnce());
+    const request = mocks.mutate.mock.calls[0][0];
+    expect(request.localDraftId).toBe("draft-1");
+    expect(request.bodyText.trim()).toBe("Hello");
+    expect(request.bodyText).not.toContain("<");
+    expect(request.bodyHtml).toContain(">Hello</p>");
+  });
+
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -224,10 +291,19 @@ describe("ComposeView", () => {
     mocks.loadDraftFromStorage.mockReset();
     mocks.cancelPendingDraftSaves.mockReset();
     mocks.cancelPendingDraftSaves.mockResolvedValue({ "account-1": "draft-1" });
+    mocks.saveNow.mockReset();
+    mocks.saveNow.mockResolvedValue(true);
+    mocks.resumeDraftSaves.mockReset();
     mocks.confirmCloseCompose.mockReset();
     mocks.cancelCloseCompose.mockReset();
     mocks.showComposeLeaveConfirm = false;
     mocks.quotedReplyHtml = "";
+    mocks.editorReady = true;
+    mocks.editorMode = "rich";
+    mocks.rawSource = "";
+    mocks.signatureError = false;
+    mocks.retrySignature.mockReset();
+    mocks.draftReadiness = [];
     mocks.accountsQuery.data = [{ id: "account-1", email: "me@example.com", display_name: "Me" }];
     mocks.accountsQuery.isLoading = false;
     mocks.accountsQuery.isSuccess = true;
@@ -259,6 +335,59 @@ describe("ComposeView", () => {
     await waitFor(() => expect(mocks.addToast).toHaveBeenCalledWith(expect.objectContaining({
       type: "error",
     })));
+  });
+
+  it("does not queue or remove the local draft when its final snapshot cannot be saved", async () => {
+    mocks.saveNow.mockResolvedValue(false);
+    render(<ComposeView />);
+    fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Keep this" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Could not save this draft. Nothing was queued; keep editing or retry.");
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(mocks.cancelPendingDraftSaves).not.toHaveBeenCalled();
+    expect(deleteDraft).not.toHaveBeenCalled();
+    expect(mocks.closeCompose).not.toHaveBeenCalled();
+    expect(mocks.resumeDraftSaves).toHaveBeenCalledOnce();
+    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("waits for the final snapshot and passes only the selected account's local draft identity", async () => {
+    const saved = deferred<boolean>();
+    mocks.saveNow.mockReturnValue(saved.promise);
+    mocks.cancelPendingDraftSaves.mockResolvedValue({ "account-1": "correct-draft", "account-2": "other-draft" });
+    render(<ComposeView />);
+    fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Linked send" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(mocks.cancelPendingDraftSaves).not.toHaveBeenCalled();
+    await act(async () => { saved.resolve(true); });
+    await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      accountId: "account-1", localDraftId: "correct-draft", subject: "Linked send",
+    }), expect.any(Object)));
+    expect(mocks.saveNow).toHaveBeenCalledWith(expect.objectContaining({
+      to: ["to@example.com"], subject: "Linked send", bodyHtml: "<p>Hello</p>", bodyText: "Hello",
+    }));
+  });
+
+  it("resumes saving and keeps the local draft when queueing fails", async () => {
+    mocks.mutate.mockImplementation((_params, options) => options.onError(new Error("Queue unavailable")));
+    render(<ComposeView />);
+    fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Retry later" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Queue unavailable");
+    expect(mocks.resumeDraftSaves).toHaveBeenCalledOnce();
+    expect(deleteDraft).not.toHaveBeenCalled();
+    expect(mocks.closeCompose).not.toHaveBeenCalled();
+  });
+
+  it("keeps another account's saved snapshot when the selected account sends", async () => {
+    mocks.cancelPendingDraftSaves.mockResolvedValue({ "account-1": "sent-draft", "account-2": "keep-draft" });
+    mocks.mutate.mockImplementation((_params, options) => options.onSuccess());
+    render(<ComposeView />);
+    fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Selected account only" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(mocks.closeCompose).toHaveBeenCalledOnce());
+    expect(deleteDraft).toHaveBeenCalledExactlyOnceWith("account-1", "sent-draft");
   });
 
   it("prevents duplicate sends while successful-send cleanup is pending", async () => {

@@ -1,8 +1,8 @@
 import { accountLabel } from "@/lib/accountIdentity";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import AccountConnections from "./AccountConnections";
 import MailDownloadFailures from "./MailDownloadFailures";
 import GmailLabels from "./GmailLabels";
-import OAuthIdentityPanel from "./OAuthIdentityPanel";
 import XOAuth2Panel from "./XOAuth2Panel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Mail, Pencil, Plug, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
@@ -34,7 +34,7 @@ import { useUIStore, type RealtimeStatus } from "@/stores/ui.store";
 import { useToastStore } from "@/stores/toast.store";
 import AccountSetup from "@/components/AccountSetup";
 import { extractErrorMessage } from "@/lib/extractErrorMessage";
-import { getSignature, setSignature } from "@/lib/signatures";
+import { clearLegacySignature, getSignature, setSignature } from "@/lib/signatures";
 import { ACCOUNT_COLOR_PRESETS, assignAccountColors, getAccountColor } from "@/lib/accountColors";
 import { inputStyle, labelStyle } from "../../styles/form";
 
@@ -110,6 +110,8 @@ export default function AccountsTab() {
   const { reorder, isReordering } = useReorderAccounts();
 
   async function doTestConnection(accountId: string) {
+    const account = accounts.find((item) => item.id === accountId);
+    if (!account || account.provider === "gmail" || !isFeatureAvailable(account.provider === "pop3" ? "pop3" : "imap")) return;
     setTestingId(accountId);
     setTestResult(null);
     try {
@@ -131,7 +133,7 @@ export default function AccountsTab() {
    * order the user can see.
    */
   async function doMove(accountId: string, direction: -1 | 1) {
-    if (isReordering) return;
+    if (!isFeatureAvailable("accountReorder") || isReordering) return;
     const current = queryClient.getQueryData<Account[]>(accountsQueryKey);
     if (!current) return;
 
@@ -355,15 +357,15 @@ export default function AccountsTab() {
                       account is the sender new mail defaults to. */}
                   <MoveAccountButton
                     direction="up"
-                    disabled={index === 0 || isReordering}
-                    title={t("settings.moveAccountUp", "Move up")}
+                    disabled={!isFeatureAvailable("accountReorder") || index === 0 || isReordering}
+                    title={isFeatureAvailable("accountReorder") ? t("settings.moveAccountUp", "Move up") : unavailableReason()}
                     label={t("settings.moveAccountUpFor", "Move {{account}} up", { account: accountLabel(account) })}
                     onClick={() => doMove(account.id, -1)}
                   />
                   <MoveAccountButton
                     direction="down"
-                    disabled={index === accounts.length - 1 || isReordering}
-                    title={t("settings.moveAccountDown", "Move down")}
+                    disabled={!isFeatureAvailable("accountReorder") || index === accounts.length - 1 || isReordering}
+                    title={isFeatureAvailable("accountReorder") ? t("settings.moveAccountDown", "Move down") : unavailableReason()}
                     label={t("settings.moveAccountDownFor", "Move {{account}} down", { account: accountLabel(account) })}
                     onClick={() => doMove(account.id, 1)}
                   />
@@ -375,8 +377,8 @@ export default function AccountsTab() {
                   />
                   <button
                     onClick={() => doTestConnection(account.id)}
-                    disabled={testingId === account.id}
-                    title={t("accountSetup.testConnection", "Test Connection")}
+                    disabled={account.provider === "gmail" || !isFeatureAvailable(account.provider === "pop3" ? "pop3" : "imap") || testingId === account.id}
+                    title={account.provider === "gmail" ? t("settings.gmailConnectionHelp", "Use Gmail connection below to reconnect this mailbox.") : unavailableReason()}
                     aria-label={t("accountSetup.testConnection", "Test Connection")}
                     style={{
                       display: "flex",
@@ -405,8 +407,9 @@ export default function AccountsTab() {
                     <Plug size={15} />
                   </button>
                   <button
-                    onClick={() => setEditingAccount(account)}
-                    title={t("settings.editAccount", "Edit account")}
+                    disabled={account.provider !== "gmail"}
+                    onClick={() => { if (account.provider === "gmail") setEditingAccount(account); }}
+                    title={account.provider === "gmail" ? t("settings.editAccount", "Edit account") : unavailableReason()}
                     aria-label={t("settings.editAccount", "Edit account")}
                     style={{
                       display: "flex",
@@ -507,7 +510,7 @@ export default function AccountsTab() {
       {showSetup && <AccountSetup onClose={() => setShowSetup(false)} />}
 
       {/* Edit account modal */}
-      {editingAccount && (
+      {editingAccount?.provider === "gmail" && (
         <EditAccountModal
           account={editingAccount}
           initialColor={accountColorsById.get(editingAccount.id) ?? getAccountColor(editingAccount)}
@@ -565,7 +568,6 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
   const emailInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState(account.display_name);
   const [accountLabelValue, setAccountLabelValue] = useState(account.account_label || "");
-  const [providerName, setProviderName] = useState(account.provider_display_name || "");
   const [email, setEmail] = useState(account.email);
   const [accountColor, setAccountColor] = useState(initialColor);
   const [password, setPassword] = useState("");
@@ -580,6 +582,10 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
   const [proxyHost, setProxyHost] = useState("");
   const [proxyPort, setProxyPort] = useState("");
   const [signature, setSignatureValue] = useState("");
+  const [signatureLoaded, setSignatureLoaded] = useState(false);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [signatureRetry, setSignatureRetry] = useState(0);
+  const savingRef = useRef(false);
   const [imapFolderSettings, setImapFolderSettings] = useState<ImapSyncFolderSettings | null>(null);
   const [selectedImapFolderIds, setSelectedImapFolderIds] = useState<Set<string>>(new Set());
   const [folderLoading, setFolderLoading] = useState(false);
@@ -587,6 +593,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isOAuth = account.provider === "gmail" || account.provider === "outlook";
+  const isGmail = account.provider === "gmail";
   const isImap = account.provider === "imap";
   const isPop3 = account.provider === "pop3";
   const incomingHostLabel = isPop3
@@ -598,20 +605,25 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
 
   useEffect(() => {
     let cancelled = false;
+    setSignatureLoaded(false);
+    setSignatureError(null);
     getSignature(account.id)
       .then((loaded) => {
-        if (!cancelled) setSignatureValue(loaded);
+        if (!cancelled) {
+          setSignatureValue(loaded);
+          setSignatureLoaded(true);
+        }
       })
       .catch((err) => {
-        console.warn("Failed to load signature:", err);
+        if (!cancelled) setSignatureError(extractErrorMessage(err));
       });
     return () => {
       cancelled = true;
     };
-  }, [account.id]);
+  }, [account.id, signatureRetry]);
 
   useEffect(() => {
-    if (!isOAuth) return;
+    if (!isFeatureAvailable("proxy") || !isOAuth || isGmail) return;
     let cancelled = false;
     getOAuthAccountProxySetting(account.id)
       .then((setting) => {
@@ -626,7 +638,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
     return () => {
       cancelled = true;
     };
-  }, [account.id, isOAuth]);
+  }, [account.id, isOAuth, isGmail]);
 
   useEffect(() => {
     const previousFocus =
@@ -637,7 +649,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        if (!savingRef.current) onClose();
         return;
       }
       if (event.key === "Tab" && dialogRef.current) {
@@ -665,6 +677,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
   }, [onClose]);
 
   async function loadImapFolders() {
+    if (!isFeatureAvailable("imap")) return;
     setFolderLoading(true);
     setFolderError(null);
     try {
@@ -680,10 +693,20 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!isGmail || savingRef.current || !signatureLoaded) return;
+    savingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      if (isOAuth) {
+      if (isGmail) {
+        await updateAccount(
+          account.id, email, displayName,
+          undefined, undefined, undefined, undefined, undefined,
+          undefined, undefined, undefined, undefined, undefined,
+          accountColor, accountLabelValue, signature,
+        );
+        clearLegacySignature(account.id);
+      } else if (isOAuth) {
         await updateAccount(
           account.id,
           email,
@@ -757,11 +780,12 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
         ]);
       }
 
-      await setSignature(account.id, signature);
+      if (!isGmail) await setSignature(account.id, signature);
       onSaved();
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
+      savingRef.current = false;
       setLoading(false);
     }
   }
@@ -826,6 +850,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
           </h2>
           <button
             onClick={onClose}
+            disabled={loading}
             aria-label={t("common.close")}
             style={{ backgroundColor: "transparent", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E\")", backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "18px 18px", border: "none", cursor: "pointer", padding: "4px", borderRadius: "4px", color: "var(--color-text-secondary)", display: "flex", fontSize: 0 }}
           >
@@ -834,7 +859,8 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
         </div>
 
         <div className="scroll-region edit-account-scroll" style={{ overflowY: "auto", padding: "20px" }}>
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <form onSubmit={handleSubmit}>
+            <fieldset disabled={loading} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "14px" }}>
             <div style={fieldStyle}>
               <label style={labelStyle}>{t("accountSetup.accountLabel", "Account label")}</label>
               <input aria-label={t("accountSetup.accountLabel", "Account label")} style={inputStyle} maxLength={120}
@@ -843,7 +869,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
             </div>
             <div>
               <label style={labelStyle}>{t("accountSetup.displayName")}</label>
-              <input aria-label={t("accountSetup.displayName")} style={inputStyle} type="text" readOnly={account.provider === "outlook"} value={account.provider === "outlook" ? providerName : displayName} onChange={(e) => setDisplayName(e.target.value)} />
+              <input aria-label={t("accountSetup.displayName")} style={inputStyle} type="text" readOnly={account.provider === "outlook"} value={account.provider === "outlook" ? account.provider_display_name || "" : displayName} onChange={(e) => setDisplayName(e.target.value)} />
               <small>{account.provider === "outlook"
                 ? t("accountSetup.providerManagedName", "The sender name is managed by your email provider.")
                 : t("accountSetup.senderNameHelp", "Used in outgoing messages. Check this name before sending.")}</small>
@@ -852,11 +878,9 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
               <label style={labelStyle}>{t("accountSetup.emailAddress")}</label>
               <input aria-label={t("accountSetup.emailAddress")} ref={emailInputRef} style={inputStyle} type="email" required readOnly={isOAuth} value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
-            {isOAuth && <OAuthIdentityPanel account={account} onApplied={(updated) => {
-              setEmail(updated.email);
-              setProviderName(updated.provider_display_name || "");
-              void queryClient.invalidateQueries({ queryKey: accountsQueryKey });
-            }} />}
+            {isGmail && <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+              {t("settings.gmailIdentityHelp", "Mailbox identity cannot be changed here. Use Gmail connection → Reconnect to verify and reconnect the same mailbox.")}
+            </p>}
             <div style={fieldStyle}>
               <label htmlFor="account-color" style={labelStyle}>{t("settings.accountColor", "Account color")}</label>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -936,7 +960,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
                   lineHeight: 1.5,
                 }}
               >
-                {t(
+                {isGmail ? t("settings.gmailLocalSettingsHelp", "Sender name, account label, color and signature are saved locally and work offline.") : t(
                   "settings.oauthAccountNote",
                   "This account uses OAuth. Provider sign-in, password, and IMAP/SMTP settings are managed by the provider. Leave the proxy blank to inherit the global SOCKS5 proxy."
                 )}
@@ -1007,7 +1031,9 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
               </>
             )}
 
-            {proxyFields}
+            {isGmail ? <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+              {t("settings.gmailProxyUnavailable", "Gmail proxy settings are not available yet.")}
+            </p> : proxyFields}
 
             {isImap && (
               <div
@@ -1159,12 +1185,21 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
             <div style={fieldStyle}>
               <label style={labelStyle}>{t("settings.signature", "Signature")} <span style={{ color: "var(--color-text-secondary)", fontWeight: 400 }}>({t("settings.optional", "optional")})</span></label>
               <textarea
+                aria-label={t("settings.signature", "Signature")}
+                disabled={!signatureLoaded}
                 style={{ ...inputStyle, minHeight: "80px", resize: "vertical", fontFamily: "inherit" }}
                 value={signature}
                 onChange={(e) => setSignatureValue(e.target.value)}
                 placeholder={t("settings.signaturePlaceholder", "Your email signature...")}
               />
             </div>
+
+            {signatureError && <div role="alert">
+              <p>{t("settings.signatureReadFailed", "Could not load the saved signature. Retry before saving account settings.")}</p>
+              <p>{signatureError}</p>
+              <button type="button" onClick={() => setSignatureRetry((value) => value + 1)}>{t("common.retry", "Retry")}</button>
+            </div>}
+            {!signatureLoaded && !signatureError && <p role="status">{t("common.loading")}</p>}
 
             {error && (
               <div role="alert" aria-live="assertive" style={{ padding: "10px 12px", borderRadius: "6px", backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "13px" }}>
@@ -1174,7 +1209,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
 
             <button
               type="submit"
-              disabled={loading || folderLoading}
+              disabled={loading || folderLoading || !signatureLoaded}
               style={{
                 padding: "9px 16px",
                 borderRadius: "6px",
@@ -1190,6 +1225,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
             >
               {loading ? t("common.saving") : t("common.save")}
             </button>
+            </fieldset>
           </form>
         </div>
       </div>

@@ -28,6 +28,7 @@ import MessageThemePicker from "./MessageThemePicker";
 import type { EmailAddress } from "@/lib/api";
 import ContactAddressAction from "./ContactAddressAction";
 import { uniqueContactParticipants } from "./contact-participants";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
 interface Props {
   messageId: string;
@@ -85,7 +86,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   const translateRef = useRef<HTMLDivElement>(null);
   const themePickerRef = useRef<HTMLDivElement>(null);
 
-  const { message, setMessage, rendered, loading, error, refreshPrivacy } = useMessageLoader(messageId, privacyMode);
+  const { message, rendered, loading, error, refreshPrivacy } = useMessageLoader(messageId, privacyMode);
   const trust = useSenderTrust(message, () => refreshPrivacy());
   useEffect(() => {
     const changed = () => setPrivacyOverride({ messageId, mode: defaultPrivacyMode() });
@@ -145,6 +146,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   }
 
   function openTranslateForSelection(position?: { x: number; y: number }) {
+    if (!isFeatureAvailable("translation")) return;
     const selectedText = getCurrentSelectedText();
     if (selectedText.length <= 5) return;
     setShowSelectionActions(null);
@@ -152,6 +154,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   }
 
   function handleTranslateSelectedText(text: string, position: { x: number; y: number }) {
+    if (!isFeatureAvailable("translation")) return;
     setShowSelectionActions(null);
     setShowTranslate({ text, position });
   }
@@ -163,6 +166,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   }
 
   function handleCreateRuleFromSelection(text: string) {
+    if (!isFeatureAvailable("rules")) return;
     const ui = useUIStore.getState();
     ui.setPendingRuleDraftText(text);
     ui.setSettingsTab("rules");
@@ -171,6 +175,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   }
 
   async function handleAddSelectionToKanbanNote(text: string) {
+    if (!isFeatureAvailable("kanban")) return;
     setShowSelectionActions(null);
     try {
       const kanban = useKanbanStore.getState();
@@ -226,8 +231,8 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
 
   useEffect(() => {
     const onTranslate = () => openTranslateForSelection();
-    const onBilingual = () => handleBilingualToggle();
-    const onSummarize = () => setShowAiSummary((visible) => !visible);
+    const onBilingual = () => { if (isFeatureAvailable("translation")) void handleBilingualToggle(); };
+    const onSummarize = () => { if (isFeatureAvailable("ai")) setShowAiSummary((visible) => !visible); };
     document.addEventListener("pebble:translate-selection", onTranslate);
     document.addEventListener("pebble:toggle-bilingual", onBilingual);
     document.addEventListener("pebble:ai-summarize", onSummarize);
@@ -311,14 +316,15 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
       <div ref={snoozeRef} className="message-detail-action-slot">
         <button
           className="message-detail-icon-button"
-          onClick={() => setShowSnooze(!showSnooze)}
+          disabled={!isFeatureAvailable("snooze")}
+          onClick={() => { if (isFeatureAvailable("snooze")) setShowSnooze(!showSnooze); }}
           aria-pressed={showSnooze}
-          title={t("messageActions.snooze", "Snooze message")}
+          title={isFeatureAvailable("snooze") ? t("messageActions.snooze", "Snooze message") : unavailableReason()}
           aria-label={t("messageActions.snooze", "Snooze message")}
         >
           <Clock size={16} />
         </button>
-        {showSnooze && (
+        {isFeatureAvailable("snooze") && showSnooze && (
           <SnoozePopover
             messageId={messageId}
             onClose={() => setShowSnooze(false)}
@@ -346,18 +352,20 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
       </div>
       <button
         className="message-detail-icon-button"
-        onClick={handleBilingualToggle}
+        disabled={!isFeatureAvailable("translation")}
+        onClick={() => { if (isFeatureAvailable("translation")) void handleBilingualToggle(); }}
         aria-pressed={bilingualMode}
-        title={t("messageActions.bilingualView", "Toggle bilingual view")}
+        title={isFeatureAvailable("translation") ? t("messageActions.bilingualView", "Toggle bilingual view") : unavailableReason()}
         aria-label={t("messageActions.bilingualView", "Toggle bilingual view")}
       >
         <Languages size={16} />
       </button>
       <button
         className="message-detail-icon-button"
-        onClick={() => setShowAiSummary((visible) => !visible)}
+        disabled={!isFeatureAvailable("ai")}
+        onClick={() => { if (isFeatureAvailable("ai")) setShowAiSummary((visible) => !visible); }}
         aria-pressed={showAiSummary}
-        title={t("ai.summarize")}
+        title={isFeatureAvailable("ai") ? t("ai.summarize") : unavailableReason()}
         aria-label={t("ai.summarize")}
       >
         <Sparkles size={16} />
@@ -420,7 +428,6 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
         message={message}
         folderRole={folderRole}
         onBack={onBack}
-        onMessageUpdate={setMessage}
         orientation={toolbarInSidebar ? "vertical" : "horizontal"}
       />
     </div>
@@ -491,7 +498,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
           )}
 
           {/* AI summary — sits outside the body so reading it can never alter the mail */}
-          {showAiSummary && (
+          {isFeatureAvailable("ai") && showAiSummary && (
             <AiSummaryCard messageId={messageId} onClose={() => setShowAiSummary(false)} />
           )}
 
@@ -611,7 +618,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
         </div>
       </div>
 
-      {showTranslate && (
+      {isFeatureAvailable("translation") && showTranslate && (
         <div ref={translateRef}>
           <TranslatePopover
             text={showTranslate.text}

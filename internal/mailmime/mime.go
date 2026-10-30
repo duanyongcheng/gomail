@@ -20,6 +20,16 @@ func Parse(raw []byte) (Message, error) {
 // ParseWithLimit bounds both the wire message and total decoded MIME data.
 // Protocol prototypes retain Parse's smaller default limit.
 func ParseWithLimit(raw []byte, limit int) (Message, error) {
+	return parseWithLimit(raw, limit, false)
+}
+
+// Drafts may not have a Date or Message-ID until sent. Their absent headers
+// remain deterministic zero values for content comparison, not invented dates.
+func ParseDraftWithLimit(raw []byte, limit int) (Message, error) {
+	return parseWithLimit(raw, limit, true)
+}
+
+func parseWithLimit(raw []byte, limit int, draft bool) (Message, error) {
 	var out Message
 	if limit <= 0 {
 		return out, errors.New("invalid MIME size limit")
@@ -35,8 +45,10 @@ func ParseWithLimit(raw []byte, limit int) (Message, error) {
 	if out.Subject, err = r.Header.Subject(); err != nil {
 		return out, err
 	}
-	if out.MessageID, err = r.Header.MessageID(); err != nil {
-		return out, err
+	if !draft || r.Header.Get("Message-ID") != "" {
+		if out.MessageID, err = r.Header.MessageID(); err != nil {
+			return out, err
+		}
 	}
 	from, err := r.Header.AddressList("From")
 	if err != nil || len(from) != 1 {
@@ -69,11 +81,13 @@ func ParseWithLimit(raw []byte, limit int) (Message, error) {
 	}
 	out.InReplyTo = strings.Join(ThreadHeaderIDs(r.Header.Get("In-Reply-To")), " ")
 	out.References = strings.Join(ThreadHeaderIDs(r.Header.Get("References")), " ")
-	date, err := r.Header.Date()
-	if err != nil {
-		return out, err
+	if !draft || r.Header.Get("Date") != "" {
+		date, dateErr := r.Header.Date()
+		if dateErr != nil {
+			return out, dateErr
+		}
+		out.Date = date.Unix()
 	}
-	out.Date = date.Unix()
 	out.Attachments = []Attachment{}
 	var textBody, htmlBody strings.Builder
 	decoded := 0
@@ -104,12 +118,16 @@ func ParseWithLimit(raw []byte, limit int) (Message, error) {
 			if e != nil {
 				return out, e
 			}
-			if typ == "text/plain" {
+			filename, e := (&mail.AttachmentHeader{Header: h.Header}).Filename()
+			if e != nil {
+				return out, e
+			}
+			if typ == "text/plain" && filename == "" {
 				textBody.Write(data)
-			} else if typ == "text/html" {
+			} else if typ == "text/html" && filename == "" {
 				htmlBody.Write(data)
 			} else {
-				out.Attachments = append(out.Attachments, Attachment{MIMEType: typ, ContentID: strings.Trim(h.Get("Content-ID"), "<>"), Inline: true, Data: data})
+				out.Attachments = append(out.Attachments, Attachment{Filename: filename, MIMEType: typ, ContentID: strings.Trim(h.Get("Content-ID"), "<>"), Inline: true, Data: data})
 			}
 		case *mail.AttachmentHeader:
 			filename, e := h.Filename()

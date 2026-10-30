@@ -194,11 +194,13 @@ func (r *Runtime) quiesceAccount(account string) func() {
 	r.Scheduler.control.Lock()
 	r.Scheduler.stop(account)
 	r.labelManagementMu.Lock()
+	r.cloudDraftMu.Lock()
 	r.pendingMu.Lock()
 	r.outboxMu.Lock()
 	return func() {
 		r.outboxMu.Unlock()
 		r.pendingMu.Unlock()
+		r.cloudDraftMu.Unlock()
 		r.labelManagementMu.Unlock()
 		r.Scheduler.control.Unlock()
 	}

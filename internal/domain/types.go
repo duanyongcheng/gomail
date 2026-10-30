@@ -70,6 +70,9 @@ type Message struct {
 	DeletedAt        *int64       `json:"deleted_at"`
 	CreatedAt        int64        `json:"created_at"`
 	UpdatedAt        int64        `json:"updated_at"`
+	// InTrash is derived from cached account-owned folder membership, not the current view.
+	// Repository reads populate both true and false; synthetic messages may omit it.
+	InTrash *bool `json:"in_trash,omitempty"`
 }
 
 type ThreadSummary struct {

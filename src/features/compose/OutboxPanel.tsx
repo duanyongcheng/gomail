@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { OutboxService, type OutboxItem } from "@/mygo";
 import { useConfirmStore } from "@/stores/confirm.store";
+import { extractErrorMessage } from "@/lib/extractErrorMessage";
+
+const legacyCancelUnavailable = "cannot cancel this older linked send: its local draft is unavailable; queued content was preserved";
 
 export default function OutboxPanel({ accountId = "" }: { accountId?: string }) {
   const { t } = useTranslation();
@@ -23,19 +26,27 @@ export default function OutboxPanel({ accountId = "" }: { accountId?: string }) 
   const statusLabel = (status: string) => t(`outbox.status.${status}`, status);
   async function action(item: OutboxItem, action: string) {
     if (acting.current) return;
+    if (action === "dismiss" && item.status === "outcome_unknown" && item.cloudDraft) return;
     acting.current = true; setBusy(true); setError("");
     try {
       if (action === "cancel" || action === "dismiss") {
         if (!await useConfirmStore.getState().confirm({
           title: t(`outbox.${action}`, action),
-          message: item.status === "outcome_unknown" ? t("outbox.unknownWarning", "This may already have been sent. Dismissing does not undo delivery. Check Sent before composing another copy.") : t("outbox.removeWarning", "Remove this local outbox item?"),
+          message: item.status === "outcome_unknown"
+            ? t("outbox.unknownWarning", "This may already have been sent. Dismissing does not undo delivery. Check Sent before composing another copy.")
+            : action === "cancel" && item.cloudDraft
+              ? t("outbox.cloudCancelWarning", "Cancel this queued send? Your current local draft and attachments will be kept for editing. This does not change the draft in Gmail.")
+              : t("outbox.removeWarning", "Remove this local outbox item?"),
           confirmLabel: t(`outbox.${action}`, action),
         })) return;
       }
       await OutboxService.action({ accountId: item.accountId, id: item.id, action });
       await client.invalidateQueries({ queryKey: ["outbox"] });
-    } catch {
-      setError(action === "check" ? t("outbox.checkInconclusive", "Sent check is inconclusive. No resend was attempted.") : t("outbox.actionFailed", "Could not change this outbox item. Refresh and try again."));
+    } catch (err) {
+      // Match only this sanitized backend contract; never display raw errors.
+      setError(action === "cancel" && extractErrorMessage(err) === legacyCancelUnavailable
+        ? t("outbox.legacyCancelUnavailable", "This older send could not be cancelled because its local draft is unavailable. The queued content has been kept in Outbox. Gmail was not changed.")
+        : action === "check" ? t("outbox.checkInconclusive", "Sent check is inconclusive. No resend was attempted.") : t("outbox.actionFailed", "Could not change this outbox item. Refresh and try again."));
     } finally { acting.current = false; setBusy(false); }
   }
   return <details style={{ padding: "8px 20px", borderBottom: "1px solid var(--color-border)", fontSize: 13 }}>
@@ -55,11 +66,12 @@ export default function OutboxPanel({ accountId = "" }: { accountId?: string }) 
         <span> · {t("outbox.attempts", "Attempts")}: {item.attempts}</span>
         {item.nextRetryAt && <span> · {new Date(item.nextRetryAt * 1000).toLocaleString()}</span>}
         {item.lastError && <p>{item.lastError}</p>}
+        {item.status === "outcome_unknown" && item.cloudDraft && <p>{t("outbox.cloudUnknown", "This send is linked to a Gmail draft. Its reconciliation record is kept until Check Sent confirms the result; do not send or upload another copy.")}</p>}
         <div style={{ display: "flex", gap: 12 }}>
           {item.status === "failed" && <button disabled={busy} onClick={() => void action(item, "retry")}>{t("outbox.retry", "Retry")}</button>}
           {["queued", "failed"].includes(item.status) && <button disabled={busy} onClick={() => void action(item, "cancel")}>{t("outbox.cancel", "Cancel queued send")}</button>}
           {item.status === "outcome_unknown" && <button disabled={busy} onClick={() => void action(item, "check")}>{t("outbox.check", "Check Sent")}</button>}
-          {["sent", "outcome_unknown"].includes(item.status) && <button disabled={busy} onClick={() => void action(item, "dismiss")}>{t("outbox.dismiss", "Dismiss")}</button>}
+          {(item.status === "sent" || (item.status === "outcome_unknown" && !item.cloudDraft)) && <button disabled={busy} onClick={() => void action(item, "dismiss")}>{t("outbox.dismiss", "Dismiss")}</button>}
         </div>
       </li>)}
     </ul>}

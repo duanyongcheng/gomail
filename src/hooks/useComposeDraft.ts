@@ -1,7 +1,9 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { useComposeStore } from "@/stores/compose.store";
 import { saveDraft } from "@/lib/api";
 import { hasComposeDraft, type ComposeAttachment } from "@/features/compose/compose-draft";
+import { renderMarkdownSnapshot } from "@/features/compose/markdown-snapshot";
+import { composeHtmlText } from "@/features/compose/html-text";
 
 import type { EditorMode } from "./useComposeEditor";
 
@@ -113,6 +115,10 @@ export function useComposeDraft({
   to, cc, bcc, subject, rawSource, richTextHtml, editorMode, composeMode, fromAccountId, attachments, editorReady,
   migrateLegacyDraft = false, existingDraftId, existingDraftAccountId, inReplyTo, replyMessageId, quotedReplyHtml,
 }: UseComposeDraftArgs) {
+  const markdown = useMemo(
+    () => editorMode === "markdown" ? renderMarkdownSnapshot(rawSource) : null,
+    [editorMode, rawSource],
+  );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const mountedRef = useRef(true);
   const errorsByAccountRef = useRef<Record<string, boolean>>({});
@@ -301,21 +307,20 @@ export function useComposeDraft({
 
   function currentSave(): Parameters<typeof saveDraft>[0] | null {
     if (!fromAccountId) return null;
-    const bodyText = editorMode === "rich"
-      ? richTextHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : rawSource;
-    const bodyHtml = editorMode === "rich" ? richTextHtml : (editorMode === "html" ? rawSource : "");
+    const bodyHtml = markdown?.html ?? (editorMode === "rich" ? richTextHtml : rawSource);
+    const bodyText = markdown?.text ?? composeHtmlText(bodyHtml);
     return {
       accountId: fromAccountId, to, cc, bcc, subject, bodyText,
       bodyHtml, quotedReplyHtml,
-      rawSource, editorMode, inReplyTo, replyMessageId,
+      rawSource, renderedSource: markdown ? rawSource : undefined, editorMode, inReplyTo, replyMessageId,
       attachmentPaths: attachments.map((a) => a.path).filter(Boolean),
     };
   }
 
-  async function saveNow(): Promise<boolean> {
+  async function saveNow(overrides?: Partial<Parameters<typeof saveDraft>[0]>): Promise<boolean> {
     const request = currentSave();
     if (!request || !editorReady || persistenceCancelledRef.current) return false;
-    queueDraftSave(request);
+    queueDraftSave({ ...request, ...overrides, accountId: request.accountId });
     // A finishing worker can hand off to another queued snapshot.
     while (saveWorkerByAccountRef.current[request.accountId]) {
       await saveWorkerByAccountRef.current[request.accountId];

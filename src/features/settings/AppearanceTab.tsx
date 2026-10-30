@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { Image, Trash2, Upload } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
 import type { BackgroundImageFit, Language, Theme } from "@/stores/ui.store";
@@ -48,6 +49,7 @@ export default function AppearanceTab() {
   const setMessageTheme = useUIStore((s) => s.setMessageTheme);
 
   async function handleBackgroundFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!isFeatureAvailable("backgroundImage")) return;
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = "";
     if (!file) return;
@@ -68,6 +70,7 @@ export default function AppearanceTab() {
   }
 
   async function handleRemoveBackgroundImage() {
+    if (!isFeatureAvailable("backgroundImage")) return;
     const existing = backgroundImage;
     if (!existing) return;
 
@@ -163,7 +166,7 @@ export default function AppearanceTab() {
       <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
         {t("settings.backgroundImage", "Background image")}
       </h3>
-      <div
+      {!isFeatureAvailable("backgroundImage") ? <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{unavailableReason()}</p> : <div
         style={{
           border: "1px solid var(--color-border)",
           borderRadius: "8px",
@@ -311,7 +314,7 @@ export default function AppearanceTab() {
             {error}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

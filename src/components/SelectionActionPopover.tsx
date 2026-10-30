@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Languages, LayoutGrid, MoreHorizontal, Search, ShieldCheck, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
 interface Props {
   text: string;
@@ -102,7 +103,9 @@ export default function SelectionActionPopover({
           >
             <button
               role="menuitem"
-              onClick={() => onTranslate(text, position)}
+              disabled={!isFeatureAvailable("translation")}
+              title={isFeatureAvailable("translation") ? undefined : unavailableReason()}
+              onClick={() => { if (isFeatureAvailable("translation")) onTranslate(text, position); }}
               aria-label={t("selection.translateSelectedText", "Translate selected text")}
               style={menuButtonStyle}
             >
@@ -120,7 +123,9 @@ export default function SelectionActionPopover({
             </button>
             <button
               role="menuitem"
-              onClick={() => onCreateRule(text)}
+              disabled={!isFeatureAvailable("rules")}
+              title={isFeatureAvailable("rules") ? undefined : unavailableReason()}
+              onClick={() => { if (isFeatureAvailable("rules")) onCreateRule(text); }}
               aria-label={t("selection.createRuleFromSelection", "Create rule from selected text")}
               style={menuButtonStyle}
             >
@@ -129,7 +134,9 @@ export default function SelectionActionPopover({
             </button>
             <button
               role="menuitem"
-              onClick={() => onAddToKanbanNote(text)}
+              disabled={!isFeatureAvailable("kanban")}
+              title={isFeatureAvailable("kanban") ? undefined : unavailableReason()}
+              onClick={() => { if (isFeatureAvailable("kanban")) onAddToKanbanNote(text); }}
               aria-label={t("selection.addToKanbanNote", "Add selected text as kanban note")}
               style={menuButtonStyle}
             >

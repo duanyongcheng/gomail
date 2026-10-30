@@ -81,12 +81,14 @@ func (db *DB) Folders(ctx context.Context, account string) ([]domain.Folder, err
 	return out, rows.Err()
 }
 
-const messageColumns = `m.id,m.account_id,m.remote_id,m.message_id_header,m.in_reply_to,m.references_header,m.thread_id,m.subject,m.snippet,m.from_address,m.from_name,m.to_list,m.cc_list,m.bcc_list,m.body_text,m.body_html_raw,m.has_attachments,m.is_read,m.is_starred,m.is_draft,m.date,m.remote_version,m.is_deleted,m.deleted_at,m.created_at,m.updated_at`
+const messageColumns = `m.id,m.account_id,m.remote_id,m.message_id_header,m.in_reply_to,m.references_header,m.thread_id,m.subject,m.snippet,m.from_address,m.from_name,m.to_list,m.cc_list,m.bcc_list,m.body_text,m.body_html_raw,m.has_attachments,m.is_read,m.is_starred,m.is_draft,m.date,m.remote_version,m.is_deleted,m.deleted_at,m.created_at,m.updated_at,
+EXISTS(SELECT 1 FROM message_folders mf JOIN folders f ON f.id=mf.folder_id
+ WHERE mf.message_id=m.id AND f.account_id=m.account_id AND (f.role='trash' OR f.remote_id='TRASH'))`
 
 func scanMessage(row interface{ Scan(...any) error }) (domain.Message, error) {
 	var m domain.Message
 	var to, cc, bcc string
-	err := row.Scan(&m.ID, &m.AccountID, &m.RemoteID, &m.MessageIDHeader, &m.InReplyTo, &m.ReferencesHeader, &m.ThreadID, &m.Subject, &m.Snippet, &m.FromAddress, &m.FromName, &to, &cc, &bcc, &m.BodyText, &m.BodyHTML, &m.HasAttachments, &m.IsRead, &m.IsStarred, &m.IsDraft, &m.Date, &m.RemoteVersion, &m.IsDeleted, &m.DeletedAt, &m.CreatedAt, &m.UpdatedAt)
+	err := row.Scan(&m.ID, &m.AccountID, &m.RemoteID, &m.MessageIDHeader, &m.InReplyTo, &m.ReferencesHeader, &m.ThreadID, &m.Subject, &m.Snippet, &m.FromAddress, &m.FromName, &to, &cc, &bcc, &m.BodyText, &m.BodyHTML, &m.HasAttachments, &m.IsRead, &m.IsStarred, &m.IsDraft, &m.Date, &m.RemoteVersion, &m.IsDeleted, &m.DeletedAt, &m.CreatedAt, &m.UpdatedAt, &m.InTrash)
 	if err != nil {
 		return m, err
 	}

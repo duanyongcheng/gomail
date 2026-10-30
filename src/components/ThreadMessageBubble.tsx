@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from "react";
+import { useUpdateFlagsMutation } from "@/hooks/mutations/useUpdateFlagsMutation";
+import { messageFlagsMutationKey } from "@/hooks/mutations/messageFlagsMutation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useMessageQuery } from "@/hooks/queries/useMessageQuery";
+import { manualUnreadVersion } from "@/hooks/queries/messageFlagsCache";
 import { useComposeStore } from "@/stores/compose.store";
 import AttachmentList from "./AttachmentList";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { getRenderedHtml, getMessage, updateMessageFlags } from "@/lib/api";
+import { getRenderedHtml, getMessage } from "@/lib/api";
 import type { Message, RenderedHtml, PrivacyMode } from "@/lib/api";
 import { defaultPrivacyMode } from "@/lib/privacyMode";
 import { subscribePrivacyChanges } from "@/lib/privacyEvents";
@@ -34,6 +38,11 @@ export default function ThreadMessageBubble(props: Props) {
 function ThreadBubble({ message, defaultExpanded = false }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const client = useQueryClient();
+  // Metadata is local and independent of the lazy body renderer. Re-enabling
+  // this staleTime=0 query also refreshes a collapsed bubble on re-expansion.
+  const metadata = useMessageQuery(expanded ? message.id : null);
+  const openedUnreadVersion = useRef(manualUnreadVersion(client, message.id));
   const [rendered, setRendered] = useState<RenderedHtml | null>(null);
   const [mode, setMode] = useState<PrivacyMode>(() => defaultPrivacyMode());
   const generation = useRef(0);
@@ -45,7 +54,7 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
   const actionBusy = useRef(false);
   const readMarked = useRef(false);
   const alive = useRef(true);
-  const client = useQueryClient();
+  const flagsMutation = useUpdateFlagsMutation();
   const refreshPrivacy = () => { generation.current++; setRendered(null); setRetry((v) => v + 1); };
   const trust = useSenderTrust(message, refreshPrivacy);
   useEffect(() => subscribePrivacyChanges((change) => {
@@ -72,13 +81,29 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
   }, [expanded, message.id, message.updated_at, retry, mode]);
 
   useEffect(() => {
-    if (message.is_read) readMarked.current = false;
-    if (!expanded || message.is_read || message.capabilities?.modify_flags === false || readMarked.current) return;
+    if (!expanded) {
+      readMarked.current = false;
+      openedUnreadVersion.current = manualUnreadVersion(client, message.id);
+      return;
+    }
+    if (readMarked.current) return;
+    if (openedUnreadVersion.current !== manualUnreadVersion(client, message.id)) {
+      readMarked.current = true;
+      return;
+    }
+    const flags = metadata.data ?? message;
+    // Cached unread can be acknowledged immediately, cancelling older reads.
+    // Cached read (or read-only capability) cannot consume this opening until
+    // the fresh local query has answered. Never wait for Rendered/HTML here.
+    if ((flags.is_read || flags.capabilities?.modify_flags === false)
+      && (metadata.isFetching || !metadata.data || metadata.isError
+        || client.isMutating({ mutationKey: messageFlagsMutationKey }) > 0)) return;
     readMarked.current = true;
-    updateMessageFlags(message.id, true).then(() => {
-      for (const key of ["threads", "threadMessages", "messages", "folder-unread-counts", "account-unread-counts"]) void client.invalidateQueries({ queryKey: [key] });
-    }).catch(() => { readMarked.current = false; if (alive.current) setActionError(true); });
-  }, [expanded, message.id, message.is_read, message.capabilities?.modify_flags, client, retry]);
+    if (flags.is_read || flags.capabilities?.modify_flags === false) return;
+    flagsMutation.mutate({ messageId: message.id, isRead: true }, {
+      onError: () => { if (alive.current) setActionError(true); },
+    });
+  }, [expanded, message.id, message.is_read, message.capabilities?.modify_flags, metadata.data, metadata.isFetching, metadata.isError, retry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function compose(mode: "reply" | "reply-all" | "forward") {
     if (actionBusy.current) return;
@@ -103,7 +128,10 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
     >
       {/* Header - always visible */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          if (!expanded) openedUnreadVersion.current = manualUnreadVersion(client, message.id);
+          setExpanded(!expanded);
+        }}
         aria-expanded={expanded}
         style={{
           display: "flex",
@@ -157,7 +185,7 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
           </div>
           {renderLoading && !rendered && <p role="status">{t("common.loading", "Loading...")}</p>}
           {renderError && <p role="alert">{t("thread.renderFailed", "Could not render this message.")} <button onClick={() => setRetry((v) => v + 1)}>{t("common.retry", "Retry")}</button></p>}
-          {actionError && <p role="alert">{t("thread.actionFailed", "Could not update or open this message.")} <button onClick={() => { setActionError(false); setRetry((v) => v + 1); }}>{t("common.retry", "Retry")}</button></p>}
+          {actionError && <p role="alert">{t("thread.actionFailed", "Could not update or open this message.")} <button onClick={() => { readMarked.current = false; setActionError(false); setRetry((v) => v + 1); }}>{t("common.retry", "Retry")}</button></p>}
           {rendered && <PrivacyBanner rendered={rendered} onLoadImages={() => setMode("LoadOnce")} onTrustSender={(type) => void trust.save(type)} busy={trust.busy} error={trust.error} />}
           {trust.error && !rendered && <p role="alert">{trust.error}</p>}
           {/* Body content */}

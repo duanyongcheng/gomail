@@ -1,5 +1,5 @@
 import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, OutboxService, PendingOpsService, SearchService, SyncService, ThreadService, TrustService } from "@/mygo";
-import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest, SendRequest } from "@/mygo";
+import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest, SendRequest, UpdateAccountRequest, SignatureRequest } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
 function implemented<A, R>(run: (args: A) => Promise<R>, milestone = "M0"): Entry<A, R> { return { status: "implemented", milestone, run }; }
@@ -17,6 +17,10 @@ export const implementedCommands = {
     return AccountService.login({ ...a, accountLabel: a.accountLabel ?? null });
   }),
   delete_account: implemented((a: AccountRequest) => AccountService.delete(a)),
+  update_account: implemented(async (a: UpdateAccountRequest) => { await AccountService.update(a); }, "M1"),
+  get_email_signature: implemented((a: AccountRequest) => AccountService.signature(a), "M1"),
+  set_email_signature: implemented(async (a: SignatureRequest) => { await AccountService.setSignature(a); }, "M1"),
+  migrate_email_signature_if_absent: implemented((a: SignatureRequest) => AccountService.migrateSignature(a), "M1"),
   list_folders: implemented((a: AccountRequest) => FolderService.list(a)),
   trust_sender: implemented(async (a: { accountId: string; email: string; trustType: string }) => { await TrustService.set(a); }, "M1"),
   remove_trusted_sender: implemented(async (a: { accountId: string; email: string }) => { await TrustService.remove(a); }, "M1"),
@@ -52,13 +56,14 @@ export const implementedCommands = {
     accountId: a.accountId ?? "", to: a.to ?? [], cc: a.cc ?? [], bcc: a.bcc ?? [],
     subject: a.subject ?? "", bodyText: a.bodyText ?? "", bodyHtml: a.bodyHtml ?? "",
     inReplyTo: a.inReplyTo ?? "", replyMessageId: a.replyMessageId, attachmentPaths: a.attachmentPaths ?? [], clientKey: a.clientKey ?? "",
+    localDraftId: a.localDraftId,
   }); }, "M1"),
   save_draft: implemented((a: Partial<SaveDraftRequest>) => ComposeService.save({
     accountId: a.accountId ?? "", to: a.to ?? [], cc: a.cc ?? [], bcc: a.bcc ?? [],
     subject: a.subject ?? "", bodyText: a.bodyText ?? "", bodyHtml: a.bodyHtml ?? "",
     inReplyTo: a.inReplyTo ?? "", replyMessageId: a.replyMessageId, existingDraftId: a.existingDraftId ?? "",
     attachmentPaths: a.attachmentPaths ?? [], clientKey: a.clientKey ?? "",
-    editorMode: a.editorMode ?? "rich", rawSource: a.rawSource ?? "", quotedReplyHtml: a.quotedReplyHtml ?? "",
+    editorMode: a.editorMode ?? "rich", rawSource: a.rawSource ?? "", renderedSource: a.renderedSource, quotedReplyHtml: a.quotedReplyHtml ?? "",
   }), "M1"),
   delete_draft: implemented((a: { accountId: string; draftId: string }) => ComposeService.delete(a), "M1"),
   stage_compose_attachment: implemented((a: { filename: string; bytes: number[] }) => ComposeService.stage(a), "M1"),
@@ -71,6 +76,7 @@ export const implementedCommands = {
   get_account_unread_counts: implemented(() => MessageService.unreadCounts({ accountId: "", byFolder: false })),
   get_profile_storage_namespace: implemented(async () => (await AppService.profile({})).value),
   quit_app: implemented(() => AppService.quit({})),
+  open_external_url: implemented(async (a: { url: string }) => { await AppService.openExternal(a); }, "M1"),
   health_check: implemented(async () => "Pebble Go"),
   start_sync: implemented(async (a: AccountRequest & { pollIntervalSecs?: number | null }) => (await SyncService.start({ accountId: a.accountId, pollIntervalSecs: a.pollIntervalSecs ?? null })).value, "M1"),
   stop_sync: implemented(async (a: AccountRequest) => { await SyncService.stop(a); }, "M1"),

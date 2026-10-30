@@ -2,16 +2,18 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ShadowDomEmail, shadowEmailCss } from "@/components/ShadowDomEmail";
 import { getMessageTheme } from "@/lib/messageThemes";
+import ToastContainer from "@/components/ToastContainer";
+import { useToastStore } from "@/stores/toast.store";
 
 const mocks = vi.hoisted(() => ({
-  invoke: vi.fn(),
+  call: vi.fn(),
   openMailtoUrl: vi.fn(),
   reapplyInlineStyles: vi.fn(),
 }));
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: mocks.invoke,
-}));
+// Keep the real command table, adapter and generated binding. Only the native
+// transport is substituted; a pending command cannot falsely pass this test.
+vi.mock("mygo-runtime", () => ({ call: mocks.call, event: vi.fn() }));
 
 vi.mock("@/app/useMailtoOpen", () => ({
   openMailtoUrl: mocks.openMailtoUrl,
@@ -25,10 +27,11 @@ vi.mock("@/lib/sanitizeHtml", async (importOriginal) => {
 
 describe("ShadowDomEmail", () => {
   beforeEach(() => {
-    mocks.invoke.mockReset();
+    mocks.call.mockReset();
+    useToastStore.setState({ toasts: [] });
     mocks.openMailtoUrl.mockReset();
     mocks.reapplyInlineStyles.mockReset();
-    mocks.invoke.mockResolvedValue(undefined);
+    mocks.call.mockResolvedValue({});
     mocks.openMailtoUrl.mockResolvedValue(true);
   });
 
@@ -238,9 +241,9 @@ describe("ShadowDomEmail", () => {
 
     fireEvent.click(host!.shadowRoot!.querySelector("a")!);
 
-    expect(mocks.invoke).toHaveBeenCalledWith("open_external_url", {
+    await waitFor(() => expect(mocks.call).toHaveBeenCalledExactlyOnceWith("AppService.OpenExternal", {
       url: "http://pebble.byebug.cn/",
-    });
+    }));
   });
 
   it("opens mailto links through the compose mailto handler", async () => {
@@ -256,6 +259,57 @@ describe("ShadowDomEmail", () => {
     fireEvent.click(host!.shadowRoot!.querySelector("a")!);
 
     expect(mocks.openMailtoUrl).toHaveBeenCalledWith("mailto:qingj1314@163.com");
-    expect(mocks.invoke).not.toHaveBeenCalled();
+    expect(mocks.call).not.toHaveBeenCalled();
+  });
+
+  it("routes nested target-blank clicks exactly once and cleans listeners across rerenders", async () => {
+    const html = '<a target="_blank" href="https://example.invalid/path?token=private"><span>Read</span></a>';
+    const view = render(<ShadowDomEmail html={html} />);
+    view.rerender(<ShadowDomEmail html={html + '<p>updated</p>'} />);
+    const shadow = (view.container.firstChild as HTMLDivElement).shadowRoot!;
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    shadow.querySelector("span")!.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    await waitFor(() => expect(mocks.call).toHaveBeenCalledExactlyOnceWith("AppService.OpenExternal", {
+      url: "https://example.invalid/path?token=private",
+    }));
+  });
+
+  it("handles middle clicks without a WebView fallback and leaves right-click menus alone", async () => {
+    const { container } = render(<ShadowDomEmail html={'<a href="https://example.invalid">Read</a>'} />);
+    const anchor = (container.firstChild as HTMLDivElement).shadowRoot!.querySelector("a")!;
+    anchor.dispatchEvent(new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+    anchor.dispatchEvent(new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 2 }));
+    await waitFor(() => expect(mocks.call).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows a sanitized visible error through the real adapter without logging URL or bridge diagnostics", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      mocks.call.mockRejectedValueOnce(new Error("OS failure: https://example.invalid/?token=private"));
+      const { container, findByRole } = render(<><ShadowDomEmail html={'<a href="https://example.invalid/?token=private">Read</a>'} /><ToastContainer /></>);
+      const anchor = (container.firstChild as HTMLDivElement).shadowRoot!.querySelector("a")!;
+      fireEvent.click(anchor);
+      const alert = await findByRole("alert");
+      expect(alert.textContent).toContain("Could not open this link");
+      expect(alert.textContent).not.toMatch(/private|example.invalid|OS failure/);
+      expect(mocks.call).toHaveBeenCalledTimes(1);
+      expect(warn).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalled();
+    } finally { warn.mockRestore(); error.mockRestore(); }
+  });
+
+  it("cannot navigate relative or credential-bearing links when validation rejects", async () => {
+    mocks.call.mockRejectedValue(new Error("rejected"));
+    const { container } = render(<ShadowDomEmail html={'<a href="/relative">Relative</a><a href="https://user:secret@example.invalid">Credentials</a>'} />);
+    const links = (container.firstChild as HTMLDivElement).shadowRoot!.querySelectorAll("a");
+    for (const link of links) {
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+      link.dispatchEvent(click);
+      expect(click.defaultPrevented).toBe(true);
+    }
+    await waitFor(() => expect(useToastStore.getState().toasts).toHaveLength(2));
+    expect(mocks.call).toHaveBeenCalledTimes(2);
   });
 });

@@ -14,12 +14,12 @@ import {
 } from "@/hooks/queries";
 import { useEffect, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
 interface Props {
   message: Message;
   folderRole?: string | null;
   onBack: () => void;
-  onMessageUpdate: (msg: Message) => void;
   /**
    * `vertical` stacks the actions, for themes that park the toolbar in a
    * details sidebar. Spacing lives in the stylesheet so themes can adjust it.
@@ -31,7 +31,6 @@ export default function MessageActionToolbar({
   message,
   folderRole,
   onBack,
-  onMessageUpdate,
   orientation = "horizontal",
 }: Props) {
   const { t } = useTranslation();
@@ -41,6 +40,10 @@ export default function MessageActionToolbar({
   const inKanban = useKanbanStore((s) => s.cardIdSet.has(message.id));
   const [showKanbanPicker, setShowKanbanPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Folder context is only a compatibility fallback for older/synthetic DTOs.
+  // Search, Starred and cross-folder readers must use the selected message itself.
+  const inTrash = message.in_trash ?? folderRole === "trash";
+  const deleteUnavailable = inTrash && !isFeatureAvailable("permanentDelete");
 
   function invalidateMessageViews(includeUnreadCounts = false) {
     queryClient.invalidateQueries({ queryKey: ["messages"] });
@@ -70,6 +73,7 @@ export default function MessageActionToolbar({
   }, [showKanbanPicker]);
 
   async function handleAddToKanban(column: "todo" | "waiting" | "done") {
+    if (!isFeatureAvailable("kanban")) return;
     setShowKanbanPicker(false);
     try {
       await useKanbanStore.getState().addCard(message.id, column);
@@ -101,7 +105,6 @@ export default function MessageActionToolbar({
       action: () => {
         flagsMutation.mutate(
           { messageId: message.id, isStarred: !message.is_starred },
-          { onSuccess: () => onMessageUpdate({ ...message, is_starred: !message.is_starred }) },
         );
       },
       active: message.is_starred,
@@ -141,7 +144,7 @@ export default function MessageActionToolbar({
         }
       },
     },
-    ...(folderRole === "trash" ? [{
+    ...(inTrash ? [{
       icon: RotateCcw,
       label: t("messageActions.restore", "Restore"),
       action: async () => {
@@ -167,7 +170,11 @@ export default function MessageActionToolbar({
     {
       icon: Trash2,
       label: t("messageActions.delete"),
-      action: () => setShowDeleteConfirm(true),
+      action: () => {
+        if (deleteUnavailable) return;
+        setShowDeleteConfirm(true);
+      },
+      disabled: deleteUnavailable,
     },
   ];
 
@@ -182,7 +189,8 @@ export default function MessageActionToolbar({
           <button
             key={i}
             onClick={disabled ? undefined : action}
-            title={disabled ? label + " (coming soon)" : label}
+            disabled={disabled}
+            title={disabled ? unavailableReason() : label}
             aria-label={label}
             style={{
               background: "none",
@@ -205,8 +213,9 @@ export default function MessageActionToolbar({
         {/* Kanban button + picker */}
         <div style={{ position: "relative" }}>
           <button
-            onClick={() => setShowKanbanPicker(true)}
-            title={t("messageActions.addToKanban")}
+            disabled={!isFeatureAvailable("kanban")}
+            onClick={() => { if (isFeatureAvailable("kanban")) setShowKanbanPicker(true); }}
+            title={isFeatureAvailable("kanban") ? t("messageActions.addToKanban") : unavailableReason()}
             aria-label={t("messageActions.addToKanban")}
             style={{
               background: "none",
@@ -224,7 +233,7 @@ export default function MessageActionToolbar({
           >
             <LayoutGrid size={16} />
           </button>
-          {showKanbanPicker && (
+          {isFeatureAvailable("kanban") && showKanbanPicker && (
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
@@ -272,7 +281,7 @@ export default function MessageActionToolbar({
         </div>
       </div>
 
-      {showDeleteConfirm && (
+      {showDeleteConfirm && !deleteUnavailable && (
         <ConfirmDialog
           title={t("messageActions.delete", "Delete")}
           message={t("messageActions.deleteConfirm", "Move this message to trash?")}
@@ -280,6 +289,7 @@ export default function MessageActionToolbar({
           destructive
           onCancel={() => setShowDeleteConfirm(false)}
           onConfirm={async () => {
+            if (deleteUnavailable) return;
             setShowDeleteConfirm(false);
             const previousLists = snapshotMessagesCache(queryClient);
             patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== message.id));

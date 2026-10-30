@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import {
   searchContactSuggestions,
   suppressContactSuggestion,
@@ -71,7 +72,7 @@ export default function ContactAutocomplete({
       const requestIsCurrent = () => searchGenerationRef.current === generation
         && activeAccountIdRef.current === accountId
         && inputValueRef.current === query;
-      if (!query.trim() || !accountId) {
+      if (!isFeatureAvailable("contacts") || !query.trim() || !accountId) {
         setSuggestions([]);
         setShowDropdown(false);
         setLoading(false);
@@ -155,6 +156,7 @@ export default function ContactAutocomplete({
   ) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!isFeatureAvailable("contacts")) return;
     try {
       await suppressContactSuggestion(contact.address);
       setSuggestions((current) => {
@@ -343,7 +345,8 @@ export default function ContactAutocomplete({
           placeholder={value.length === 0 ? placeholder : undefined}
           role="combobox"
           aria-labelledby={ariaLabelledBy}
-          aria-autocomplete="list"
+          title={isFeatureAvailable("contacts") ? undefined : unavailableReason()}
+          aria-autocomplete={isFeatureAvailable("contacts") ? "list" : "none"}
           aria-expanded={showDropdown && suggestions.length > 0}
           aria-controls={`${instanceId}-listbox`}
           aria-activedescendant={activeIndex >= 0 ? `${instanceId}-option-${activeIndex}` : undefined}
@@ -359,7 +362,7 @@ export default function ContactAutocomplete({
         />
       </div>
 
-      {showDropdown && (
+      {isFeatureAvailable("contacts") && showDropdown && (
         <div
           style={{
             position: "absolute",

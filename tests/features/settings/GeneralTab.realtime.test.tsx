@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import GeneralTab from "../../../src/features/settings/GeneralTab";
 import { showTestNotification } from "../../../src/lib/api";
@@ -25,9 +25,9 @@ vi.mock("react-i18next", () => ({
         "settings.realtimeModeBalanced": "Balanced",
         "settings.realtimeModeBattery": "Battery saver",
         "settings.realtimeModeManual": "Manual only",
-        "settings.realtimeModeRealtimeDesc": "IMAP uses IDLE push when supported. Other providers check about every 3 seconds while you are active.",
-        "settings.realtimeModeBalancedDesc": "Checks about every 15 seconds while you are active.",
-        "settings.realtimeModeBatteryDesc": "Checks about every 60 seconds while you are active and slows down in the background.",
+        "settings.realtimeModeRealtimeDesc": "Gmail checks about every 10 seconds while recently active, then every 30 seconds while idle.",
+        "settings.realtimeModeBalancedDesc": "Gmail checks about every 30 seconds in the foreground.",
+        "settings.realtimeModeBatteryDesc": "Gmail checks about every 60 seconds in the foreground. Background checks slow to about every 2 minutes.",
         "settings.realtimeModeManualDesc": "Stops background checks. Use Sync now to run a single pass.",
         "settings.syncInterval": "Sync Interval",
         "settings.syncIntervalDesc": "How often to check for new messages (seconds)",
@@ -56,7 +56,7 @@ describe("GeneralTab realtime mode", () => {
       pollInterval: 15,
       realtimeMode: "realtime",
       showFolderUnreadCount: false,
-      notificationsEnabled: true,
+      notificationsEnabled: false,
       keepRunningInBackground: true,
       startHiddenToTray: false,
     });
@@ -73,9 +73,9 @@ describe("GeneralTab realtime mode", () => {
     expect(screen.getByRole("button", { name: "Balanced" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Battery saver" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Manual only" })).toBeTruthy();
-    expect(screen.getByText("IMAP uses IDLE push when supported. Other providers check about every 3 seconds while you are active.")).toBeTruthy();
-    expect(screen.getByText("Checks about every 15 seconds while you are active.")).toBeTruthy();
-    expect(screen.getByText("Checks about every 60 seconds while you are active and slows down in the background.")).toBeTruthy();
+    expect(screen.getByText("Gmail checks about every 10 seconds while recently active, then every 30 seconds while idle.")).toBeTruthy();
+    expect(screen.getByText("Gmail checks about every 30 seconds in the foreground.")).toBeTruthy();
+    expect(screen.getByText("Gmail checks about every 60 seconds in the foreground. Background checks slow to about every 2 minutes.")).toBeTruthy();
     expect(screen.getByText("Stops background checks. Use Sync now to run a single pass.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Battery saver" }));
@@ -84,26 +84,24 @@ describe("GeneralTab realtime mode", () => {
     expect(localStorage.getItem("pebble-realtime-mode")).toBe("battery");
   });
 
-  it("shows the persisted desktop notification state and updates it through the UI store", () => {
+  it("keeps desktop notifications disabled without persisting a false success", () => {
     render(<GeneralTab />);
 
     const checkbox = screen.getByRole("checkbox", { name: "Enable desktop notifications" });
-    expect((checkbox as HTMLInputElement).checked).toBe(true);
-
+    expect((checkbox as HTMLInputElement).checked).toBe(false);
+    expect((checkbox as HTMLInputElement).disabled).toBe(true);
     fireEvent.click(checkbox);
-
     expect(useUIStore.getState().notificationsEnabled).toBe(false);
-    expect(localStorage.getItem("pebble-notifications-enabled")).toBe("false");
+    expect(localStorage.getItem("pebble-notifications-enabled")).toBeNull();
   });
 
-  it("sends a desktop test notification from the notifications section", async () => {
+  it("cannot send an unavailable desktop test notification", () => {
     render(<GeneralTab />);
 
     fireEvent.click(screen.getByRole("button", { name: "Send test notification" }));
 
-    await waitFor(() => {
-      expect(showTestNotification).toHaveBeenCalledTimes(1);
-    });
+    expect((screen.getByRole("button", { name: "Send test notification" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(showTestNotification).not.toHaveBeenCalled();
   });
 
   it("shows close-window behavior and persists quit-on-close through the UI store", () => {
@@ -118,7 +116,7 @@ describe("GeneralTab realtime mode", () => {
     expect(localStorage.getItem("pebble-keep-running-background")).toBe("false");
   });
 
-  it("shows startup behavior and persists start-hidden-to-tray through the UI store", () => {
+  it("does not persist unavailable start-hidden-to-tray behavior", () => {
     render(<GeneralTab />);
 
     const checkbox = screen.getByRole("checkbox", { name: "Start hidden to tray" });
@@ -126,7 +124,8 @@ describe("GeneralTab realtime mode", () => {
 
     fireEvent.click(checkbox);
 
-    expect(useUIStore.getState().startHiddenToTray).toBe(true);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("true");
+    expect((checkbox as HTMLInputElement).disabled).toBe(true);
+    expect(useUIStore.getState().startHiddenToTray).toBe(false);
+    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { updateMessageFlags } from "@/lib/api";
 import { useUpdateFlagsMutation } from "@/hooks/mutations/useUpdateFlagsMutation";
+import "@/lib/i18n";
 
 vi.mock("@/lib/api", () => ({
   updateMessageFlags: vi.fn(() => Promise.resolve()),

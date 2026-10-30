@@ -20,9 +20,18 @@ cached mail by account-scoped Gmail threads and carries reply context through
 sending. Gmail custom labels can be created, renamed and deleted from account
 settings. Sender trust is persisted per account and enforced by the backend
 privacy policy. Account-level access states and same-mailbox Google reconnection
-preserve cached mail and queued work when authorization needs attention. Cloud
-drafts and remaining account polish are still M1 work.
+preserve cached mail and queued work when authorization needs attention. Gmail sender name,
+local account label, color and encrypted signature are editable offline; these values
+save atomically without changing mailbox identity. Gmail proxy settings and mailbox
+reassignment remain unavailable. Saved local drafts can be explicitly uploaded to
+Gmail, browsed/imported, checked, updated and safely deleted with durable
+unknown-outcome protection. Cloud-linked sends use Gmail's draft send operation so
+the matching remote draft is consumed only after Gmail accepts the send; conflicts
+and unknown outcomes remain visible. See [Gmail completion](docs/m1-gmail-completion.md).
 IMAP/SMTP are tested as an isolated protocol prototype and join the app in M2.
+Daily-use hardening adds WAL/FULL write durability, native close/restore behavior,
+safe user-clicked web links, and shared unavailable-feature guards. See
+[the hardening contract](docs/m1-daily-use-hardening.md).
 
 ## Development
 
@@ -86,8 +95,15 @@ retry and failures, and can dismiss them. Permanent delete is unavailable with
 
 Compose auto-saves locally after three seconds. Use **Save and close**, then
 open a blank compose → **Local drafts** to continue editing. Content and staged
-attachment bytes are encrypted with the profile key; these drafts are not synced
-to Gmail. See [compose and drafts](docs/m1-compose-drafts.md).
+attachment bytes are encrypted with the profile key; autosave does not contact
+Gmail. The list offers explicit **Upload to Gmail**, **Update Gmail copy** and
+read-only **Check Gmail copy**, plus Gmail draft browsing/import and explicit
+conflict recovery/deletion. Deleting locally does not delete Gmail content.
+Linked sending consumes the matching remote draft only after Gmail accepts it;
+its latest local snapshot is retained until cancellation or acceptance. Unsafe
+HTML-to-rich/Markdown conversions are refused without changing the source. See
+[compose and drafts](docs/m1-compose-drafts.md) and
+[the complete draft lifecycle](docs/m1-gmail-completion.md).
 
 Send first saves a complete encrypted MIME snapshot to Outbox. The background
 worker checks the Gmail primary mailbox, submits once, and distinguishes Gmail
@@ -115,9 +131,28 @@ temporary network failures retain normal backoff. Reconnection verifies the same
 Gmail mailbox, preserves account settings/mail/drafts, and keeps unknown sends
 unknown. See [account access and reconnection](docs/m1-account-reauth.md).
 
-## Gmail OAuth configuration
+Settings → General → **Quit app when window is closed** controls native close
+behavior. Otherwise the existing window hides and background workers continue;
+application activation or another launch restores that same window and compose
+state. Explicit Quit always shuts down. Notification/tray/autostart and hidden
+startup features remain unavailable. HTTP(S) message/About links open through a
+validated Go service; failures show a generic error without exposing private URLs.
 
-Copy `.env.example` to a local `.env` and set your Google Desktop client values:
+Unsupported features are disabled or hidden across settings, navigation, command
+palette, keyboard shortcuts and mail/compose actions. These include advanced
+search filters, non-Gmail setup, proxies, local labels, contacts, Kanban, snooze,
+rules, templates, AI, translation and backup. Basic search, local appearance and
+supported Gmail workflows remain available; empty-trash/permanent delete is still
+unavailable with Gmail modify access.
+
+Settings → Accounts → **Edit account** saves the Gmail sender name, account label,
+color and encrypted signature together. Signature reads require the profile key
+and must complete before settings can be saved. Gmail proxy changes and mailbox
+address reassignment are unavailable; use same-mailbox Reconnect for authorization
+repair. Queued messages retain their original sender and content snapshot. See
+[account editing and signatures](docs/m1-account-settings.md).
+
+## Gmail OAuth configuration
 
 ```dotenv
 GOOGLE_CLIENT_ID=your-desktop-client-id.apps.googleusercontent.com
@@ -161,7 +196,10 @@ moved. The database is `pebble.sqlite`; attachment content is stored under
 under `logs/` and contain operation statuses, not credential or mail payloads.
 
 `internal/store` uses `database/sql` + `modernc.org/sqlite`, one writer and four
-read-only connections, WAL, foreign keys and a 15-second busy timeout. Legacy
+read-only connections, WAL, foreign keys and a 15-second busy timeout. Every
+writer connection uses `synchronous=FULL`, including pool replacement, to strengthen
+committed outbox/cloud/label intent durability before external side effects. This
+is not an exactly-once delivery guarantee; unknown outcomes still require checks. Legacy
 migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21
 and the account-scoped backfill reconciliation table in v22. Version 23 adds
 persistent Gmail message download failures and retry timing. Version 24 adds a
@@ -171,7 +209,11 @@ reference tracking; these are not part of remotely synchronized mail or FTS.
 Version 26 adds the encrypted send outbox, independent of idempotent mail mutations.
 Version 27 adds an account-scoped conversation index without modifying legacy tables.
 Version 28 records unresolved Gmail label-management writes for safe reconciliation.
-An unversioned PoC database is rejected instead of being silently rewritten.
+Version 29 adds encrypted account-scoped Gmail signatures. Version 30 records
+Gmail cloud-copy identities and durable write intents. Version 31 adds cloud
+copy deletion/send lifecycle states and outbox association. These additions do
+not change the Rust v20 schema. An unversioned PoC database is rejected instead of being silently
+rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
 
 ## Checks and local desktop selftest
@@ -194,11 +236,14 @@ suites and the separate public website suite. The remaining upstream tests run
 alongside Pebble-Go adapter tests.
 
 The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox, conversation view, Gmail label CRUD, sender trust/revocation, attachment export, local draft
-restore/save, failed-download retry, same-mailbox reconnection with unknown-send
-and draft preservation, and a
-single send to the local Gmail fixture through the UI, writes a JSON report and
-screenshots, then exits. It does not
+inbox, conversation view, Gmail label CRUD, sender trust/revocation, local account
+settings and encrypted signatures, attachment export, local draft restore/save,
+Gmail cloud-copy upload/check/update, failed-download retry, same-mailbox reconnection with unknown-send and draft
+preservation, and a single send to the local Gmail fixture through the UI. Hardening
+checks exercise real message-link routing to an in-memory opener, unavailable
+settings, close/restore with edited compose state, a real second instance, and
+native quit-on-close. The selftest uses a separate application name/instance lock. It
+writes a JSON report and screenshots, then exits. It does not
 contact Google or the system keyring; draft checks use an in-memory test keyring:
 
 ```sh

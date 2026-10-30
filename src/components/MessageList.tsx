@@ -12,6 +12,7 @@ import { useConfirmStore } from "@/stores/confirm.store";
 import { roleForSelection } from "@/lib/folderAggregation";
 import { accountBadges } from "@/lib/accountIdentity";
 import MessageItem from "./MessageItem";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { MessageListSkeleton } from "./Skeleton";
 
 interface Props {
@@ -61,6 +62,8 @@ export default function MessageList({
   const { data: folders = [] } = useFoldersForAccountsQuery(folderAccountIds);
   // Offer spam action only when NOT already viewing the spam folder
   const activeFolderRole = roleForSelection(activeFolderId, folders);
+  const deleteContext = useRef({ messages, folderRole: activeFolderRole });
+  deleteContext.current = { messages, folderRole: activeFolderRole };
   const spamFolder = activeAccountId ? folders.find((f) => f.account_id === activeAccountId && f.role === "spam") : undefined;
   const spamFolderId = activeFolderRole !== "spam" ? spamFolder?.id : undefined;
   const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
@@ -69,7 +72,7 @@ export default function MessageList({
     queryKey: ["message-labels", messageIdsKey],
     queryFn: () => getMessageLabelsBatch(messageIds),
     staleTime: 60_000,
-    enabled: messageIds.length > 0,
+    enabled: isFeatureAvailable("localLabels") && messageIds.length > 0,
   });
 
   const virtualizer = useVirtualizer({
@@ -124,10 +127,21 @@ export default function MessageList({
     return action !== "star" && action !== "unstar";
   }
 
+  function cannotDeleteMessages(ids: Iterable<string>) {
+    const { messages: currentMessages, folderRole } = deleteContext.current;
+    return [...ids].some((id) => {
+      const message = currentMessages.find((item) => item.id === id);
+      // Do not report a mixed/stale selection as deleted when some rows cannot
+      // move to Trash. Only old DTOs without membership use the folder fallback.
+      return !message || ((message.in_trash ?? folderRole === "trash") && !isFeatureAvailable("permanentDelete"));
+    });
+  }
+
   async function handleBatchAction(action: "archive" | "delete" | "markRead" | "markUnread" | "star" | "unstar") {
     const ids = [...selectedMessageIds];
     if (ids.length === 0) return;
     if (action === "delete") {
+      if (cannotDeleteMessages(ids)) return;
       const count = ids.length;
       const ok = await confirm({
         title: t("batch.deleteTitle", { count, defaultValue: `Delete ${count} messages?` }),
@@ -138,7 +152,7 @@ export default function MessageList({
         confirmLabel: t("batch.deleteButton", { defaultValue: "Delete" }),
         destructive: true,
       });
-      if (!ok) return;
+      if (!ok || cannotDeleteMessages(ids)) return;
     }
     setBatchLoading(true);
     try {
@@ -164,6 +178,7 @@ export default function MessageList({
   }
 
   const allSelected = messages.length > 0 && selectedMessageIds.size === messages.length;
+  const deleteUnavailable = cannotDeleteMessages(selectedMessageIds);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -189,7 +204,7 @@ export default function MessageList({
           {selectedMessageIds.size > 0 && (
             <>
               <BatchBtn icon={Archive} label={t("messageActions.archive")} onClick={() => handleBatchAction("archive")} disabled={batchLoading} />
-              <BatchBtn icon={Trash2} label={t("common.delete")} onClick={() => handleBatchAction("delete")} disabled={batchLoading} />
+              <BatchBtn icon={Trash2} label={t("common.delete")} onClick={() => handleBatchAction("delete")} disabled={batchLoading || deleteUnavailable} title={deleteUnavailable ? unavailableReason() : undefined} />
               <BatchBtn icon={MailOpen} label={t("batch.markRead")} onClick={() => handleBatchAction("markRead")} disabled={batchLoading} />
               <BatchBtn icon={MailCheck} label={t("batch.markUnread")} onClick={() => handleBatchAction("markUnread")} disabled={batchLoading} />
               <BatchBtn icon={Star} label={t("batch.star", "Star")} onClick={() => handleBatchAction("star")} disabled={batchLoading} />
@@ -273,14 +288,14 @@ export default function MessageList({
   );
 }
 
-function BatchBtn({ icon: Icon, label, onClick, disabled }: {
-  icon: React.ElementType; label: string; onClick: () => void; disabled: boolean;
+function BatchBtn({ icon: Icon, label, onClick, disabled, title }: {
+  icon: React.ElementType; label: string; onClick: () => void; disabled: boolean; title?: string;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      title={label}
+      title={title ?? label}
       aria-label={label}
       style={{
         display: "flex", alignItems: "center", padding: "4px",

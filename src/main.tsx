@@ -10,12 +10,9 @@ async function bootstrap() {
   logStartupTiming("frontend entry loaded");
   await initializeProfileStorageNamespace();
   await import("@/lib/i18n");
-  const [{ default: App }, { showMainWindow }] = await Promise.all([
-    import("./App"),
-    import("@/lib/showMainWindow"),
-  ]);
-
-  void showMainWindow();
+  // Go creates the only window visible. A late frontend Show would undo a
+  // user's close-to-background during asynchronous profile/App bootstrap.
+  const { default: App } = await import("./App");
 
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

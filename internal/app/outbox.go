@@ -33,6 +33,7 @@ type SendRequest struct {
 	BodyHTML        string   `json:"bodyHtml"`
 	InReplyTo       string   `json:"inReplyTo"`
 	ReplyMessageID  string   `json:"replyMessageId,omitempty"`
+	LocalDraftID    string   `json:"localDraftId,omitempty"`
 	AttachmentPaths []string `json:"attachmentPaths"`
 	ClientKey       string   `json:"clientKey"`
 }
@@ -40,6 +41,7 @@ type outboxPayload struct {
 	Email, Subject, MessageID, Fingerprint string
 	Raw                                    []byte
 	ThreadID                               string
+	CloudDraft                             *outboxCloudDraft `json:",omitempty"`
 }
 type OutboxItem struct {
 	ID          string `json:"id"`
@@ -50,6 +52,7 @@ type OutboxItem struct {
 	NextRetryAt *int64 `json:"nextRetryAt"`
 	LastError   string `json:"lastError"`
 	CreatedAt   int64  `json:"createdAt"`
+	CloudDraft  bool   `json:"cloudDraft,omitempty"`
 }
 type OutboxActionRequest struct {
 	AccountID string `json:"accountId"`
@@ -64,7 +67,7 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	if err := ctx.Err(); err != nil {
 		return Empty{}, err
 	}
-	if request.AccountID == "" || len(request.ClientKey) > 200 {
+	if request.AccountID == "" || len(request.ClientKey) > 200 || len(request.LocalDraftID) > 200 {
 		return Empty{}, errors.New("invalid send identity")
 	}
 	if err := validateDraft(SaveDraftRequest{AccountID: request.AccountID, To: request.To, CC: request.CC, BCC: request.BCC, Subject: request.Subject, BodyText: request.BodyText, BodyHTML: request.BodyHTML, InReplyTo: request.InReplyTo, ReplyMessageID: request.ReplyMessageID, AttachmentPaths: request.AttachmentPaths}); err != nil {
@@ -138,12 +141,28 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	if err != nil {
 		return Empty{}, err
 	}
+	local, reservation, cloud, err := r.outboxDraft(ctx, cipher, request.AccountID, request.LocalDraftID)
+	if err != nil {
+		return Empty{}, err
+	}
 	outgoing := mailmime.Outgoing{From: mail.Address{Name: account.DisplayName, Address: account.Email}, To: to, CC: cc, BCC: bcc, IncludeBcc: true, Subject: request.Subject, Text: request.BodyText, HTML: request.BodyHTML, MessageID: messageID, InReplyTo: request.InReplyTo, Date: time.Now()}
 	if request.InReplyTo != "" {
 		outgoing.References = mailmime.ReplyReferences("", "", request.InReplyTo)
 	}
 	threadID := ""
+	if local != nil {
+		if outgoing.InReplyTo == "" {
+			outgoing.InReplyTo = local.InReplyTo
+		}
+		if outgoing.InReplyTo == local.InReplyTo && local.References != "" {
+			outgoing.References = mailmime.ThreadHeaderIDs(local.References)
+		}
+		if local.RemoteThreadID != "" && outgoing.InReplyTo == local.InReplyTo && mailmime.NormalizeSubject(request.Subject) == mailmime.NormalizeSubject(local.ThreadSubject) {
+			threadID = local.RemoteThreadID
+		}
+	}
 	if request.ReplyMessageID != "" {
+		threadID = ""
 		parent, err := r.DB.Message(ctx, request.ReplyMessageID)
 		if err != nil || parent.AccountID != account.ID {
 			return Empty{}, errors.New("reply message does not belong to selected account")
@@ -174,17 +193,20 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 		if total > store.MaxDraftAttachmentBytes {
 			return Empty{}, errors.New("outgoing attachments exceed 25 MiB")
 		}
-		typ := mime.TypeByExtension(filepath.Ext(a.Name))
+		typ := a.MIMEType
+		if typ == "" {
+			typ = mime.TypeByExtension(filepath.Ext(a.Name))
+		}
 		if typ == "" {
 			typ = "application/octet-stream"
 		}
-		outgoing.Attachments = append(outgoing.Attachments, mailmime.Attachment{Filename: a.Name, MIMEType: typ, Data: a.Bytes})
+		outgoing.Attachments = append(outgoing.Attachments, mailmime.Attachment{Filename: a.Name, MIMEType: typ, ContentID: a.ContentID, Inline: a.Inline, Data: a.Bytes})
 	}
 	raw, err := mailmime.BuildOutgoing(outgoing, mailmime.MaxOutgoingBytes)
 	if err != nil {
 		return Empty{}, errors.New("invalid outgoing message or size limit exceeded")
 	}
-	plain, err := json.Marshal(outboxPayload{Email: account.Email, Subject: request.Subject, MessageID: messageID, Fingerprint: fingerprint, Raw: raw, ThreadID: threadID})
+	plain, err := json.Marshal(outboxPayload{Email: account.Email, Subject: request.Subject, MessageID: messageID, Fingerprint: fingerprint, Raw: raw, ThreadID: threadID, CloudDraft: cloud})
 	if err != nil {
 		return Empty{}, err
 	}
@@ -196,7 +218,7 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	if err != nil {
 		return Empty{}, errors.New("cannot encrypt outbox summary")
 	}
-	if _, err := r.DB.QueueOutbox(ctx, store.OutboxRecord{ID: id, AccountID: account.ID, RequestKey: key, Data: encrypted, Summary: summary}); err != nil {
+	if _, err := r.DB.QueueOutbox(ctx, store.OutboxRecord{ID: id, AccountID: account.ID, RequestKey: key, Data: encrypted, Summary: summary, CloudDraft: reservation}); err != nil {
 		return Empty{}, errors.New("cannot queue message; check outbox storage")
 	}
 	r.notifyOutbox()
@@ -221,7 +243,7 @@ func (s *OutboxService) List(ctx context.Context, request AccountRequest) ([]Out
 	}
 	out := []OutboxItem{}
 	for _, row := range rows {
-		item := OutboxItem{ID: row.ID, AccountID: row.AccountID, Status: row.Status, Attempts: row.Attempts, NextRetryAt: row.NextRetryAt, LastError: row.LastError, CreatedAt: row.CreatedAt}
+		item := OutboxItem{ID: row.ID, AccountID: row.AccountID, Status: row.Status, Attempts: row.Attempts, NextRetryAt: row.NextRetryAt, LastError: row.LastError, CreatedAt: row.CreatedAt, CloudDraft: row.HasCloudDraft}
 		cipher, keyErr := s.Runtime.composeCrypto(ctx)
 		if keyErr == nil {
 			if subject, err := cipher.Decrypt(outboxSummaryPurpose, draftRecord(row.AccountID, row.ID), row.Summary); err == nil {
@@ -268,6 +290,9 @@ func (s *OutboxService) Action(ctx context.Context, request OutboxActionRequest)
 			return Empty{}, errors.New("cannot save Sent confirmation")
 		}
 	} else if err := r.DB.OutboxAction(ctx, request.AccountID, request.ID, request.Action); err != nil {
+		if errors.Is(err, store.ErrOutboxDraftUnavailable) {
+			return Empty{}, err
+		}
 		return Empty{}, errors.New("outbox state does not allow this action")
 	}
 	r.notifyOutbox()
@@ -348,6 +373,9 @@ func (r *Runtime) sendOutbox(ctx context.Context, record store.OutboxRecord) dom
 	p, err := r.provider(record.AccountID)
 	if err != nil {
 		return domain.SendResult{Retryable: true, Message: "Gmail sign-in required; queued message is retained."}
+	}
+	if payload.CloudDraft != nil {
+		return r.sendCloudOutbox(ctx, record, payload, p)
 	}
 	sender, ok := p.(domain.SendTransport)
 	if !ok {

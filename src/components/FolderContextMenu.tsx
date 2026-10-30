@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, Loader, MailOpen, RefreshCw, Trash2 } from "lucide-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
 /**
  * One row of the folder menu.
@@ -17,6 +18,7 @@ export interface FolderMenuItem {
   icon: React.ReactNode;
   onSelect: () => void;
   disabled?: boolean;
+  disabledReason?: string;
   /** Paints the row in the danger colour. Used by the empty-folder actions. */
   destructive?: boolean;
   /** Rendered at the trailing edge, e.g. the unread count being cleared. */
@@ -96,8 +98,10 @@ export default function FolderContextMenu({
     first?.focus({ preventScroll: true });
   }, []);
 
+  const unavailable = (item: FolderMenuItem) =>
+    (item.id === "empty-trash" || item.id === "empty-spam") && !isFeatureAvailable("permanentDelete");
   const enabledIndexes = items
-    .map((item, index) => (item.disabled || busy ? -1 : index))
+    .map((item, index) => (item.disabled || busy || unavailable(item) ? -1 : index))
     .filter((index) => index !== -1);
 
   /** Walk the enabled rows only, so the arrows never land on a dead one. */
@@ -165,7 +169,7 @@ export default function FolderContextMenu({
       }}
     >
       {items.map((item, index) => {
-        const disabled = busy || item.disabled;
+        const disabled = busy || item.disabled || unavailable(item);
         return (
           <button
             key={item.id}
@@ -174,7 +178,7 @@ export default function FolderContextMenu({
             disabled={disabled}
             data-testid={`folder-context-menu-${item.id}`}
             aria-label={item.label}
-            title={item.label}
+            title={unavailable(item) ? unavailableReason() : item.disabledReason ?? item.label}
             onClick={() => {
               if (disabled) return;
               item.onSelect();

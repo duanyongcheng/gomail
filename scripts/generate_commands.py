@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Refresh the explicit command manifest and parity documentation."""
+import argparse
 import re
 from pathlib import Path
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--manifest-only', action='store_true', help='Leave parent-owned parity documentation unchanged')
+args = parser.parse_args()
 
 root = Path(__file__).resolve().parents[1]
 implemented = set(re.findall(r'^  ([a-z_]+): implemented', (root / 'src/lib/platform/commands.ts').read_text(), re.M))
@@ -12,7 +17,8 @@ m1_commands = {'start_sync', 'stop_sync', 'set_realtime_preference', 'trigger_sy
     'get_pending_mail_ops_summary', 'list_pending_mail_ops', 'dismiss_failed_pending_mail_ops', 'get_messages_batch',
     'get_attachment_path', 'download_attachment', 'save_draft', 'delete_draft',
     'stage_compose_attachment', 'cleanup_staged_compose_attachment', 'send_email', 'list_threads', 'list_thread_messages',
-    'trust_sender', 'remove_trusted_sender', 'list_trusted_senders', 'is_trusted_sender'}
+    'trust_sender', 'remove_trusted_sender', 'list_trusted_senders', 'is_trusted_sender',
+    'update_account', 'get_email_signature', 'set_email_signature', 'migrate_email_signature_if_absent', 'open_external_url'}
 names = set()
 for path in (root / 'src').rglob('*.ts*'):
     if 'platform' in path.parts or 'poc' in path.parts:
@@ -66,6 +72,9 @@ for name in sorted(names):
     rows.append(f'| `{name}` | {status} | {target} |')
 source.extend(['} as const;', 'export type CommandName = keyof typeof commands;', ''])
 (root / 'src/lib/platform/manifest.ts').write_text('\n'.join(source))
+if args.manifest_only:
+    print(f'{len(names)} commands, {len(implemented)} implemented; manifest refreshed (parity unchanged)')
+    raise SystemExit(0)
 (root / 'docs').mkdir(exist_ok=True)
 (root / 'docs/parity.md').write_text('# Frontend command parity\n\n'
     f'{len(names)} invoke commands are currently present in the copied UI. The planning estimate was 141. '
@@ -77,6 +86,10 @@ source.extend(['} as const;', 'export type CommandName = keyof typeof commands;'
     'Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied '
     'before automatic requests start; manual mode permits only explicit manual triggers. '
     'Full scans and History pagination resume from committed checkpoints. '
-    'Mail mutations and remote-write settings commands use the durable pending-op queue.\n\n'
+    'Mail mutations and remote-write settings commands use the durable pending-op queue. '
+    'Account access/reconnection uses generated AccountService methods and mail:account-changed directly; '
+    'confirmed access failures pause the account without resending unknown sends. '
+    'Gmail account edits save local preferences and encrypted signatures atomically; '
+    'connection/proxy changes and mailbox rebinding remain unavailable.\n\n'
     '| Command | Status | Milestone |\n|---|---|---|\n' + '\n'.join(rows) + '\n')
 print(f'{len(names)} commands, {len(implemented)} implemented; parity and manifest refreshed')

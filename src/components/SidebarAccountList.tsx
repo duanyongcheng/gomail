@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { isFeatureAvailable } from "@/lib/availability";
 import { ChevronRight, Layers } from "lucide-react";
 import {
   DndContext,
@@ -297,7 +298,8 @@ export default function SidebarAccountList({
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
   );
 
-  const sortableGroups = groups.filter((group) => group.sortable);
+  const canReorder = isFeatureAvailable("accountReorder");
+  const sortableGroups = groups.filter((group) => canReorder && group.sortable);
 
   /**
    * Collapsed rows lose their label, so the accessible name is the only place a
@@ -315,7 +317,7 @@ export default function SidebarAccountList({
 
   /** Hand the new order to the same command the Settings arrows use. */
   function handleDragEnd({ active, over }: DragEndEvent) {
-    if (!over || active.id === over.id) return;
+    if (!canReorder || !over || active.id === over.id) return;
     const from = sortableGroups.findIndex((group) => group.id === active.id);
     const to = sortableGroups.findIndex((group) => group.id === over.id);
     if (from === -1 || to === -1) return;
@@ -516,7 +518,7 @@ export default function SidebarAccountList({
           strategy={verticalListSortingStrategy}
         >
           {groups.map((group) =>
-            group.sortable ? (
+            canReorder && group.sortable ? (
               <SortableAccountGroup
                 key={group.id}
                 id={group.id}

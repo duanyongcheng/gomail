@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { useQueryClient } from "@tanstack/react-query";
 import { ContactRound, UserPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -38,7 +39,7 @@ export default function ContactAddressAction({
   )), [accountId, accounts, normalizedAddress]);
   const { data: contact = null, isLoading: loading } = useContactByAddressQuery(
     normalizedAddress,
-    !isSelf,
+    !isSelf && isFeatureAvailable("contacts"),
   );
 
   if (isSelf || !normalizedAddress) return null;
@@ -51,6 +52,7 @@ export default function ContactAddressAction({
   const viewLabel = `${t("contacts.viewPrefix", "View")} ${contactName} ${t("contacts.viewSuffix", "in contacts")}`;
 
   const handleSave = async (input: ContactInput) => {
+    if (!isFeatureAvailable("contacts")) return;
     const saved = await save.mutateAsync(input);
     const retainsOriginalAddress = saved.emails.some((email) => (
       email.address.trim().toLowerCase() === normalizedAddress
@@ -69,9 +71,10 @@ export default function ContactAddressAction({
         type="button"
         className="contact-address-action"
         aria-label={contact ? viewLabel : addLabel}
-        title={contact ? viewLabel : addLabel}
-        disabled={loading}
+        title={isFeatureAvailable("contacts") ? (contact ? viewLabel : addLabel) : unavailableReason()}
+        disabled={loading || !isFeatureAvailable("contacts")}
         onClick={() => {
+          if (!isFeatureAvailable("contacts")) return;
           if (contact) {
             useUIStore.getState().openContactInContacts(contact.id);
           } else {
@@ -82,7 +85,7 @@ export default function ContactAddressAction({
         {contact ? <ContactRound size={13} /> : <UserPlus size={13} />}
       </button>
 
-      {editorOpen && (
+      {isFeatureAvailable("contacts") && editorOpen && (
         <ContactEditorDialog
           contact={null}
           initialValue={{ displayName: name, address }}

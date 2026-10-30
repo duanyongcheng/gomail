@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SelectionActionPopover from "../../src/components/SelectionActionPopover";
+vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -51,7 +52,7 @@ describe("SelectionActionPopover", () => {
     expect(await screen.findByRole("button", { name: "Copied selected text" })).toBeTruthy();
   });
 
-  it("keeps translate behind the secondary actions menu", () => {
+  it("keeps unavailable actions explained and disabled in the secondary menu", () => {
     const onTranslate = vi.fn();
     const onSearch = vi.fn();
     const onCreateRule = vi.fn();
@@ -81,13 +82,18 @@ describe("SelectionActionPopover", () => {
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Translate selected text" }));
 
-    expect(onTranslate).toHaveBeenCalledWith("selected email text", { x: 100, y: 120 });
+    for (const label of ["Translate selected text", "Create rule from selected text", "Add selected text as kanban note"]) {
+      const button = screen.getByRole("menuitem", { name: label }) as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+      expect(button.title).toMatch(/not available/);
+    }
+    expect(onTranslate).not.toHaveBeenCalled();
     expect(onSearch).not.toHaveBeenCalled();
     expect(onCreateRule).not.toHaveBeenCalled();
     expect(onAddToKanbanNote).not.toHaveBeenCalled();
   });
 
-  it("runs secondary selected-text actions with the selected text", () => {
+  it("still searches selected text but never creates rules or kanban notes", () => {
     const onSearch = vi.fn();
     const onCreateRule = vi.fn();
     const onAddToKanbanNote = vi.fn();
@@ -112,13 +118,13 @@ describe("SelectionActionPopover", () => {
     fireEvent.click(screen.getByRole("button", { name: "More selected-text actions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Create rule from selected text" }));
 
-    expect(onCreateRule).toHaveBeenCalledWith("selected email text");
+    expect(onCreateRule).not.toHaveBeenCalled();
 
     view.unmount();
     render(<SelectionActionPopover {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "More selected-text actions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Add selected text as kanban note" }));
 
-    expect(onAddToKanbanNote).toHaveBeenCalledWith("selected email text");
+    expect(onAddToKanbanNote).not.toHaveBeenCalled();
   });
 });

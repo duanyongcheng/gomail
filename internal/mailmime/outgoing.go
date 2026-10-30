@@ -47,6 +47,15 @@ func validMessageID(value string) bool {
 // BuildOutgoing rejects header injection and bounds the encoded output while
 // writing, rather than allocating an unbounded message and checking afterward.
 func BuildOutgoing(input Outgoing, limit int) ([]byte, error) {
+	return buildOutgoing(input, limit, false)
+}
+
+// BuildDraft keeps send validation intact while allowing no recipients in drafts.
+func BuildDraft(input Outgoing, limit int) ([]byte, error) {
+	return buildOutgoing(input, limit, true)
+}
+
+func buildOutgoing(input Outgoing, limit int, draft bool) ([]byte, error) {
 	if limit <= 0 || limit > MaxOutgoingBytes {
 		return nil, errors.New("invalid outgoing message limit")
 	}
@@ -97,7 +106,7 @@ func BuildOutgoing(input Outgoing, limit int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(to)+len(cc)+len(bcc) == 0 {
+	if !draft && len(to)+len(cc)+len(bcc) == 0 {
 		return nil, errors.New("outgoing recipient required")
 	}
 	retained := int64(len(input.Text)) + int64(len(input.HTML))
@@ -167,13 +176,21 @@ func BuildOutgoing(input Outgoing, limit int) ([]byte, error) {
 		var w io.WriteCloser
 		if a.Inline {
 			var h messageMail.InlineHeader
-			h.SetContentType(a.MIMEType, nil)
+			var params map[string]string
+			if a.Filename != "" {
+				// go-message overwrites inline Content-Disposition parameters.
+				params = map[string]string{"name": a.Filename}
+			}
+			h.SetContentType(a.MIMEType, params)
 			h.Set("Content-ID", "<"+a.ContentID+">")
 			w, err = writer.CreateSingleInline(h)
 		} else {
 			var h messageMail.AttachmentHeader
 			h.SetFilename(a.Filename)
 			h.SetContentType(a.MIMEType, nil)
+			if a.ContentID != "" {
+				h.Set("Content-ID", "<"+a.ContentID+">")
+			}
 			w, err = writer.CreateAttachment(h)
 		}
 		if err != nil {

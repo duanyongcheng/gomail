@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { isActionAvailable, unavailableReason } from "@/lib/availability";
+import { useToastStore } from "./toast.store";
 
 export interface Command {
   id: string;
@@ -26,23 +28,28 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   commands: [],
   filteredCommands: [],
 
-  open: () => set({ isOpen: true, query: "", filteredCommands: get().commands }),
+  open: () => set({ isOpen: true, query: "", filteredCommands: get().commands.filter((cmd) => isActionAvailable(cmd.id)) }),
 
   close: () => set({ isOpen: false, query: "" }),
 
   setQuery: (q: string) => {
     const lower = q.toLowerCase();
+    const available = get().commands.filter((cmd) => isActionAvailable(cmd.id));
     const filtered = lower
-      ? get().commands.filter(
+      ? available.filter(
           (c) =>
             c.name.toLowerCase().includes(lower) ||
             c.category.toLowerCase().includes(lower),
         )
-      : get().commands;
+      : available;
     set({ query: q, filteredCommands: filtered });
   },
 
   execute: async (commandId: string) => {
+    if (!isActionAvailable(commandId)) {
+      useToastStore.getState().addToast({ message: unavailableReason(), type: "info" });
+      return;
+    }
     const cmd = get().commands.find((c) => c.id === commandId);
     if (cmd) {
       get().close();
@@ -51,5 +58,5 @@ export const useCommandStore = create<CommandState>((set, get) => ({
   },
 
   registerCommands: (cmds: Command[]) =>
-    set({ commands: cmds, filteredCommands: cmds }),
+    set({ commands: cmds.filter((cmd) => isActionAvailable(cmd.id)), filteredCommands: cmds.filter((cmd) => isActionAvailable(cmd.id)) }),
 }));

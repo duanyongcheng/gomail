@@ -2,8 +2,11 @@
 
 Gmail sending now uses a local encrypted outbox. A successful `send_email` call
 means **durably queued**, not delivered. The composer shows a queue-acceptance
-toast, then releases its local draft and staging references. Outbox owns a full
-MIME copy, including attachment bytes, independently of that cleanup.
+toast. For local-only sends it releases the local draft and staging references;
+Outbox owns a full MIME copy including attachment bytes. Cloud-linked sends retain
+a protected encrypted local draft and its attachment references until acceptance,
+so cancelling a queued/failed send can restore editability without losing the
+latest local changes. See [the linked-send lifecycle](m1-gmail-completion.md).
 
 ## User flow
 
@@ -12,14 +15,19 @@ settings surface supports account filtering. States distinguish queued, checking
 sender, sending, failed, outcome unknown and accepted by Gmail. Acceptance does
 not guarantee recipient delivery; normal Gmail sync populates Sent afterward.
 
-- Queued/failed items may be cancelled, removing local content before submission.
+- Queued/failed items may be cancelled. For cloud-linked sends, cancellation
+  retains the latest local draft and unlocks it, then clears the outbox copy.
+  Older linked items whose local draft was already deleted cannot be safely
+  cancelled: their last outbox content is retained and an explanation is shown.
+  Local-only cancellation still removes the queued content.
 - Failed items may be explicitly retried. Preflight/network-access failures and
   HTTP 429 back off automatically, from 60s to 1h, up to eight attempts.
 - Unknown outcomes have **Check Sent**, not Retry. The check performs read-only
   Gmail search by stable RFC Message-ID and verifies a unique SENT result's exact
   Message-ID and From. Missing/ambiguous results remain unknown; no resend occurs.
-- Sent/unknown records may be dismissed. Dismiss does not undo remote delivery.
-  It removes local encrypted content while retaining a request-key tombstone.
+- Sent records and unlinked unknown records may be dismissed. Unknown linked
+  sends must first be resolved with Check Sent. Dismiss does not undo remote
+  delivery; it removes outbox content while retaining a request-key tombstone.
 
 The UI displays at most 50 entries, active first. Dismiss finished records to
 reveal older ones. State-change events and three-second local polling refresh it.
@@ -77,9 +85,10 @@ keeps its Promise<void> signature with an optional clientKey. The inventory stay
 
 ## Deferred work
 
-Gmail cloud draft synchronization, aliases, account identity reassignment,
-automatic content-matching reconciliation, outbox pagination and SMTP are separate
-tasks. The [conversation slice](m1-threads.md) now adds account-validated reply
+Explicit Gmail cloud-copy import/update/delete and linked sending are covered by
+the [completion slice](m1-gmail-completion.md). Automatic bidirectional cloud draft
+synchronization, aliases, account identity reassignment, automatic content-matching
+reconciliation, outbox pagination and SMTP remain separate tasks. The [conversation slice](m1-threads.md) now adds account-validated reply
 parents, References chains and native Gmail thread IDs to outgoing replies. Failed payloads
 cannot be edited in-place; cancel then compose a corrected message. An unknown
 send must be checked before creating any replacement. Real Google authorization

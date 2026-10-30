@@ -30,7 +30,7 @@ export function useComposeRecipients({
   // Prefer the draft's original accountId when available — the draft body was
   // authored under that account, so restoring it under the active account
   // would silently misattribute the message.
-  const [fromAccountId, setFromAccountId] = useState(restoredDraft?.accountId || composeReplyTo?.account_id || activeAccountId || "");
+  const [fromAccountId, setFromAccountId] = useState(restoredDraft?.accountId || composeReplyTo?.account_id || composePrefill?.gmailDraftsAccountId || activeAccountId || "");
   const currentAccount = accounts.find((a) => a.id === fromAccountId);
   const myEmail = currentAccount?.email || "";
 

@@ -125,9 +125,8 @@ describe("Sidebar navigation", () => {
   });
 
   it.each([
-    ["Contacts", "contacts"],
-    ["Snoozed", "snoozed"],
-    ["Kanban", "kanban"],
+    ["Search /", "search"],
+    ["Starred", "starred"],
     ["Settings", "settings"],
   ] as const)("switches to the %s view from the bottom navigation", async (label, view) => {
     useUIStore.setState({ activeView: "inbox" });
@@ -140,6 +139,17 @@ describe("Sidebar navigation", () => {
     await waitFor(() => {
       expect(useUIStore.getState().activeView).toBe(view);
     });
+  });
+
+  it.each(["Contacts", "Snoozed", "Kanban"])("disables %s without discarding dirty compose", (label) => {
+    renderSidebar();
+    const button = screen.getByRole("button", { name: label }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toContain("not available");
+    fireEvent.click(button);
+    expect(useUIStore.getState().activeView).toBe("compose");
+    expect(useComposeStore.getState().composeDirty).toBe(true);
+    expect(useConfirmStore.getState().confirm).not.toHaveBeenCalled();
   });
 
   it("keeps the sidebar from shrinking under wide message content", () => {

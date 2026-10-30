@@ -254,7 +254,7 @@ describe("Sidebar folder context menu", () => {
     );
   });
 
-  it("offers Empty Trash on a trash row and not on the inbox", () => {
+  it("does not offer permanent deletion on trash or inbox", () => {
     renderSidebar();
 
     const inboxMenu = openFolderMenu("folder-inbox");
@@ -262,38 +262,25 @@ describe("Sidebar folder context menu", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     const trashMenu = openFolderMenu("folder-trash");
-    expect(within(trashMenu).getByTestId("folder-context-menu-empty-trash")).toBeTruthy();
+    expect(within(trashMenu).queryByTestId("folder-context-menu-empty-trash")).toBeNull();
     expect(within(trashMenu).queryByTestId("folder-context-menu-empty-spam")).toBeNull();
   });
 
-  it("offers Empty Spam on a spam row", () => {
+  it("does not offer permanent deletion on spam", () => {
     renderSidebar();
 
     const menu = openFolderMenu("folder-spam");
 
-    expect(within(menu).getByTestId("folder-context-menu-empty-spam")).toBeTruthy();
+    expect(within(menu).queryByTestId("folder-context-menu-empty-spam")).toBeNull();
   });
 
-  it("asks before emptying a junk folder and does nothing when refused", async () => {
-    mocks.confirm.mockResolvedValueOnce(false);
+  it("never requests confirmation or writes permanent deletion through the folder menu", () => {
     renderSidebar();
-
-    const menu = openFolderMenu("folder-trash");
-    fireEvent.click(within(menu).getByTestId("folder-context-menu-empty-trash"));
-
-    await waitFor(() => expect(mocks.confirm).toHaveBeenCalled());
+    openFolderMenu("folder-trash");
+    fireEvent.keyDown(document, { key: "End" });
+    fireEvent.keyDown(document, { key: "Enter" });
+    expect(mocks.confirm).not.toHaveBeenCalled();
     expect(mocks.emptyTrash).not.toHaveBeenCalled();
-  });
-
-  it("empties the junk folder once the delete is confirmed", async () => {
-    mocks.emptyTrash.mockResolvedValueOnce(3);
-    renderSidebar();
-
-    const menu = openFolderMenu("folder-trash");
-    fireEvent.click(within(menu).getByTestId("folder-context-menu-empty-trash"));
-
-    await waitFor(() => expect(mocks.emptyTrash).toHaveBeenCalledWith("account-1"));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalled();
   });
 
   it("syncs the mailbox that owns the folder", async () => {

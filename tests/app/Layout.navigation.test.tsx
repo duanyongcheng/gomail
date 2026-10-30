@@ -171,6 +171,17 @@ describe("Layout navigation", () => {
     });
   });
 
+  it.each(["kanban", "contacts", "snoozed"] as const)("rejects a restored %s view before mounting it", (activeView) => {
+    useUIStore.setState({ activeView });
+    render(<Layout />);
+    expect(screen.getByText("Inbox panel")).toBeTruthy();
+    expect(screen.queryByText("Kanban panel")).toBeNull();
+    expect(screen.queryByText("Snoozed panel")).toBeNull();
+    expect(useUIStore.getState().activeView).toBe("inbox");
+    expect(mocks.setNotificationsEnabled).not.toHaveBeenCalled();
+    expect(mocks.syncTitlebarTheme).not.toHaveBeenCalled();
+  });
+
   it("shows the loading fallback instead of leaving stale inbox content when a lazy view is pending", async () => {
     render(<Layout />);
 

@@ -8,6 +8,7 @@ import { updateMessageFlags, archiveMessage, moveToFolder } from "@/lib/api";
 import { useKanbanStore } from "@/stores/kanban.store";
 import { useToastStore } from "@/stores/toast.store";
 import AccountBadge from "./AccountBadge";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { invalidateUnreadViews, patchMessagesCache, restoreMessagesCache, snapshotMessagesCache } from "@/hooks/queries";
 
 interface Props {
@@ -166,7 +167,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
           </span>
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-          {inKanban && (
+          {isFeatureAvailable("kanban") && inKanban && (
             <LayoutGrid size={13} color="var(--color-accent)" />
           )}
           {message.is_starred && (
@@ -211,7 +212,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
         }}
       >
         {message.snippet}
-        {labels.length > 0 && labels.map((l) => (
+        {isFeatureAvailable("localLabels") && labels.length > 0 && labels.map((l) => (
           <span
             key={l.id}
             style={{
@@ -327,6 +328,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (!isFeatureAvailable("kanban")) return;
               useKanbanStore.getState().addCard(message.id, "todo")
                 .then(() => {
                   useToastStore.getState().addToast({ message: t("messageActions.kanbanSuccess", "Added to kanban board"), type: "success" });
@@ -336,7 +338,8 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
                 });
             }}
             aria-label={t("messageActions.addToKanban")}
-            title={t("messageActions.addToKanban")}
+            disabled={!isFeatureAvailable("kanban")}
+            title={isFeatureAvailable("kanban") ? t("messageActions.addToKanban") : unavailableReason()}
             style={{
               padding: "4px",
               border: "none",

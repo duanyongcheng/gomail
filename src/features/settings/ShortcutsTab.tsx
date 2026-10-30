@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Keyboard, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { isActionAvailable } from "@/lib/availability";
 import { useShortcutStore } from "@/stores/shortcut.store";
 import { eventToKeyString } from "@/hooks/useKeyboard";
 
@@ -240,7 +241,7 @@ export default function ShortcutsTab() {
         )}
       </div>
 
-      {SHORTCUT_GROUPS.map((group) => (
+      {SHORTCUT_GROUPS.map((group) => ({ ...group, actions: group.actions.filter(isActionAvailable) })).filter((group) => group.actions.length > 0).map((group) => (
         <div key={group.categoryKey} style={{ marginBottom: "24px" }}>
           <h4
             style={{

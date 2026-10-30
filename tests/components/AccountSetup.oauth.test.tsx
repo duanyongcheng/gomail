@@ -1,349 +1,91 @@
+import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import AccountSetup from "../../src/components/AccountSetup";
-import { accountsQueryKey } from "../../src/hooks/queries";
-import {
-  addAccount,
-  completeOAuthFlow,
-  startSync,
-  testPop3Connection,
-} from "../../src/lib/api";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import AccountSetup from "@/components/AccountSetup";
+import { AccountService } from "@/mygo";
+import { accountsQueryKey } from "@/hooks/queries";
+import { useUIStore } from "@/stores/ui.store";
 
-vi.mock("../../src/lib/i18n", () => ({
-  default: {
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-  },
-}));
+// Keep api.ts AND platform/commands.ts real: a fake invoke used to hide missing support.
+vi.mock("@/mygo", () => ({ AccountService: { status: vi.fn(), login: vi.fn() }, SyncService: { start: vi.fn() } }));
+vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, fallback?: string) => fallback ?? key }) }));
+import { SyncService } from "@/mygo";
 
-vi.mock("react-i18next", () => ({
-  initReactI18next: {
-    type: "3rdParty",
-    init: vi.fn(),
-  },
-  useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-  }),
-}));
+function setup() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const invalidate = vi.spyOn(client, "invalidateQueries");
+  const onClose = vi.fn();
+  render(<QueryClientProvider client={client}><AccountSetup onClose={onClose} /></QueryClientProvider>);
+  return { invalidate, onClose };
+}
 
-vi.mock("../../src/lib/api", () => ({
-  addAccount: vi.fn(),
-  completeOAuthFlow: vi.fn(),
-  startSync: vi.fn(),
-  testImapConnection: vi.fn(),
-  testPop3Connection: vi.fn(),
-}));
+beforeEach(() => {
+  vi.clearAllMocks();
+  useUIStore.setState({ realtimeMode: "realtime" });
+  vi.mocked(AccountService.status).mockResolvedValue({ configured: true, message: "Ready" });
+  vi.mocked(AccountService.login).mockResolvedValue({ id: "account-1", email: "user@example.com", display_name: "User", provider: "gmail", created_at: 1, updated_at: 1 });
+  vi.mocked(SyncService.start).mockResolvedValue({ value: "started" });
+});
 
-describe("AccountSetup OAuth", () => {
-  beforeEach(() => {
-    vi.mocked(completeOAuthFlow).mockResolvedValue({
-      id: "account-1",
-      email: "user@example.com",
-      display_name: "User",
-      provider: "gmail",
-      created_at: 1,
-      updated_at: 1,
-    });
-    vi.mocked(startSync).mockResolvedValue("started");
-    vi.mocked(addAccount).mockResolvedValue({
-      id: "pop3-account-1",
-      email: "legacy@example.com",
-      display_name: "Legacy",
-      provider: "pop3",
-      created_at: 1,
-      updated_at: 1,
-    });
-    vi.mocked(testPop3Connection).mockResolvedValue("POP3 connection successful (0 messages)");
+describe("Gmail-only account setup", () => {
+  it("waits for configuration then signs in through the real adapter and refreshes folders", async () => {
+    const { invalidate, onClose } = setup();
+    const button = screen.getByRole("button", { name: "Sign in with Google" });
+    expect(button).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Account label"), { target: { value: "Work" } });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(AccountService.login).toHaveBeenCalledExactlyOnceWith({ provider: "gmail", email: "", displayName: "", proxyHost: undefined, proxyPort: undefined, accountLabel: "Work" });
+    expect(SyncService.start).toHaveBeenCalledOnce();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: accountsQueryKey });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["folders", "account-1"] });
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  it("does not expose Outlook, IMAP/POP3, passwords or proxy forms", async () => {
+    setup();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sign in with Google" })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "Sign in with Microsoft" })).toBeNull();
+    expect(screen.queryByLabelText(/Incoming protocol|Password|SOCKS5 Proxy|SMTP|IMAP/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Account & Sync" })).toBeNull();
+    expect(screen.getByText(/Outlook \/ IMAP \/ POP3/)).toHaveTextContent(/not available/);
+    expect(AccountService.login).not.toHaveBeenCalled();
   });
 
-  it("refreshes account folders after OAuth sign-in starts sync", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    const onClose = vi.fn();
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={onClose} />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
-
-    await waitFor(() => {
-      expect(completeOAuthFlow).toHaveBeenCalledWith("gmail", "", "", undefined, undefined, undefined);
-    });
-    await waitFor(() => {
-      expect(startSync).toHaveBeenCalledWith("account-1", 3);
-    });
-    await waitFor(() => {
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: accountsQueryKey });
-    });
-
-    expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["folders", "account-1"],
-    });
-
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["folders"] });
+  it("fails closed on status failure and supports retry", async () => {
+    vi.mocked(AccountService.status).mockRejectedValueOnce(new Error("offline"));
+    setup();
+    await screen.findByRole("alert");
+    const button = screen.getByRole("button", { name: "Sign in with Google" });
+    fireEvent.click(button);
+    expect(AccountService.login).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(button).toBeEnabled());
   });
 
-  it("passes proxy settings to OAuth sign-in", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={vi.fn()} />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.change(screen.getByLabelText("SOCKS5 Proxy"), {
-      target: { value: "127.0.0.1" },
-    });
-    fireEvent.change(screen.getByLabelText("Port"), {
-      target: { value: "7890" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with Google" }));
-
-    await waitFor(() => {
-      expect(completeOAuthFlow).toHaveBeenCalledWith("gmail", "", "", "127.0.0.1", 7890, undefined);
-    });
-  });
-
-  it("keeps the add-account dialog open when clicking the backdrop", () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-    const onClose = vi.fn();
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={onClose} />
-      </QueryClientProvider>,
-    );
-
-    const dialog = screen.getByRole("dialog", { name: "Add Email Account" });
-    fireEvent.mouseDown(dialog);
-    fireEvent.click(dialog);
-
+  it("keeps unconfigured Google disabled and preserves the dialog on backdrop clicks", async () => {
+    vi.mocked(AccountService.status).mockResolvedValue({ configured: false, message: "Not configured" });
+    const { onClose } = setup();
+    await screen.findByText("Configure Google OAuth before reconnecting.");
+    expect(screen.getByRole("button", { name: "Sign in with Google" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("dialog"));
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Add Email Account" })).toBeTruthy();
   });
 
-  it("tests and submits manual POP3 account settings", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={vi.fn()} />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.change(screen.getByLabelText("Email address"), {
-      target: { value: "legacy@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Sender name"), {
-      target: { value: "Legacy" },
-    });
-    fireEvent.change(screen.getByLabelText("Incoming protocol"), {
-      target: { value: "pop3" },
-    });
-    fireEvent.change(screen.getByLabelText("POP3 host"), {
-      target: { value: "pop.example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("SMTP host"), {
-      target: { value: "smtp.example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "legacy-user" },
-    });
-    fireEvent.change(screen.getByLabelText("Password / App password"), {
-      target: { value: "app-password" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Test Connection" }));
-
-    await waitFor(() => {
-      expect(testPop3Connection).toHaveBeenCalledWith(
-        "pop.example.com",
-        995,
-        "tls",
-        false,
-        undefined,
-        undefined,
-        "legacy-user",
-        "app-password",
-        false,
-      );
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Add Account & Sync" }));
-
-    await waitFor(() => {
-      expect(addAccount).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: "legacy@example.com",
-          display_name: "Legacy",
-          provider: "pop3",
-          imap_host: "pop.example.com",
-          imap_port: 995,
-          smtp_host: "smtp.example.com",
-          username: "legacy-user",
-          password: "app-password",
-        }),
-      );
-    });
-  });
-
-  it("allows manual IMAP account submission with an empty username", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={vi.fn()} />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.change(screen.getByLabelText("Email address"), {
-      target: { value: "user@hotmail.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Sender name"), {
-      target: { value: "Hotmail" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Outlook" }));
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByLabelText("Password / App password"), {
-      target: { value: "app-password" },
-    });
-
-    expect((screen.getByLabelText("Username") as HTMLInputElement).required).toBe(false);
-
-    fireEvent.click(screen.getByRole("button", { name: "Add Account & Sync" }));
-
-    await waitFor(() => {
-      expect(addAccount).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: "user@hotmail.com",
-          display_name: "Hotmail",
-          provider: "imap",
-          imap_host: "outlook.office365.com",
-          smtp_host: "smtp.office365.com",
-          username: "",
-          password: "app-password",
-        }),
-      );
-    });
-  });
-
-  it("keeps a manually edited Outlook username independent from the mailbox address", () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={vi.fn()} />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Outlook" }));
-    fireEvent.change(screen.getByLabelText("Email address"), {
-      target: { value: "mailbox@outlook.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "external-login@qq.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Email address"), {
-      target: { value: "renamed-mailbox@outlook.com" },
-    });
-
-    expect((screen.getByLabelText("Username") as HTMLInputElement).value).toBe(
-      "external-login@qq.com",
-    );
-  });
-
-  it("clears the plaintext opt-in when security switches back to encrypted", async () => {
-    // Issue #70 review: the opt-in checkbox only shows while a connection is
-    // unencrypted. Checking it and then switching both sides back to an
-    // encrypted mode must NOT persist allow_plaintext=true on the account.
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AccountSetup onClose={vi.fn()} />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.change(screen.getByLabelText("Email address"), {
-      target: { value: "legacy@88.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Sender name"), {
-      target: { value: "Legacy" },
-    });
-    fireEvent.change(screen.getByLabelText("IMAP host"), {
-      target: { value: "mail.88.com" },
-    });
-    fireEvent.change(screen.getByLabelText("SMTP host"), {
-      target: { value: "mail.88.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Password / App password"), {
-      target: { value: "app-password" },
-    });
-
-    const imapSecurity = document.getElementById(
-      "setup-imap-security",
-    ) as HTMLSelectElement;
-    const smtpSecurity = document.getElementById(
-      "setup-smtp-security",
-    ) as HTMLSelectElement;
-
-    // Go plaintext on both sides, opt in.
-    fireEvent.change(imapSecurity, { target: { value: "plain" } });
-    fireEvent.change(smtpSecurity, { target: { value: "plain" } });
-    const optIn = screen.getByRole("checkbox", {
-      name: /Allow unencrypted connection/,
-    });
-    fireEvent.click(optIn);
-    expect((optIn as HTMLInputElement).checked).toBe(true);
-
-    // Change our mind: switch both back to encrypted. The checkbox disappears
-    // and the flag must reset.
-    fireEvent.change(imapSecurity, { target: { value: "tls" } });
-    fireEvent.change(smtpSecurity, { target: { value: "starttls" } });
-    expect(
-      screen.queryByRole("checkbox", { name: /Allow unencrypted connection/ }),
-    ).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Add Account & Sync" }));
-
-    await waitFor(() => {
-      expect(addAccount).toHaveBeenCalledWith(
-        expect.objectContaining({ allow_plaintext: false }),
-      );
-    });
+  it("blocks repeated sign-ins and keeps a failed attempt visible", async () => {
+    let reject!: (reason: Error) => void;
+    vi.mocked(AccountService.login).mockImplementationOnce(() => new Promise((_resolve, rejectRequest) => { reject = rejectRequest; }));
+    const { onClose } = setup();
+    const button = screen.getByRole("button", { name: "Sign in with Google" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(AccountService.login).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
+    await act(async () => reject(new Error("Sign-in cancelled")));
+    expect(screen.getByRole("alert")).toHaveTextContent("Sign-in cancelled");
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

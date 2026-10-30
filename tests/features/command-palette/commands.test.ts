@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { queryClient } from "@/lib/query-client";
 
 const mocks = vi.hoisted(() => ({
   mailState: {
@@ -20,13 +21,9 @@ const mocks = vi.hoisted(() => ({
   toastState: {
     addToast: vi.fn(),
   },
-  queryClient: {
-    invalidateQueries: vi.fn(),
-  },
   updateMessageFlags: vi.fn(),
   archiveMessage: vi.fn(),
   patchMessagesCache: vi.fn(),
-  findCachedMessage: vi.fn(),
   invalidateUnreadViews: vi.fn(),
 }));
 
@@ -60,9 +57,10 @@ vi.mock("@/stores/toast.store", () => ({
   },
 }));
 
-vi.mock("@/lib/query-client", () => ({
-  queryClient: mocks.queryClient,
-}));
+vi.mock("@/lib/query-client", async () => {
+  const { QueryClient } = await import("@tanstack/react-query");
+  return { queryClient: new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }) };
+});
 
 vi.mock("@/lib/api", () => ({
   updateMessageFlags: mocks.updateMessageFlags,
@@ -71,7 +69,6 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/hooks/queries", () => ({
   patchMessagesCache: mocks.patchMessagesCache,
-  findCachedMessage: mocks.findCachedMessage,
   invalidateUnreadViews: mocks.invalidateUnreadViews,
 }));
 
@@ -87,49 +84,57 @@ function command(id: string) {
   return found;
 }
 
+afterEach(() => queryClient.clear());
+
 describe("command palette mail commands", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mailState.selectedMessageId = "message-1";
     mocks.updateMessageFlags.mockResolvedValue(undefined);
     mocks.archiveMessage.mockResolvedValue("archived");
-    mocks.findCachedMessage.mockReturnValue({
-      id: "message-1",
-      is_starred: false,
+    vi.spyOn(queryClient, "invalidateQueries");
+    queryClient.setQueryData(["message", "message-1"], {
+      id: "message-1", is_read: false, is_starred: false,
     });
   });
 
   it("refreshes unread-derived queries after mark read", async () => {
     await command("mail:mark-read").execute();
 
-    expect(mocks.updateMessageFlags).toHaveBeenCalledWith("message-1", true);
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+    expect(mocks.updateMessageFlags).toHaveBeenCalledWith("message-1", true, undefined);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] });
   });
 
   it("refreshes unread-derived queries after mark unread", async () => {
     await command("mail:mark-unread").execute();
 
-    expect(mocks.updateMessageFlags).toHaveBeenCalledWith("message-1", false);
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+    expect(mocks.updateMessageFlags).toHaveBeenCalledWith("message-1", false, undefined);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["account-unread-counts"] });
   });
 
   it("refreshes folder unread counts after archive", async () => {
     await command("mail:archive").execute();
 
     expect(mocks.archiveMessage).toHaveBeenCalledWith("message-1");
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(queryClient);
   });
 
   it("does not refresh folder unread counts for star-only changes", async () => {
     await command("mail:star").execute();
 
     expect(mocks.updateMessageFlags).toHaveBeenCalledWith("message-1", undefined, true);
-    expect(mocks.queryClient.invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] });
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] });
   });
 
-  it("navigates to contacts from the command palette", async () => {
-    await command("nav:contacts").execute();
-
-    expect(mocks.uiState.setActiveView).toHaveBeenCalledWith("contacts");
+  it("omits unavailable navigation and actions from the palette", () => {
+    const ids = buildCommands(t).map((cmd) => cmd.id);
+    for (const id of ["nav:contacts", "nav:kanban", "mail:add-to-kanban", "settings:toggle-notifications"]) {
+      expect(ids).not.toContain(id);
+    }
+    expect(ids).toContain("nav:search");
+    expect(ids).toContain("nav:settings");
+    expect(ids).toContain("mail:compose");
+    expect(mocks.uiState.setActiveView).not.toHaveBeenCalled();
+    expect(mocks.kanbanState.addCard).not.toHaveBeenCalled();
   });
 });

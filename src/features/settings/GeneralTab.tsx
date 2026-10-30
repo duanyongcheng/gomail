@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isCommandAvailable, isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import {
   showTestNotification,
   openDefaultMailSettings,
@@ -21,21 +22,21 @@ const REALTIME_OPTIONS: Array<{
     labelKey: "settings.realtimeModeRealtime",
     fallback: "Realtime (recommended)",
     descriptionKey: "settings.realtimeModeRealtimeDesc",
-    descriptionFallback: "IMAP uses IDLE push when supported. Other providers check about every 3 seconds while you are active.",
+    descriptionFallback: "Gmail checks about every 10 seconds while recently active, then every 30 seconds while idle.",
   },
   {
     mode: "balanced",
     labelKey: "settings.realtimeModeBalanced",
     fallback: "Balanced",
     descriptionKey: "settings.realtimeModeBalancedDesc",
-    descriptionFallback: "Checks about every 15 seconds while you are active.",
+    descriptionFallback: "Gmail checks about every 30 seconds in the foreground.",
   },
   {
     mode: "battery",
     labelKey: "settings.realtimeModeBattery",
     fallback: "Battery saver",
     descriptionKey: "settings.realtimeModeBatteryDesc",
-    descriptionFallback: "Checks about every 60 seconds while you are active and slows down in the background.",
+    descriptionFallback: "Gmail checks about every 60 seconds in the foreground. Background checks slow to about every 2 minutes.",
   },
   {
     mode: "manual",
@@ -60,10 +61,12 @@ export default function GeneralTab() {
   const setStartHiddenToTray = useUIStore((s) => s.setStartHiddenToTray);
 
   const toggleNotifications = useCallback(() => {
+    if (!isFeatureAvailable("notifications")) return;
     setNotificationsEnabled(!notificationsEnabled);
   }, [notificationsEnabled, setNotificationsEnabled]);
 
   const handleTestNotification = useCallback(async () => {
+    if (!isFeatureAvailable("notifications")) return;
     setTestingNotification(true);
     try {
       await showTestNotification();
@@ -87,6 +90,7 @@ export default function GeneralTab() {
   }, [quitOnClose, setKeepRunningInBackground]);
 
   const toggleStartHiddenToTray = useCallback(() => {
+    if (!isFeatureAvailable("startHidden")) return;
     setStartHiddenToTray(!startHiddenToTray);
   }, [setStartHiddenToTray, startHiddenToTray]);
 
@@ -95,6 +99,7 @@ export default function GeneralTab() {
   const [launchAtStartup, setLaunchAtStartup] = useState(false);
 
   useEffect(() => {
+    if (!isFeatureAvailable("autostart")) return;
     let active = true;
     getAutostartEnabled()
       .then((enabled) => {
@@ -109,10 +114,11 @@ export default function GeneralTab() {
   }, []);
 
   const toggleLaunchAtStartup = useCallback(async () => {
+    if (!isFeatureAvailable("autostart")) return;
     const next = !launchAtStartup;
-    setLaunchAtStartup(next); // optimistic; revert below if the OS rejects it
     try {
       await setAutostartEnabled(next);
+      setLaunchAtStartup(next);
     } catch {
       setLaunchAtStartup(!next);
       addToast({
@@ -188,14 +194,15 @@ export default function GeneralTab() {
           color: "var(--color-text-primary)",
         }}
       >
-        <input type="checkbox" checked={notificationsEnabled} onChange={toggleNotifications} />
+        <input type="checkbox" disabled={!isFeatureAvailable("notifications")} title={unavailableReason()} checked={isFeatureAvailable("notifications") && notificationsEnabled} onChange={toggleNotifications} />
         <span>{t("settings.enableNotifications")}</span>
       </label>
       <button
         type="button"
         aria-label={t("settings.testNotification", "Send test notification")}
         onClick={handleTestNotification}
-        disabled={!notificationsEnabled || testingNotification}
+        disabled={!isFeatureAvailable("notifications") || !notificationsEnabled || testingNotification}
+        title={!isFeatureAvailable("notifications") ? unavailableReason() : undefined}
         style={{
           marginTop: "12px",
           padding: "8px 12px",
@@ -211,6 +218,8 @@ export default function GeneralTab() {
           ? t("settings.testNotificationSending", "Sending test notification...")
           : t("settings.testNotification", "Send test notification")}
       </button>
+
+      {!isFeatureAvailable("notifications") && <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{unavailableReason()}</p>}
 
       <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
         {t("settings.startupBehavior", "Startup Behavior")}
@@ -228,7 +237,9 @@ export default function GeneralTab() {
       >
         <input
           type="checkbox"
-          checked={launchAtStartup}
+          disabled={!isFeatureAvailable("autostart")}
+          title={!isFeatureAvailable("autostart") ? unavailableReason() : undefined}
+          checked={isFeatureAvailable("autostart") && launchAtStartup}
           onChange={toggleLaunchAtStartup}
         />
         <span>{t("settings.launchAtStartup", "Launch Pebble at system startup")}</span>
@@ -245,11 +256,15 @@ export default function GeneralTab() {
       >
         <input
           type="checkbox"
-          checked={startHiddenToTray}
+          disabled={!isFeatureAvailable("startHidden")}
+          title={!isFeatureAvailable("startHidden") ? unavailableReason() : undefined}
+          checked={isFeatureAvailable("startHidden") && startHiddenToTray}
           onChange={toggleStartHiddenToTray}
         />
         <span>{t("settings.startHiddenToTray", "Start hidden to tray")}</span>
       </label>
+
+      {(!isFeatureAvailable("autostart") || !isFeatureAvailable("startHidden")) && <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{unavailableReason()}</p>}
 
       <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
         {t("settings.closeBehavior", "Close Behavior")}
@@ -300,7 +315,12 @@ export default function GeneralTab() {
           </h3>
           <button
             type="button"
-            onClick={() => openDefaultMailSettings()}
+            disabled={!isCommandAvailable("open_default_mail_settings")}
+            title={!isCommandAvailable("open_default_mail_settings") ? unavailableReason() : undefined}
+            onClick={() => {
+              if (!isCommandAvailable("open_default_mail_settings")) return;
+              void openDefaultMailSettings().catch(() => addToast({ message: unavailableReason(), type: "error" }));
+            }}
             style={{
               padding: "8px 18px",
               fontSize: "13px",

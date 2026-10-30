@@ -5,7 +5,7 @@ import type { Command } from "../../src/stores/command.store";
 describe("CommandStore", () => {
   const mockCommands: Command[] = [
     { id: "nav:inbox", name: "Go to Inbox", category: "Navigation", execute: vi.fn() },
-    { id: "nav:kanban", name: "Go to Kanban", category: "Navigation", execute: vi.fn() },
+    { id: "nav:search", name: "Go to Search", category: "Navigation", execute: vi.fn() },
     { id: "mail:star", name: "Toggle Star", shortcut: "S", category: "Mail", execute: vi.fn() },
   ];
 
@@ -75,6 +75,16 @@ describe("CommandStore", () => {
 
     expect(mockCommands[0].execute).toHaveBeenCalled();
     expect(useCommandStore.getState().isOpen).toBe(false);
+  });
+
+  it("filters unavailable actions and blocks restored command execution", async () => {
+    const execute = vi.fn();
+    const unavailable = { id: "mail:add-to-kanban", name: "Kanban", category: "Mail", execute };
+    useCommandStore.getState().registerCommands([...mockCommands, unavailable]);
+    expect(useCommandStore.getState().commands).toHaveLength(3);
+    useCommandStore.setState({ commands: [unavailable] });
+    await useCommandStore.getState().execute(unavailable.id);
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it("execute with unknown command does nothing", async () => {

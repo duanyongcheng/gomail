@@ -39,25 +39,22 @@ describe("useRealtimePreferenceSync", () => {
     mocks.notificationsEnabled = false;
   });
 
-  it("syncs notification gate before applying realtime preference", async () => {
+  it("applies realtime preference without writing the notification startup stub", async () => {
     renderHook(() => useRealtimePreferenceSync());
 
     await waitFor(() => expect(setRealtimePreference).toHaveBeenCalledWith("battery"));
-    expect(setNotificationsEnabled).toHaveBeenCalledWith(false);
-    expect(vi.mocked(setNotificationsEnabled).mock.invocationCallOrder[0])
-      .toBeLessThan(vi.mocked(setRealtimePreference).mock.invocationCallOrder[0]);
+    expect(setNotificationsEnabled).not.toHaveBeenCalled();
   });
 
-  it("syncs the notification gate when only the notification preference changes", async () => {
+  it("ignores stale notification preference changes without restarting realtime", async () => {
     const { rerender } = renderHook(() => useRealtimePreferenceSync());
-    await waitFor(() => expect(setNotificationsEnabled).toHaveBeenCalledWith(false));
     await waitFor(() => expect(setRealtimePreference).toHaveBeenCalledTimes(1));
     vi.mocked(setNotificationsEnabled).mockClear();
 
     mocks.notificationsEnabled = true;
     rerender();
 
-    await waitFor(() => expect(setNotificationsEnabled).toHaveBeenCalledWith(true));
+    expect(setNotificationsEnabled).not.toHaveBeenCalled();
     expect(setRealtimePreference).toHaveBeenCalledTimes(1);
   });
 

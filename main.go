@@ -26,8 +26,16 @@ var foldersChanged = mygo.NewEvent[app.AccountRequest]("mail:folders-changed")
 var accountChanged = mygo.NewEvent[app.AccountRequest]("mail:account-changed")
 var trustChanged = mygo.NewEvent[app.SenderRequest]("mail:trusted-senders-changed")
 
+// Shared with the isolated packaged selftest, which replaces the URL opener
+// before the page is created and exercises this same lifecycle controller.
+var desktopAppService *desktop.AppService
+
 func main() {
 	mygo.App.SetName("Pebble Go")
+	if os.Getenv("PEBBLE_SELFTEST") == "1" {
+		// Keep synthetic second-instance checks away from a normal user's app.
+		mygo.App.SetName("Pebble Go Selftest")
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	runtime := app.New(ctx, nil, desktop.Keyring{}, mygo.Shell.OpenExternal)
@@ -41,25 +49,18 @@ func main() {
 	runtime.OnFoldersChanged = func(event app.AccountRequest) { _ = foldersChanged.Broadcast(event) }
 	runtime.OnAccountChanged = func(event app.AccountRequest) { _ = accountChanged.Broadcast(event) }
 	runtime.OnTrustChanged = func(event app.SenderRequest) { _ = trustChanged.Broadcast(event) }
-	windowService := &desktop.AppService{}
+	lifecycle := desktop.NewLifecycle()
+	windowService := &desktop.AppService{Lifecycle: lifecycle, OpenURL: mygo.Shell.OpenExternal}
+	desktopAppService = windowService
+	mygo.App.OnActivate(func(bool) { lifecycle.Restore() })
+	mygo.App.OnSecondInstance(func([]string, string) { lifecycle.Restore() })
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
 	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog
-	var quitting bool
-	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { quitting = true; cancel() })
-	mygo.App.OnQuit(func() {
-		cancel()
-		workers.Wait()
-		runtime.Scheduler.Close()
-		if db != nil {
-			_ = db.Close()
-		}
-		if logFile != nil {
-			_ = logFile.Close()
-		}
-	})
+	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { lifecycle.BeforeQuit(); cancel() })
+	mygo.App.OnQuit(cancel)
 	mygo.App.WhenReady(func() {
 		if !mygo.App.RequestSingleInstanceLock() {
 			mygo.App.Quit()
@@ -135,25 +136,47 @@ func main() {
 				}
 				window := mygo.NewWindow(mygo.WindowOptions{Title: "Pebble Go", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f8f7f5"})
 				windowService.Window.Store(window)
+				// Click handlers route links through the validating typed service.
+				// Disable MyGO's default target=_blank Shell.OpenExternal fallback,
+				// and never navigate the SPA away to untrusted email content.
+				window.Page().SetWindowOpenHandler(func(mygo.WindowOpenRequest) *mygo.WindowOptions { return nil })
+				window.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
 				window.OnFocus(func() { runtime.Scheduler.Foreground(true) })
 				window.OnBlur(func() { runtime.Scheduler.Foreground(false) })
 				window.OnHide(func() { runtime.Scheduler.Foreground(false) })
-				window.OnClose(func(e *mygo.CloseEvent) {
-					if !quitting {
-						e.PreventDefault()
-						window.Hide()
-					}
-				})
+				window.OnClose(lifecycle.OnClose)
+				if !lifecycle.Attach(window) {
+					window.Destroy()
+					return
+				}
 				mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{{Role: mygo.RoleAppMenu}, {Role: mygo.RoleEditMenu}}))
 				if os.Getenv("PEBBLE_SELFTEST") == "1" {
+					// Close before the first frontend preference RPC can run. The
+					// page may finish bootstrap but must not show itself again.
+					window.Close()
 					workers.Add(1)
 					go func() { defer workers.Done(); runSelftest(ctx, runtime, window) }()
 				}
 			})
 		}()
 	})
-	if err := mygo.App.Run(); err != nil {
+	runErr := mygo.App.Run()
+	// MyGO drains/rejects queued synchronous UI dispatch only AFTER OnQuit.
+	// Joining the UI-driving selftest in OnQuit can deadlock that drain. Join
+	// here instead, keeping storage alive until every application worker exits.
+	cancel()
+	workers.Wait()
+	runtime.Scheduler.Close()
+	if db != nil {
+		_ = db.Close()
+	}
+	if runErr != nil {
 		slog.Error("desktop event loop failed")
+	}
+	if logFile != nil {
+		_ = logFile.Close()
+	}
+	if runErr != nil {
 		os.Exit(1)
 	}
 }

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "../../src/lib/api";
+vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 
 const mocks = vi.hoisted(() => ({
   queryClient: {
@@ -132,7 +133,6 @@ describe("MessageActionToolbar", () => {
       <MessageActionToolbar
         message={makeMessage()}
         onBack={vi.fn()}
-        onMessageUpdate={vi.fn()}
       />,
     );
 
@@ -148,7 +148,6 @@ describe("MessageActionToolbar", () => {
         message={makeMessage()}
         folderRole="trash"
         onBack={vi.fn()}
-        onMessageUpdate={vi.fn()}
       />,
     );
 
@@ -163,7 +162,6 @@ describe("MessageActionToolbar", () => {
       <MessageActionToolbar
         message={makeMessage()}
         onBack={vi.fn()}
-        onMessageUpdate={vi.fn()}
       />,
     );
 

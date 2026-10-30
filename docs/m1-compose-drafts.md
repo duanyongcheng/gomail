@@ -2,7 +2,10 @@
 
 This slice introduced local drafts before sending. The later
 [Gmail outbox slice](m1-gmail-outbox.md) enables Send; drafts themselves remain
-local-only, without cloud draft synchronization.
+local-only for autosave. The later [cloud-copy slice](m1-cloud-draft-copies.md)
+adds explicit upload/check/update without automatic cloud draft synchronization.
+The [completion slice](m1-gmail-completion.md) adds remote import, conflict recovery,
+deletion and linked sends with retained local recovery snapshots.
 
 ## User flow
 
@@ -20,8 +23,16 @@ local-only, without cloud draft synchronization.
 Drafts may contain incomplete recipient input. To/Cc/Bcc (including pending text),
 subject, text/HTML, editor mode, raw source, reply ID and quoted reply HTML are
 preserved. Quoted HTML is kept separately from editable text and sanitized when
-rendered. Markdown/HTML drafts initialize the editor from their source so switching
-back to rich mode does not start with an empty document.
+rendered. Source remains authoritative for Markdown/HTML drafts. Mode conversion
+is prepared without changing the live editor, and refused with an explanation if
+the target schema/rendering would lose content or formatting. In particular,
+imported HTML with inline images or tables can remain in HTML mode without silently
+losing those elements on a switch to rich text or Markdown.
+
+A cloud-linked draft reserved by Outbox is retained but not editable. Its local
+cleanup request is a safe no-op until cancellation releases it or confirmed send
+acceptance removes its content and references atomically. Unknown sends remain
+protected; failed/queued cancellation never discards the latest retained draft.
 
 ## Storage and security
 
@@ -80,7 +91,7 @@ choose correctly. The caller supplies a stable Message-ID across retries. The ol
 
 This original draft slice did not submit MIME. The [Gmail outbox](m1-gmail-outbox.md)
 now uses the builder with mailbox verification and durable send handling; Gmail
-cloud draft APIs remain separate work.
+cloud draft APIs are described in the [completion contract](m1-gmail-completion.md).
 
 ## Tests
 

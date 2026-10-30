@@ -1,5 +1,5 @@
 import { useRef, useLayoutEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { openExternalLink } from "@/lib/external-links";
 import { openMailtoUrl } from "@/app/useMailtoOpen";
 import { sanitizeHtml, reapplyInlineStyles } from "@/lib/sanitizeHtml";
 import { messageThemeContentCss, type MessageTheme } from "@/lib/messageThemes";
@@ -164,25 +164,26 @@ export function ShadowDomEmail({ html, className, theme }: ShadowDomEmailProps) 
       if (!(target instanceof Element)) return;
 
       const anchor = target.closest<HTMLAnchorElement>("a[href]");
-      const href = anchor?.getAttribute("href")?.trim();
+      const href = anchor?.getAttribute("href");
       if (!href) return;
+      // Never let email markup navigate the app or open a second WebView.
+      event.preventDefault();
+      if (event.type === "auxclick" && (event as MouseEvent).button !== 1) return;
 
       if (/^mailto:/i.test(href)) {
-        event.preventDefault();
         void openMailtoUrl(href);
         return;
       }
 
-      if (/^https?:\/\//i.test(href)) {
-        event.preventDefault();
-        void invoke("open_external_url", { url: href })
-          .catch((err) => console.warn("Failed to open email body link", err));
-      }
+      if (href.startsWith("#")) return;
+      void openExternalLink(href);
     };
 
     shadow.addEventListener("click", handleClick);
+    shadow.addEventListener("auxclick", handleClick);
     return () => {
       shadow.removeEventListener("click", handleClick);
+      shadow.removeEventListener("auxclick", handleClick);
     };
   }, [html, theme]);
 

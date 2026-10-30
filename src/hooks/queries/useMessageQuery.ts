@@ -9,6 +9,9 @@ export function useMessageQuery(messageId: string | null) {
     queryKey: messageQueryKey(messageId ?? ""),
     queryFn: () => getMessage(messageId!),
     enabled: !!messageId,
-    staleTime: 5 * 60_000,
+    networkMode: "always", // Local SQLite metadata, including when offline.
+    // A newly opened detail must observe local changes made from other views.
+    // This is a local DB read, not a Gmail network refresh.
+    staleTime: 0,
   });
 }

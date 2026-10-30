@@ -1,12 +1,14 @@
 import type { Command } from "@/stores/command.store";
+import { isActionAvailable } from "@/lib/availability";
 import { useUIStore } from "@/stores/ui.store";
 import { useComposeStore } from "@/stores/compose.store";
 import { useMailStore } from "@/stores/mail.store";
 import { useKanbanStore } from "@/stores/kanban.store";
 import { useToastStore } from "@/stores/toast.store";
-import { updateMessageFlags, archiveMessage } from "@/lib/api";
+import { archiveMessage } from "@/lib/api";
+import { executeMessageFlags } from "@/hooks/mutations/messageFlagsMutation";
 import { queryClient } from "@/lib/query-client";
-import { patchMessagesCache, findCachedMessage, invalidateUnreadViews } from "@/hooks/queries";
+import { patchMessagesCache, invalidateUnreadViews } from "@/hooks/queries";
 
 export function buildCommands(t: (key: string, defaultValue: string) => string): Command[] {
   return [
@@ -59,8 +61,7 @@ export function buildCommands(t: (key: string, defaultValue: string) => string):
       execute: async () => {
         const id = useMailStore.getState().selectedMessageId;
         if (id) {
-          await updateMessageFlags(id, true);
-          invalidateUnreadViews(queryClient);
+          await executeMessageFlags(queryClient, { messageId: id, isRead: true }, t).catch(() => {});
         }
       },
     },
@@ -71,8 +72,7 @@ export function buildCommands(t: (key: string, defaultValue: string) => string):
       execute: async () => {
         const id = useMailStore.getState().selectedMessageId;
         if (id) {
-          await updateMessageFlags(id, false);
-          invalidateUnreadViews(queryClient);
+          await executeMessageFlags(queryClient, { messageId: id, isRead: false }, t).catch(() => {});
         }
       },
     },
@@ -84,11 +84,7 @@ export function buildCommands(t: (key: string, defaultValue: string) => string):
       execute: async () => {
         const { selectedMessageId } = useMailStore.getState();
         if (!selectedMessageId) return;
-        const msg = findCachedMessage(queryClient, (m) => m.id === selectedMessageId);
-        if (msg) {
-          await updateMessageFlags(selectedMessageId, undefined, !msg.is_starred);
-          queryClient.invalidateQueries({ queryKey: ["messages"] });
-        }
+        await executeMessageFlags(queryClient, { messageId: selectedMessageId, toggleStarred: true }, t).catch(() => {});
       },
     },
     {
@@ -145,5 +141,5 @@ export function buildCommands(t: (key: string, defaultValue: string) => string):
         setNotificationsEnabled(!notificationsEnabled);
       },
     },
-  ];
+  ].filter((command) => isActionAvailable(command.id));
 }

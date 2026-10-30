@@ -41,6 +41,7 @@ type Runtime struct {
 	reconnectCancel   context.CancelFunc
 	connections       map[string]*accountConnection
 	labelManagementMu sync.Mutex
+	cloudDraftMu      sync.Mutex
 	outboxWake        chan struct{}
 	outboxMu          sync.Mutex
 	outboxWorkerMu    sync.Mutex

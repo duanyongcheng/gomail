@@ -44,6 +44,9 @@ type Namespace struct {
 type AppService struct {
 	Window    atomic.Pointer[mygo.Window]
 	Namespace string
+	Lifecycle *Lifecycle
+	// OpenURL is injected by the desktop entry point; services never log URLs.
+	OpenURL func(string) error
 }
 
 func (s *AppService) Profile(app.Empty) Namespace { return Namespace{Value: s.Namespace} }
@@ -69,6 +72,12 @@ func (s *AppService) WindowAction(a WindowRequest) app.Empty {
 		w.Hide()
 	case "focus":
 		w.Focus()
+	case "close":
+		w.Close()
+	case "restore":
+		if s.Lifecycle != nil {
+			s.Lifecycle.Restore()
+		}
 	case "resize":
 		w.SetContentSize(a.Width, a.Height)
 	case "move":

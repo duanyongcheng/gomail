@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { isFeatureAvailable, isViewAvailable, unavailableReason } from "@/lib/availability";
 import {
   FileEdit,
   Trash2,
@@ -199,7 +200,7 @@ export default function Sidebar() {
         folders: foldersByAccountId.get(account.id) ?? [],
         color: colors.get(account.id) ?? null,
         selected: !allAccountsMode && account.id === activeAccountId,
-        sortable: true,
+        sortable: isFeatureAvailable("accountReorder"),
         canMarkAllRead: true,
         childrenAreCombined: false,
       });
@@ -260,6 +261,7 @@ export default function Sidebar() {
   }
 
   async function safeSetActiveView(view: Parameters<typeof setActiveView>[0]) {
+    if (!isViewAvailable(view)) return;
     if (isComposeDirty()) {
       const confirmed = await confirmDiscardDraft();
       if (!confirmed) return;
@@ -489,6 +491,7 @@ export default function Sidebar() {
    * that opened it is behind the menu by the time it appears.
    */
   function handleFolderMenuEmpty(target: FolderMenuTarget, isSpam: boolean) {
+    if (!isFeatureAvailable("permanentDelete")) return;
     void runFolderMenuAction(async () => {
       const scopes = folderScopeOf(target);
       const confirmed = await useConfirmStore.getState().confirm({
@@ -571,7 +574,7 @@ export default function Sidebar() {
       },
     ];
 
-    if (role === "trash") {
+    if (role === "trash" && isFeatureAvailable("permanentDelete")) {
       items.push({
         id: "empty-trash",
         label: t("folderMenu.emptyTrash", "Empty Trash"),
@@ -580,7 +583,7 @@ export default function Sidebar() {
         onSelect: () => handleFolderMenuEmpty(target, false),
       });
     }
-    if (role === "spam") {
+    if (role === "spam" && isFeatureAvailable("permanentDelete")) {
       items.push({
         id: "empty-spam",
         label: t("folderMenu.emptySpam", "Empty Spam"),
@@ -614,6 +617,7 @@ export default function Sidebar() {
         onClick={() => safeSetActiveView("starred")}
       />
       <SidebarButton
+        disabled={!isFeatureAvailable("snooze")}
         icon={<Clock size={iconSize} />}
         label={t("sidebar.snoozed", "Snoozed")}
         isActive={activeView === "snoozed"}
@@ -710,6 +714,7 @@ export default function Sidebar() {
         aria-label={t("sidebar.tools", "Tools")}
       >
         <SidebarButton
+          disabled={!isFeatureAvailable("contacts")}
           icon={<ContactRound size={iconSize} />}
           label={t("sidebar.contacts", "Contacts")}
           isActive={activeView === "contacts"}
@@ -717,6 +722,7 @@ export default function Sidebar() {
           onClick={() => safeSetActiveView("contacts")}
         />
         <SidebarButton
+          disabled={!isFeatureAvailable("kanban")}
           icon={<LayoutGrid size={iconSize} />}
           label={t("sidebar.kanban", "Kanban")}
           isActive={activeView === "kanban"}
@@ -785,7 +791,7 @@ function SidebarButton({
       aria-label={collapsed ? label : undefined}
       aria-current={isActive ? "page" : undefined}
       data-selected={isActive ? "true" : undefined}
-      title={collapsed ? label : undefined}
+      title={disabled ? unavailableReason() : collapsed ? label : undefined}
       disabled={disabled}
     >
       <span className="sidebar-row-icon">

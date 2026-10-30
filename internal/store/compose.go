@@ -25,13 +25,16 @@ type EncryptedComposeAttachment struct {
 }
 
 var ErrDraftConflict = errors.New("draft changed or was deleted; reopen it before saving")
+var ErrDraftSendProtected = errors.New("draft is reserved for sending or was sent; check Outbox before editing")
 
 func (db *DB) HasEncryptedData(ctx context.Context) (bool, error) {
 	var has bool
 	err := db.read.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM accounts WHERE auth_data IS NOT NULL)
 		OR EXISTS(SELECT 1 FROM compose_drafts WHERE data IS NOT NULL)
 		OR EXISTS(SELECT 1 FROM compose_attachments)
-		OR EXISTS(SELECT 1 FROM outbox WHERE data IS NOT NULL)`).Scan(&has)
+		OR EXISTS(SELECT 1 FROM outbox WHERE data IS NOT NULL)
+		OR EXISTS(SELECT 1 FROM email_signatures)
+		OR EXISTS(SELECT 1 FROM gmail_draft_copies)`).Scan(&has)
 	return has, err
 }
 func (db *DB) ComposeAccountExists(ctx context.Context, account string) (bool, error) {
@@ -87,6 +90,17 @@ func (db *DB) SaveComposeDraft(ctx context.Context, d EncryptedDraft, attachment
 		if errors.Is(err, sql.ErrNoRows) && d.Revision != 0 {
 			return ErrDraftConflict
 		}
+		// Reservation and this guard share the writer transaction boundary.
+		// A stale autosave (including one from another runtime) must not replace
+		// the recoverable snapshot after the immutable send has been queued.
+		var protected bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM gmail_draft_copies
+			WHERE draft_id=? AND account_id=? AND (state IN ('sending','sent') OR outbox_id IS NOT NULL))`, d.ID, d.AccountID).Scan(&protected); err != nil {
+			return err
+		}
+		if protected {
+			return ErrDraftSendProtected
+		}
 		var total int64
 		seen := map[string]bool{}
 		for _, id := range attachments {
@@ -138,18 +152,37 @@ func (db *DB) DeleteComposeDraft(ctx context.Context, account, id string) error 
 		if owner != account {
 			return errors.New("draft belongs to another account")
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE compose_drafts SET data=NULL,deleted=1,revision=revision+1,updated_at=? WHERE id=?", time.Now().Unix(), id); err != nil {
+		var state string
+		if err := tx.QueryRowContext(ctx, `SELECT COALESCE((SELECT state FROM gmail_draft_copies WHERE draft_id=? AND account_id=?),'')`, id, account).Scan(&state); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE compose_attachments SET released=1 WHERE id IN (SELECT attachment_id FROM compose_draft_attachments WHERE draft_id=?)", id); err != nil {
-			return err
+		if state == "pending" || state == "delete_pending" {
+			return errors.New("cloud draft write is unconfirmed; check it before deleting locally")
 		}
-		if _, err := tx.ExecContext(ctx, "DELETE FROM compose_draft_attachments WHERE draft_id=?", id); err != nil {
-			return err
+		if state == "sending" {
+			// Compatibility with ComposeView's post-queue cleanup: success is a
+			// deliberate no-op, NOT deletion of the latest local bytes. Queued,
+			// failed and unknown linked sends retain this snapshot and its refs
+			// until cancellation releases it or confirmed acceptance tombstones it.
+			return nil
 		}
-		return cleanReleasedComposeAttachments(ctx, tx)
+		return tombstoneComposeDraft(ctx, tx, id)
 	})
 }
+
+func tombstoneComposeDraft(ctx context.Context, tx *sql.Tx, id string) error {
+	if _, err := tx.ExecContext(ctx, "UPDATE compose_drafts SET data=NULL,deleted=1,revision=revision+1,updated_at=? WHERE id=?", time.Now().Unix(), id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE compose_attachments SET released=1 WHERE id IN (SELECT attachment_id FROM compose_draft_attachments WHERE draft_id=?)", id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM compose_draft_attachments WHERE draft_id=?", id); err != nil {
+		return err
+	}
+	return cleanReleasedComposeAttachments(ctx, tx)
+}
+
 func (db *DB) StageComposeAttachment(ctx context.Context, a EncryptedComposeAttachment) error {
 	return db.withTx(ctx, func(tx *sql.Tx) error {
 		if a.Size < 0 || a.Size > MaxComposeAttachmentBytes {

@@ -1,5 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render as renderRaw, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ThreadMessageBubble from "../../src/components/ThreadMessageBubble";
 import type { Message } from "../../src/lib/api";
 import { getRenderedHtml, getMessage, updateMessageFlags } from "../../src/lib/api";
@@ -7,7 +9,6 @@ const mocks = vi.hoisted(() => ({ openCompose: vi.fn(), invalidate: vi.fn(), cha
 vi.mock("@tauri-apps/api/event", () => ({ listen: (_name: string, callback: typeof mocks.changed) => { mocks.changed = callback; return Promise.resolve(() => {}); } }));
 vi.mock("../../src/stores/compose.store", () => ({ useComposeStore: { getState: () => ({ openCompose: mocks.openCompose }) } }));
 
-vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQueries: mocks.invalidate }) }));
 vi.mock("../../src/components/AttachmentList", () => ({ default: () => <div>Attachments</div> }));
 
 vi.mock("react-i18next", () => ({
@@ -64,6 +65,20 @@ const message: Message = {
   body_html_raw: "<p>Body</p>",
 };
 
+let client: QueryClient;
+function render(element: ReactElement) {
+  return renderRaw(element, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+}
+beforeEach(() => {
+  vi.clearAllMocks();
+  client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  vi.spyOn(client, "invalidateQueries");
+  vi.mocked(updateMessageFlags).mockResolvedValue(undefined);
+  vi.mocked(getMessage).mockImplementation(async (id) => ({ ...message, id }));
+  vi.mocked(getRenderedHtml).mockResolvedValue({ html: "<p>Rendered</p>", trackers_blocked: [], images_blocked: 0 });
+});
+afterEach(() => { cleanup(); client.clear(); });
+
 describe("ThreadMessageBubble", () => {
   it("shows copied recipients when expanded", async () => {
     render(<ThreadMessageBubble message={message} defaultExpanded />);
@@ -85,10 +100,10 @@ describe("ThreadMessageBubble", () => {
   it("marks only an expanded unread message and fetches full content before replying", async () => {
     vi.mocked(getMessage).mockResolvedValue({ ...message, body_text: "full quote" });
     render(<ThreadMessageBubble message={{ ...message, is_read: false, body_text: "" }} defaultExpanded />);
-    await waitFor(() => expect(updateMessageFlags).toHaveBeenCalledWith("message-1", true));
+    await waitFor(() => expect(updateMessageFlags).toHaveBeenCalledWith("message-1", true, undefined));
     fireEvent.click(screen.getByRole("button", { name: "messageActions.reply" }));
     await waitFor(() => expect(mocks.openCompose).toHaveBeenCalledWith("reply", expect.objectContaining({ body_text: "full quote" })));
-    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["threadMessages"] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["threadMessages"] });
   });
 
   it("shows rendering failures and ignores responses after message changes", async () => {
@@ -118,5 +133,17 @@ describe("ThreadMessageBubble", () => {
 
     await waitFor(() => expect(document.body.textContent).toContain("Rendered"));
     expect(document.querySelectorAll("[data-testid='contact-address-action']")).toHaveLength(3);
+  });
+
+  it("does not undo an explicit mark-unread while the bubble remains open", async () => {
+    const view = render(<ThreadMessageBubble message={message} defaultExpanded />);
+    await screen.findByText("<p>Rendered</p>");
+    vi.mocked(getMessage).mockResolvedValue({ ...message, is_read: false });
+    view.rerender(<ThreadMessageBubble message={{ ...message, is_read: false }} defaultExpanded />);
+    await act(async () => {});
+    expect(updateMessageFlags).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { expanded: true }));
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    await waitFor(() => expect(updateMessageFlags).toHaveBeenCalledWith(message.id, true, undefined));
   });
 });

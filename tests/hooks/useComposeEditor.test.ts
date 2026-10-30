@@ -3,7 +3,6 @@ import {
   appendReplyQuoteHtml,
   buildComposeEditorContent,
   buildReplyQuoteHtml,
-  shouldApplyInitialEditorContent,
 } from "../../src/hooks/useComposeEditor";
 import type { Message } from "../../src/lib/ipc-types";
 import type { TFunction } from "i18next";
@@ -116,27 +115,4 @@ describe("buildComposeEditorContent", () => {
     expect(appendReplyQuoteHtml("<p>Reply</p>", "")).toBe("<p>Reply</p>");
   });
 
-  it("does not re-apply generated content after the editor was initialized", () => {
-    expect(shouldApplyInitialEditorContent({
-      editorExists: true,
-      initialized: true,
-      signatureReady: true,
-      hasRestoredDraft: false,
-    })).toBe(false);
-  });
-
-  it("waits for async signature loading before initializing new compose content", () => {
-    expect(shouldApplyInitialEditorContent({
-      editorExists: true,
-      initialized: false,
-      signatureReady: false,
-      hasRestoredDraft: false,
-    })).toBe(false);
-    expect(shouldApplyInitialEditorContent({
-      editorExists: true,
-      initialized: false,
-      signatureReady: true,
-      hasRestoredDraft: false,
-    })).toBe(true);
-  });
 });

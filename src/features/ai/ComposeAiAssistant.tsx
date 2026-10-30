@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import type { Editor } from "@tiptap/react";
 import { Languages, PenLine, Sparkles, SpellCheck, Wand2 } from "lucide-react";
 import { aiHelpWrite, aiPolish, aiProofread, aiTranslate } from "@/lib/api";
@@ -183,6 +184,7 @@ export default function ComposeAiAssistant({
   }
 
   async function run(selected: AiReviewAction, current: Scope) {
+    if (!isFeatureAvailable("ai")) return;
     setAction(selected);
     setScope(current);
     setResult("");
@@ -226,6 +228,7 @@ export default function ComposeAiAssistant({
   }
 
   function handlePick(selected: AiReviewAction) {
+    if (!isFeatureAvailable("ai")) return;
     const current = readScope();
     if (!current) return;
 
@@ -314,8 +317,9 @@ export default function ComposeAiAssistant({
     <div ref={menuRef} style={{ position: "relative", marginLeft: "auto" }}>
       <button
         type="button"
-        onClick={() => setMenuOpen((open) => !open)}
-        title={t("ai.menuTooltip")}
+        disabled={!isFeatureAvailable("ai")}
+        onClick={() => { if (isFeatureAvailable("ai")) setMenuOpen((open) => !open); }}
+        title={isFeatureAvailable("ai") ? t("ai.menuTooltip") : unavailableReason()}
         aria-label={t("ai.menuTooltip")}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
@@ -325,7 +329,7 @@ export default function ComposeAiAssistant({
         {t("ai.menu")}
       </button>
 
-      {menuOpen && (
+      {isFeatureAvailable("ai") && menuOpen && (
         <div role="menu" style={panelStyle}>
           {!privacyAcked ? (
             <div style={{ padding: "4px", maxWidth: "280px" }}>
@@ -433,7 +437,7 @@ export default function ComposeAiAssistant({
         </div>
       )}
 
-      {action && scope && (
+      {isFeatureAvailable("ai") && action && scope && (
         <AiReviewDialog
           action={action}
           original={scope.text}
