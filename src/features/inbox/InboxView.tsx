@@ -1,6 +1,6 @@
 import { useMailStore } from "@/stores/mail.store";
 import { useComposeStore } from "@/stores/compose.store";
-import { useAccountsQuery, useMessagesQuery, useThreadsQuery, useFoldersForAccountsQuery, patchMessagesCache } from "@/hooks/queries";
+import { useAccountsQuery, useMessagesQuery, useThreadsQuery, useFoldersForAccountsQuery } from "@/hooks/queries";
 import { useUIStore } from "@/stores/ui.store";
 import { useToastStore } from "@/stores/toast.store";
 import MessageList from "@/components/MessageList";
@@ -22,6 +22,7 @@ import { accountBadges, type AccountBadgeInfo } from "@/lib/accountIdentity";
 import { useCloseMessageDetail } from "@/hooks/useCloseMessageDetail";
 import type { ThreadSummary } from "@/lib/api";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
+import { refreshMessageFlagViews } from "@/hooks/mutations/messageFlagsMutation";
 
 const EMPTY_THREADS: ThreadSummary[] = [];
 
@@ -62,8 +63,7 @@ export default function InboxView() {
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["folders"] }),
-        queryClient.invalidateQueries({ queryKey: ["messages"] }),
-        queryClient.invalidateQueries({ queryKey: ["threads"] }),
+        Promise.resolve(refreshMessageFlagViews(queryClient)),
         queryClient.invalidateQueries({ queryKey: ["account-unread-counts"] }),
       ]);
     } catch (err) {
@@ -101,11 +101,6 @@ export default function InboxView() {
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-  const handleToggleStar = useCallback((messageId: string, newStarred: boolean) => {
-    patchMessagesCache(queryClient, (page) =>
-      page.map((m) => (m.id === messageId ? { ...m, is_starred: newStarred } : m)),
-    );
-  }, [queryClient]);
 
   const detailOpen = threadView ? selectedThreadId !== null : selectedMessageId !== null;
 
@@ -284,7 +279,6 @@ export default function InboxView() {
               onLoadMore={handleLoadMore}
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
-              onToggleStar={handleToggleStar}
             />
           )}
         </div>

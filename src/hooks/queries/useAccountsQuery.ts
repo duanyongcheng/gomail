@@ -19,5 +19,6 @@ export function useAccountsQuery() {
   return useQuery({
     queryKey: accountsQueryKey,
     queryFn: listAccounts,
+    networkMode: "always", // Local account metadata, not provider validation.
   });
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isFeatureAvailable, isViewAvailable, unavailableReason } from "@/lib/availability";
 import {
   FileEdit,
@@ -42,7 +42,8 @@ import {
   folderIdsForSelection,
   sortFoldersForSidebar,
 } from "../lib/folderAggregation";
-import { emptyTrash, getFolderUnreadCounts, markFolderAllRead, triggerSync } from "../lib/api";
+import { emptyTrash, getFolderUnreadCounts, triggerSync } from "../lib/api";
+import { executeMarkAllRead } from "@/hooks/mutations/mailActionsMutation";
 import { extractErrorMessage } from "../lib/extractErrorMessage";
 import type { Account, Folder as FolderType } from "../lib/api";
 
@@ -117,6 +118,7 @@ export default function Sidebar() {
   const accountUnreadCounts = useAccountUnreadCounts();
   const [folderMenu, setFolderMenu] = useState<FolderMenuTarget | null>(null);
   const [folderMenuBusy, setFolderMenuBusy] = useState(false);
+  const folderActionBusy = useRef(false);
   /**
    * Per-folder unread counts fetched for the open menu, used only while the
    * sidebar's own counts are switched off and therefore never loaded.
@@ -422,10 +424,13 @@ export default function Sidebar() {
 
   /** Run a menu action, closing the menu and reporting the outcome. */
   async function runFolderMenuAction(action: () => Promise<void>) {
+    if (folderActionBusy.current) return;
+    folderActionBusy.current = true;
     setFolderMenuBusy(true);
     try {
       await action();
     } finally {
+      folderActionBusy.current = false;
       setFolderMenuBusy(false);
       closeFolderMenu();
     }
@@ -437,10 +442,9 @@ export default function Sidebar() {
       try {
         const cleared = (
           await Promise.all(
-            scopes.map((scope) => markFolderAllRead(scope.accountId, scope.folderIds)),
+            scopes.map((scope) => executeMarkAllRead(queryClient, scope)),
           )
         ).reduce((sum, count) => sum + count, 0);
-        invalidateUnreadViews(queryClient);
         addToast({
           message: t("folderMenu.markAllReadSuccess", "Marked {{count}} messages as read in {{folder}}", {
             count: cleared,

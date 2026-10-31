@@ -5,14 +5,9 @@ import { useToastStore } from "@/stores/toast.store";
 import { useTranslation } from "react-i18next";
 import { useUpdateFlagsMutation } from "@/hooks/mutations/useUpdateFlagsMutation";
 import { useComposeStore } from "@/stores/compose.store";
-import { archiveMessage, deleteMessage, restoreMessage } from "@/lib/api";
+import { executeMembershipAction } from "@/hooks/mutations/mailActionsMutation";
 import type { Message } from "@/lib/api";
-import {
-  patchMessagesCache,
-  snapshotMessagesCache,
-  restoreMessagesCache,
-} from "@/hooks/queries";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 
@@ -39,25 +34,21 @@ export default function MessageActionToolbar({
   const flagsMutation = useUpdateFlagsMutation();
   const inKanban = useKanbanStore((s) => s.cardIdSet.has(message.id));
   const [showKanbanPicker, setShowKanbanPicker] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [membershipPending, setMembershipPending] = useState(false);
+  const membershipBusy = useRef(false);
+  const currentMessageId = useRef(message.id);
+  currentMessageId.current = message.id;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+
+  function backAfterReceipt(id: string) {
+    if (mounted.current && currentMessageId.current === id) onBack();
+  }
   // Folder context is only a compatibility fallback for older/synthetic DTOs.
   // Search, Starred and cross-folder readers must use the selected message itself.
   const inTrash = message.in_trash ?? folderRole === "trash";
   const deleteUnavailable = inTrash && !isFeatureAvailable("permanentDelete");
-
-  function invalidateMessageViews(includeUnreadCounts = false) {
-    queryClient.invalidateQueries({ queryKey: ["messages"] });
-    queryClient.invalidateQueries({ queryKey: ["threads"] });
-    if (includeUnreadCounts) {
-      // Archive, restore and delete all move unread mail in or out of the
-      // mailbox count, so the sidebar's account badge has to be refreshed
-      // alongside the folder rows. It is a separate query with its own poll, and
-      // leaving it out is what makes a mailbox claim unread mail that no folder
-      // row shows.
-      queryClient.invalidateQueries({ queryKey: ["folder-unread-counts"] });
-      queryClient.invalidateQueries({ queryKey: ["account-unread-counts"] });
-    }
-  }
 
   useEffect(() => {
     if (!showKanbanPicker) return;
@@ -104,7 +95,7 @@ export default function MessageActionToolbar({
       label: message.is_starred ? t("messageActions.unstar") : t("messageActions.star"),
       action: () => {
         flagsMutation.mutate(
-          { messageId: message.id, isStarred: !message.is_starred },
+          { messageId: message.id, toggleStarred: true },
         );
       },
       active: message.is_starred,
@@ -114,13 +105,15 @@ export default function MessageActionToolbar({
       label: folderRole === "archive"
         ? t("messageActions.unarchive", "Unarchive")
         : t("messageActions.archive"),
+      disabled: membershipPending,
       action: async () => {
-        const previousLists = snapshotMessagesCache(queryClient);
-        patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== message.id));
+        if (membershipBusy.current) return;
+        membershipBusy.current = true;
+        setMembershipPending(true);
+        const id = message.id;
         try {
-          const result = await archiveMessage(message.id);
+          const result = await executeMembershipAction(queryClient, { action: "archive", messageId: id });
           if (result === "skipped") return;
-          invalidateMessageViews(true);
           if (result === "unarchived") {
             useToastStore.getState().addToast({
               message: t("messageActions.unarchiveSuccess", "Message moved to inbox"),
@@ -132,38 +125,44 @@ export default function MessageActionToolbar({
               type: "success",
             });
           }
-          onBack();
+          backAfterReceipt(id);
         } catch {
-          restoreMessagesCache(queryClient, previousLists);
           useToastStore.getState().addToast({
             message: folderRole === "archive"
               ? t("messageActions.unarchiveFailed", "Failed to unarchive")
               : t("messageActions.archiveFailed", "Failed to archive message"),
             type: "error",
           });
+        } finally {
+          membershipBusy.current = false;
+          if (mounted.current) setMembershipPending(false);
         }
       },
     },
     ...(inTrash ? [{
       icon: RotateCcw,
       label: t("messageActions.restore", "Restore"),
+      disabled: membershipPending,
       action: async () => {
-        const previousLists = snapshotMessagesCache(queryClient);
-        patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== message.id));
+        if (membershipBusy.current) return;
+        membershipBusy.current = true;
+        setMembershipPending(true);
+        const id = message.id;
         try {
-          await restoreMessage(message.id);
-          invalidateMessageViews(true);
+          await executeMembershipAction(queryClient, { action: "restore", messageId: id });
           useToastStore.getState().addToast({
             message: t("messageActions.restoreSuccess", "Message restored to inbox"),
             type: "success",
           });
-          onBack();
+          backAfterReceipt(id);
         } catch {
-          restoreMessagesCache(queryClient, previousLists);
           useToastStore.getState().addToast({
             message: t("messageActions.restoreFailed", "Failed to restore message"),
             type: "error",
           });
+        } finally {
+          membershipBusy.current = false;
+          if (mounted.current) setMembershipPending(false);
         }
       },
     }] : []),
@@ -172,9 +171,9 @@ export default function MessageActionToolbar({
       label: t("messageActions.delete"),
       action: () => {
         if (deleteUnavailable) return;
-        setShowDeleteConfirm(true);
+        setDeleteTargetId(message.id);
       },
-      disabled: deleteUnavailable,
+      disabled: deleteUnavailable || membershipPending,
     },
   ];
 
@@ -281,32 +280,34 @@ export default function MessageActionToolbar({
         </div>
       </div>
 
-      {showDeleteConfirm && !deleteUnavailable && (
+      {deleteTargetId === message.id && !deleteUnavailable && (
         <ConfirmDialog
           title={t("messageActions.delete", "Delete")}
           message={t("messageActions.deleteConfirm", "Move this message to trash?")}
           confirmLabel={t("common.delete", "Delete")}
           destructive
-          onCancel={() => setShowDeleteConfirm(false)}
+          onCancel={() => setDeleteTargetId(null)}
           onConfirm={async () => {
-            if (deleteUnavailable) return;
-            setShowDeleteConfirm(false);
-            const previousLists = snapshotMessagesCache(queryClient);
-            patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== message.id));
+            if (deleteTargetId !== message.id || deleteUnavailable || membershipBusy.current) return;
+            setDeleteTargetId(null);
+            membershipBusy.current = true;
+            setMembershipPending(true);
+            const id = message.id;
             try {
-              await deleteMessage(message.id);
-              invalidateMessageViews(true);
+              await executeMembershipAction(queryClient, { action: "delete", messageId: id });
               useToastStore.getState().addToast({
                 message: t("messageActions.deleteSuccess", "Message deleted"),
                 type: "success",
               });
-              onBack();
+              backAfterReceipt(id);
             } catch {
-              restoreMessagesCache(queryClient, previousLists);
               useToastStore.getState().addToast({
                 message: t("messageActions.deleteFailed", "Failed to delete message"),
                 type: "error",
               });
+            } finally {
+              membershipBusy.current = false;
+              if (mounted.current) setMembershipPending(false);
             }
           }}
         />

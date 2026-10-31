@@ -60,6 +60,7 @@ export default function SearchView() {
       return searchMessages(trimmed, undefined, activeAccountId ?? undefined);
     },
     enabled: searchEnabled,
+    networkMode: filtersActive ? "online" : "always", // Supported basic search reads SQLite.
     staleTime: 60_000,
     placeholderData: (prev: SearchHit[] | undefined) => prev,
   });

@@ -1,11 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  queryClient: {
-    invalidateQueries: vi.fn(),
-  },
+  queryClient: undefined as unknown as QueryClient,
   invalidateUnreadViews: vi.fn(),
   markAccountAllRead: vi.fn(),
   addToast: vi.fn(),
@@ -23,8 +22,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => mocks.queryClient,
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...await original<object>(), useQueryClient: () => mocks.queryClient,
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -63,6 +62,8 @@ function getButton() {
 describe("MarkAllReadButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.queryClient = new QueryClient();
+    vi.spyOn(mocks.queryClient, "invalidateQueries");
   });
 
   it("is disabled and inert when the mailbox has no unread mail", () => {
@@ -82,14 +83,14 @@ describe("MarkAllReadButton", () => {
     fireEvent.click(getButton());
 
     await waitFor(() => expect(mocks.markAccountAllRead).toHaveBeenCalledWith(ACCOUNT_ID));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+    await waitFor(() => expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] }));
     expect(mocks.addToast).toHaveBeenCalledWith({
       message: `Marked 5 messages as read in ${ACCOUNT_LABEL}`,
       type: "success",
     });
   });
 
-  it("reports a failure without refreshing the read-state views", async () => {
+  it("reports a static failure and reconciles authoritative views", async () => {
     mocks.markAccountAllRead.mockRejectedValueOnce(new Error("provider offline"));
     renderButton();
 
@@ -101,7 +102,7 @@ describe("MarkAllReadButton", () => {
         type: "error",
       }),
     );
-    expect(mocks.invalidateUnreadViews).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["message"] }));
   });
 
   it("stays disabled and shows progress while the backend writes to the provider", async () => {

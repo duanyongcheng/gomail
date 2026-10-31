@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
+import { messageFlagsMutationKey } from "@/hooks/mutations/messageFlagsMutation";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
@@ -9,19 +11,16 @@ import MessageItem from "@/components/MessageItem";
 import MessageDetail from "@/components/MessageDetail";
 import { useCloseMessageDetail } from "@/hooks/useCloseMessageDetail";
 
-const EMPTY_REMOVED_IDS = new Set<string>();
-
 export default function StarredView() {
   const { t } = useTranslation();
   const activeAccountId = useMailStore((s) => s.activeAccountId);
   const [stateAccountId, setStateAccountId] = useState(activeAccountId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set());
+  const pendingActions = useIsMutating({ mutationKey: messageFlagsMutationKey });
   const accountStateMatches = stateAccountId === activeAccountId;
-  const scopedRemovedIds = accountStateMatches ? removedIds : EMPTY_REMOVED_IDS;
   const scopedSelectedId = accountStateMatches ? selectedId : null;
   const { data: messages, loading, error, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } =
-    useStarredMessagesQuery(activeAccountId, scopedRemovedIds.size);
+    useStarredMessagesQuery(activeAccountId);
 
   useCloseMessageDetail(scopedSelectedId !== null, () => setSelectedId(null));
 
@@ -29,17 +28,16 @@ export default function StarredView() {
     if (stateAccountId === activeAccountId) return;
     setStateAccountId(activeAccountId);
     setSelectedId(null);
-    setRemovedIds(new Set());
   }, [activeAccountId, stateAccountId]);
 
   const visibleMessages = useMemo(() => {
     const seen = new Set<string>();
     return messages.filter((message) => {
-      if (scopedRemovedIds.has(message.id) || seen.has(message.id)) return false;
+      if (!message.is_starred || seen.has(message.id)) return false;
       seen.add(message.id);
       return true;
     });
-  }, [messages, scopedRemovedIds]);
+  }, [messages]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -55,23 +53,8 @@ export default function StarredView() {
   }
 
   const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const handleToggleStar = useCallback((messageId: string, newStarred: boolean) => {
-    setRemovedIds((prev) => {
-      const next = new Set(prev);
-      if (newStarred) {
-        next.delete(messageId);
-      } else {
-        next.add(messageId);
-      }
-      return next;
-    });
-    if (!newStarred && scopedSelectedId === messageId) {
-      setSelectedId(null);
-    }
-  }, [scopedSelectedId]);
+    if (hasNextPage && !isFetchingNextPage && !pendingActions) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, pendingActions, fetchNextPage]);
 
   const totalCount = visibleMessages.length;
 
@@ -173,7 +156,6 @@ export default function StarredView() {
                     message={msg}
                     isSelected={msg.id === scopedSelectedId}
                     onClick={() => handleOpen(msg.id)}
-                    onToggleStar={handleToggleStar}
                   />
                 </div>
               );
@@ -190,7 +172,7 @@ export default function StarredView() {
           }}>
             <button
               onClick={handleLoadMore}
-              disabled={isFetchingNextPage}
+              disabled={isFetchingNextPage || pendingActions > 0}
               style={{
                 padding: "6px 14px",
                 borderRadius: "4px",

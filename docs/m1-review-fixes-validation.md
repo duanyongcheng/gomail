@@ -110,6 +110,11 @@ Package/native logs: `/tmp/pebble-review-fix-workers/final-package.log` and
 
 ## Boundaries / follow-up
 
+- The offline local-workflow follow-up is now validated in
+  [m1-offline-local-workflows-validation.md](m1-offline-local-workflows-validation.md):
+  supported local reads and acknowledgement-first actions no longer pause on
+  browser connectivity, while provider refresh and advanced search retain their
+  explicit remote boundary.
 - Live Google consent/refresh, real recipient delivery, system keyring and
   Windows/Linux runtime acceptance remain separate. Cross-compilation is not
   platform runtime evidence.
@@ -117,8 +122,8 @@ Package/native logs: `/tmp/pebble-review-fix-workers/final-package.log` and
   further loss, not reconstructed; cancellation explicitly fails and retains
   their last outbox content.
 - The conversion guard is conservative, not universal arbitrary-HTML support.
-- Pre-existing list-row star and batch/archive optimistic paths are not all
-  migrated by this task; other local list/count/outbox queries still use the
-  default offline query policy. Do not claim all action producers or every
-  offline view has been unified. These are separately scoped follow-ups.
+- The prior review's list-row star, batch/archive acknowledgement paths and
+  supported local list/count/outbox queries are covered by the follow-up above.
+  Contacts and local-label compatibility stubs remain unavailable and are not
+  part of the supported offline surface.
 - Temporary artifact paths are machine-local and may be removed by cleanup.

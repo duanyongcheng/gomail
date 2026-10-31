@@ -8,6 +8,7 @@ export function useFolderUnreadCounts(accountId: string | null) {
   return useQuery({
     queryKey: ["folder-unread-counts", accountId],
     queryFn: () => getFolderUnreadCounts(accountId!),
+    networkMode: "always", // Local counts must follow offline writes.
     enabled: enabled && !!accountId,
     staleTime: 30_000,
     refetchInterval: 30_000,
@@ -20,6 +21,7 @@ export function useFolderUnreadCountsForAccounts(accountIds: string[]) {
     queries: accountIds.map((accountId) => ({
       queryKey: ["folder-unread-counts", accountId],
       queryFn: () => getFolderUnreadCounts(accountId),
+      networkMode: "always" as const,
       enabled: enabled && !!accountId,
       staleTime: 30_000,
       refetchInterval: 30_000,

@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/api";
 import type { AccountConnection } from "@/mygo";
@@ -15,13 +15,15 @@ import { useAccountsQuery } from "@/hooks/queries/useAccountsQuery";
 const accounts: Account[] = ["a", "b"].map((id) => ({ id, email: `${id}@example.invalid`, display_name: id, provider: "gmail", created_at: 1, updated_at: 1 }));
 const states = (): AccountConnection[] => accounts.map((a) => ({ accountId: a.id, state: "available", canReconnect: true }));
 let client: QueryClient;
+let online: boolean;
 function show(items = accounts) { return render(<QueryClientProvider client={client}><AccountConnections accounts={items} /></QueryClientProvider>); }
 beforeEach(() => {
   vi.resetAllMocks();
+  online = onlineManager.isOnline(); onlineManager.setOnline(true);
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   mocks.connections.mockResolvedValue(states()); mocks.reconnect.mockResolvedValue({}); mocks.cancel.mockResolvedValue({}); mocks.listAccounts.mockResolvedValue(accounts);
 });
-afterEach(() => { cleanup(); client.clear(); });
+afterEach(() => { cleanup(); client.clear(); onlineManager.setOnline(online); });
 
 describe("Gmail connection settings", () => {
   it("reads local status without opening sign-in and explains the mailbox boundary", async () => {
@@ -30,6 +32,19 @@ describe("Gmail connection settings", () => {
     expect(mocks.connections).toHaveBeenCalledWith({});
     expect(mocks.reconnect).not.toHaveBeenCalled();
     expect(screen.getByText(/same mailbox/).textContent).toContain("Unknown sends are never resent");
+  });
+  it("loads and refreshes local connection state while browser connectivity is offline", async () => {
+    onlineManager.setOnline(false);
+    show();
+    await screen.findAllByText("Local credentials available");
+    mocks.connections.mockResolvedValue([
+      { accountId: "a", state: "reauth_required", canReconnect: true },
+      states()[1],
+    ]);
+    await act(async () => { await client.invalidateQueries({ queryKey: ["account-connections"] }); });
+    expect(mocks.connections).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Authorization expired or revoked; reconnect this account")).toBeTruthy();
+    expect(onlineManager.isOnline()).toBe(false);
   });
   it("shows account-specific authorization problems and disables unconfigured sign-in", async () => {
     mocks.connections.mockResolvedValue([

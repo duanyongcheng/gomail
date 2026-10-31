@@ -15,7 +15,12 @@ export default function OutboxPanel({ accountId = "" }: { accountId?: string }) 
   const { data: accounts = [] } = useAccountsQuery();
   const [filter, setFilter] = useState("");
   const selectedAccount = accountId || filter;
-  const query = useQuery({ queryKey: ["outbox", selectedAccount], queryFn: () => OutboxService.list({ accountId: selectedAccount }), refetchInterval: 3000 });
+  const query = useQuery({
+    queryKey: ["outbox", selectedAccount],
+    queryFn: () => OutboxService.list({ accountId: selectedAccount }),
+    networkMode: "always", // Local encrypted summaries; Check Sent stays explicit.
+    refetchInterval: 3000,
+  });
   useEffect(() => {
     const unlisten = listen("mail:outbox-changed", () => { void client.invalidateQueries({ queryKey: ["outbox"] }); });
     return () => { void unlisten.then((off) => off()); };

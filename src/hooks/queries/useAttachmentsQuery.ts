@@ -8,6 +8,7 @@ export function useAttachmentsQuery(messageId: string | null) {
   return useQuery({
     queryKey: attachmentsQueryKey(messageId ?? ""),
     queryFn: () => listAttachments(messageId!),
+    networkMode: "always", // Metadata only; no implicit attachment download.
     enabled: !!messageId,
   });
 }

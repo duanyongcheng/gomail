@@ -4,19 +4,18 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Star, Paperclip, Archive, LayoutGrid, ShieldAlert, RotateCcw } from "lucide-react";
 import type { EmailAddress, Folder, Label, MessageSummary } from "@/lib/api";
 import type { AccountBadgeInfo } from "@/lib/accountIdentity";
-import { updateMessageFlags, archiveMessage, moveToFolder } from "@/lib/api";
+import { executeMessageFlags } from "@/hooks/mutations/messageFlagsMutation";
+import { executeMembershipAction } from "@/hooks/mutations/mailActionsMutation";
 import { useKanbanStore } from "@/stores/kanban.store";
 import { useToastStore } from "@/stores/toast.store";
 import AccountBadge from "./AccountBadge";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
-import { invalidateUnreadViews, patchMessagesCache, restoreMessagesCache, snapshotMessagesCache } from "@/hooks/queries";
 
 interface Props {
   message: MessageSummary;
   labels?: Label[];
   isSelected: boolean;
   onClick: () => void;
-  onToggleStar?: (messageId: string, newStarred: boolean) => void;
   batchMode?: boolean;
   batchSelected?: boolean;
   onToggleBatchSelect?: (messageId: string) => void;
@@ -49,7 +48,7 @@ function recipientLabel(addresses: EmailAddress[]): string {
   return addresses.map(addressLabel).filter(Boolean).join(", ");
 }
 
-function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, batchMode, batchSelected, onToggleBatchSelect, spamFolderId, folderRole, accountBadge }: Props) {
+function MessageItem({ message, labels = [], isSelected, onClick, batchMode, batchSelected, onToggleBatchSelect, spamFolderId, folderRole, accountBadge }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showActions, setShowActions] = useState(false);
@@ -62,15 +61,6 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
   const primaryContact = folderRole === "sent" && message.to_list.length > 0
     ? recipientLabel(message.to_list)
     : message.from_name || message.from_address;
-
-  function invalidateMessageViews(includeUnreadCounts = false) {
-    if (includeUnreadCounts) {
-      invalidateUnreadViews(queryClient);
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ["messages"] });
-    queryClient.invalidateQueries({ queryKey: ["threads"] });
-  }
 
   return (
     <div
@@ -254,23 +244,15 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const previousLists = snapshotMessagesCache(queryClient);
-              patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== message.id));
-              archiveMessage(message.id)
+              executeMembershipAction(queryClient, { action: "archive", messageId: message.id })
                 .then((result) => {
-                  if (result === "skipped") {
-                    restoreMessagesCache(queryClient, previousLists);
-                    return;
-                  }
-                  invalidateMessageViews(true);
+                  if (result === "skipped") return;
                   const msg = result === "unarchived"
                     ? t("messageActions.unarchiveSuccess", "Message moved to inbox")
                     : t("messageActions.archiveSuccess", "Message archived");
                   useToastStore.getState().addToast({ message: msg, type: "success" });
                 })
                 .catch(() => {
-                  restoreMessagesCache(queryClient, previousLists);
-                  queryClient.invalidateQueries({ queryKey: ["messages"] });
                   const msg = folderRole === "archive"
                     ? t("messageActions.unarchiveFailed", "Failed to unarchive")
                     : t("messageActions.archiveFailed", "Failed to archive");
@@ -296,16 +278,11 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const previousLists = snapshotMessagesCache(queryClient);
-                patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== message.id));
-                moveToFolder(message.id, spamFolderId)
+                executeMembershipAction(queryClient, { action: "move", messageId: message.id, targetFolderId: spamFolderId })
                   .then(() => {
-                    invalidateMessageViews(true);
                     useToastStore.getState().addToast({ message: t("messageActions.spamSuccess", "Marked as spam"), type: "success" });
                   })
                   .catch(() => {
-                    restoreMessagesCache(queryClient, previousLists);
-                    queryClient.invalidateQueries({ queryKey: ["messages"] });
                     useToastStore.getState().addToast({ message: t("messageActions.spamFailed", "Failed to mark as spam"), type: "error" });
                   });
               }}
@@ -356,26 +333,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, onToggleStar, 
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const nextStarred = !message.is_starred;
-              const previousLists = snapshotMessagesCache(queryClient);
-              onToggleStar?.(message.id, nextStarred);
-              updateMessageFlags(message.id, undefined, nextStarred)
-                .then(() => {
-                  invalidateMessageViews();
-                  queryClient.invalidateQueries({ queryKey: ["starred-messages"] });
-                  queryClient.invalidateQueries({ queryKey: ["message", message.id] });
-                })
-                .catch(() => {
-                  restoreMessagesCache(queryClient, previousLists);
-                  onToggleStar?.(message.id, message.is_starred);
-                  invalidateMessageViews();
-                  queryClient.invalidateQueries({ queryKey: ["starred-messages"] });
-                  queryClient.invalidateQueries({ queryKey: ["message", message.id] });
-                  const failureMessage = message.is_starred
-                    ? t("messageActions.unstarFailed", "Failed to unstar message")
-                    : t("messageActions.starFailed", "Failed to star message");
-                  useToastStore.getState().addToast({ message: failureMessage, type: "error" });
-                });
+              void executeMessageFlags(queryClient, { messageId: message.id, toggleStarred: true }, t).catch(() => {});
             }}
             aria-label={message.is_starred ? t("messageActions.unstar") : t("messageActions.star")}
             aria-pressed={message.is_starred}

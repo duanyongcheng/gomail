@@ -32,6 +32,10 @@ IMAP/SMTP are tested as an isolated protocol prototype and join the app in M2.
 Daily-use hardening adds WAL/FULL write durability, native close/restore behavior,
 safe user-clicked web links, and shared unavailable-feature guards. See
 [the hardening contract](docs/m1-daily-use-hardening.md).
+Supported local mail views and durable acknowledgement-first actions also remain
+usable when the browser reports offline; provider refresh, advanced search and
+other remote actions keep their explicit network boundaries. See
+[offline local workflow validation](docs/m1-offline-local-workflows-validation.md).
 
 ## Development
 

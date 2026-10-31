@@ -22,9 +22,11 @@ export default function MailDownloadFailures({ accounts }: { accounts: Account[]
   const failures = useQuery({
     queryKey: [...queryKey, accountId, offset],
     queryFn: () => listDownloadFailures(accountId, pageSize, offset),
+    networkMode: "always", // Failure records are stored locally.
     refetchInterval: 30_000,
   });
   const retry = useMutation({
+    networkMode: "always", // Persist retry eligibility before attempting Gmail sync.
     mutationFn: (account: string) => retryDownloads(account),
     onSettled: async () => {
       await Promise.all([

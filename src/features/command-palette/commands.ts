@@ -5,10 +5,9 @@ import { useComposeStore } from "@/stores/compose.store";
 import { useMailStore } from "@/stores/mail.store";
 import { useKanbanStore } from "@/stores/kanban.store";
 import { useToastStore } from "@/stores/toast.store";
-import { archiveMessage } from "@/lib/api";
+import { executeMembershipAction } from "@/hooks/mutations/mailActionsMutation";
 import { executeMessageFlags } from "@/hooks/mutations/messageFlagsMutation";
 import { queryClient } from "@/lib/query-client";
-import { patchMessagesCache, invalidateUnreadViews } from "@/hooks/queries";
 
 export function buildCommands(t: (key: string, defaultValue: string) => string): Command[] {
   return [
@@ -102,16 +101,13 @@ export function buildCommands(t: (key: string, defaultValue: string) => string):
       execute: async () => {
         const id = useMailStore.getState().selectedMessageId;
         if (!id) return;
-        patchMessagesCache(queryClient, (page) => page.filter((m) => m.id !== id));
-        useMailStore.getState().setSelectedMessage(null);
         try {
-          const result = await archiveMessage(id);
+          const result = await executeMembershipAction(queryClient, { action: "archive", messageId: id });
           if (result === "skipped") return;
-          invalidateUnreadViews(queryClient);
+          if (useMailStore.getState().selectedMessageId === id) useMailStore.getState().setSelectedMessage(null);
           const msg = result === "unarchived" ? t("messageActions.unarchiveSuccess", "Message moved to inbox") : t("messageActions.archiveSuccess", "Message archived");
           useToastStore.getState().addToast({ message: msg, type: "success" });
         } catch {
-          queryClient.invalidateQueries({ queryKey: ["messages"] });
           useToastStore.getState().addToast({ message: t("messageActions.archiveFailed", "Failed to archive"), type: "error" });
         }
       },

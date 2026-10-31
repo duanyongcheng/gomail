@@ -8,6 +8,7 @@ export function usePendingMailOpsQuery(accountId: string | null, limit = 100) {
   return useQuery({
     queryKey: pendingMailOpsQueryKey(accountId),
     queryFn: () => listPendingMailOps(accountId, limit),
+    networkMode: "always", // Inspect the durable local queue, not remote replay.
     refetchInterval: 15_000,
   });
 }

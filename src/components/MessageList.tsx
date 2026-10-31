@@ -4,8 +4,9 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Archive, Trash2, MailOpen, MailCheck, Star, X } from "lucide-react";
 import type { MessageSummary } from "@/lib/api";
-import { getMessageLabelsBatch, batchArchive, batchDelete, batchMarkRead, batchStar } from "@/lib/api";
-import { invalidateUnreadViews, useAccountsQuery, useFoldersForAccountsQuery } from "@/hooks/queries";
+import { getMessageLabelsBatch } from "@/lib/api";
+import { executeBatchMailAction, type BatchMailAction } from "@/hooks/mutations/mailActionsMutation";
+import { useAccountsQuery, useFoldersForAccountsQuery } from "@/hooks/queries";
 import { useMailStore } from "@/stores/mail.store";
 import { useToastStore } from "@/stores/toast.store";
 import { useConfirmStore } from "@/stores/confirm.store";
@@ -20,7 +21,6 @@ interface Props {
   selectedMessageId: string | null;
   onSelectMessage: (id: string) => void;
   loading: boolean;
-  onToggleStar?: (messageId: string, newStarred: boolean) => void;
   onLoadMore?: () => void;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
@@ -31,7 +31,6 @@ export default function MessageList({
   selectedMessageId,
   onSelectMessage,
   loading,
-  onToggleStar,
   onLoadMore,
   hasNextPage = false,
   isFetchingNextPage = false,
@@ -47,6 +46,7 @@ export default function MessageList({
   const selectAllMessages = useMailStore((s) => s.selectAllMessages);
   const clearSelection = useMailStore((s) => s.clearSelection);
   const [batchLoading, setBatchLoading] = useState(false);
+  const batchBusy = useRef(false);
   const confirm = useConfirmStore((s) => s.confirm);
   const activeAccountId = useMailStore((s) => s.activeAccountId);
   const activeFolderId = useMailStore((s) => s.activeFolderId);
@@ -71,6 +71,7 @@ export default function MessageList({
   const { data: labelsByMessage = {} } = useQuery({
     queryKey: ["message-labels", messageIdsKey],
     queryFn: () => getMessageLabelsBatch(messageIds),
+    networkMode: "always", // Label metadata is a local compatibility read.
     staleTime: 60_000,
     enabled: isFeatureAvailable("localLabels") && messageIds.length > 0,
   });
@@ -117,16 +118,6 @@ export default function MessageList({
     );
   }
 
-  function invalidateMessageViews() {
-    queryClient.invalidateQueries({ queryKey: ["messages"] });
-    queryClient.invalidateQueries({ queryKey: ["threads"] });
-    queryClient.invalidateQueries({ queryKey: ["starred-messages"] });
-  }
-
-  function batchActionChangesUnreadCounts(action: "archive" | "delete" | "markRead" | "markUnread" | "star" | "unstar") {
-    return action !== "star" && action !== "unstar";
-  }
-
   function cannotDeleteMessages(ids: Iterable<string>) {
     const { messages: currentMessages, folderRole } = deleteContext.current;
     return [...ids].some((id) => {
@@ -137,42 +128,37 @@ export default function MessageList({
     });
   }
 
-  async function handleBatchAction(action: "archive" | "delete" | "markRead" | "markUnread" | "star" | "unstar") {
-    const ids = [...selectedMessageIds];
+  async function handleBatchAction(action: BatchMailAction) {
+    if (batchBusy.current) return;
+    const selection = useMailStore.getState().selectedMessageIds;
+    const ids = [...selection];
     if (ids.length === 0) return;
-    if (action === "delete") {
-      if (cannotDeleteMessages(ids)) return;
-      const count = ids.length;
-      const ok = await confirm({
-        title: t("batch.deleteTitle", { count, defaultValue: `Delete ${count} messages?` }),
-        message: t("batch.deleteConfirm", {
-          count,
-          defaultValue: `This will move ${count} message(s) to Trash. This action can be undone by restoring from Trash.`,
-        }),
-        confirmLabel: t("batch.deleteButton", { defaultValue: "Delete" }),
-        destructive: true,
-      });
-      if (!ok || cannotDeleteMessages(ids)) return;
-    }
+    batchBusy.current = true;
     setBatchLoading(true);
     try {
-      let count = 0;
-      if (action === "archive") count = await batchArchive(ids);
-      else if (action === "delete") count = await batchDelete(ids);
-      else if (action === "markRead") count = await batchMarkRead(ids, true);
-      else if (action === "markUnread") count = await batchMarkRead(ids, false);
-      else if (action === "star") count = await batchStar(ids, true);
-      else count = await batchStar(ids, false);
-      if (batchActionChangesUnreadCounts(action)) {
-        invalidateUnreadViews(queryClient);
-      } else {
-        invalidateMessageViews();
+      if (action === "delete") {
+        if (cannotDeleteMessages(ids)) return;
+        const count = ids.length;
+        const ok = await confirm({
+          title: t("batch.deleteTitle", { count, defaultValue: `Delete ${count} messages?` }),
+          message: t("batch.deleteConfirm", {
+            count,
+            defaultValue: `This will move ${count} message(s) to Trash. This action can be undone by restoring from Trash.`,
+          }),
+          confirmLabel: t("batch.deleteButton", { defaultValue: "Delete" }),
+          destructive: true,
+        });
+        if (!ok || useMailStore.getState().selectedMessageIds !== selection || cannotDeleteMessages(ids)) return;
       }
+      const count = await executeBatchMailAction(queryClient, action, ids);
       addToast({ message: t("batch.success", { count }), type: "success" });
-      clearSelection();
+      // A count identifies no skipped IDs. Keep partial selections for review,
+      // and never clear a newer selection/account after an older receipt.
+      if (count === ids.length && useMailStore.getState().selectedMessageIds === selection) clearSelection();
     } catch {
       addToast({ message: t("batch.failed"), type: "error" });
     } finally {
+      batchBusy.current = false;
       setBatchLoading(false);
     }
   }
@@ -247,7 +233,6 @@ export default function MessageList({
                   labels={labelsByMessage[message.id] ?? []}
                   isSelected={message.id === selectedMessageId}
                   onClick={() => batchMode ? toggleMessageSelection(message.id) : onSelectMessage(message.id)}
-                  onToggleStar={onToggleStar}
                   batchMode={batchMode}
                   batchSelected={selectedMessageIds.has(message.id)}
                   onToggleBatchSelect={toggleMessageSelection}

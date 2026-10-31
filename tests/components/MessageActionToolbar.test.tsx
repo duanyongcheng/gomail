@@ -1,12 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "../../src/lib/api";
 vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 
 const mocks = vi.hoisted(() => ({
-  queryClient: {
-    invalidateQueries: vi.fn(),
-  },
+  queryClient: undefined as unknown as QueryClient,
   archiveMessage: vi.fn(),
   deleteMessage: vi.fn(),
   restoreMessage: vi.fn(),
@@ -40,8 +39,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => mocks.queryClient,
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...await original<object>(), useQueryClient: () => mocks.queryClient,
 }));
 
 vi.mock("../../src/hooks/mutations/useUpdateFlagsMutation", () => ({
@@ -122,6 +121,8 @@ function makeMessage(): Message {
 describe("MessageActionToolbar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.queryClient = new QueryClient();
+    vi.spyOn(mocks.queryClient, "invalidateQueries");
     mocks.snapshotMessagesCache.mockReturnValue({ messages: "snapshot" });
     mocks.archiveMessage.mockResolvedValue("archived");
     mocks.deleteMessage.mockResolvedValue(undefined);

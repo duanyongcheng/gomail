@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 import type { Account, Folder, MessageSummary } from "../../src/lib/api";
@@ -7,9 +8,7 @@ import { useMailStore } from "../../src/stores/mail.store";
 const mocks = vi.hoisted(() => ({
   accounts: [] as Account[],
   folders: [] as Folder[],
-  queryClient: {
-    invalidateQueries: vi.fn(),
-  },
+  queryClient: undefined as unknown as QueryClient,
   invalidateUnreadViews: vi.fn(),
   getMessageLabelsBatch: vi.fn(),
   batchArchive: vi.fn(),
@@ -29,8 +28,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: {} }),
+vi.mock("@tanstack/react-query", async (original) => ({
+  ...await original<object>(), useQuery: () => ({ data: {} }),
   useQueryClient: () => mocks.queryClient,
 }));
 
@@ -130,6 +129,8 @@ function makeMessage(id: string): MessageSummary {
 describe("MessageList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.queryClient = new QueryClient();
+    vi.spyOn(mocks.queryClient, "invalidateQueries");
     mocks.accounts = [
       {
         id: "account-1",
@@ -399,7 +400,7 @@ describe("MessageList", () => {
     fireEvent.click(screen.getByRole("button", { name: "messageActions.archive" }));
 
     await waitFor(() => expect(mocks.batchArchive).toHaveBeenCalledWith(["m-1", "m-2"]));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+    await waitFor(() => expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] }));
   });
 
   it("refreshes folder unread counts after a successful batch read-state action", async () => {
@@ -421,7 +422,7 @@ describe("MessageList", () => {
     fireEvent.click(screen.getByRole("button", { name: "batch.markRead" }));
 
     await waitFor(() => expect(mocks.batchMarkRead).toHaveBeenCalledWith(["m-1", "m-2"], true));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+    await waitFor(() => expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] }));
   });
 
   it("uses the custom checkbox control for select all", () => {

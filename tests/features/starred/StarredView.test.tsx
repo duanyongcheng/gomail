@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MessageSummary } from "../../../src/lib/api";
 
@@ -8,7 +8,7 @@ const setSelectedMessage = vi.fn((messageId: string | null) => {
 });
 const useStarredMessagesQuery = vi.fn();
 const listStarredMessages = vi.fn();
-let latestToggleStar: ((messageId: string, newStarred: boolean) => void) | undefined;
+vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useIsMutating: () => 0 }));
 
 const mockMailState = {
   activeAccountId: "account-1",
@@ -51,17 +51,13 @@ vi.mock("../../../src/components/MessageItem", () => ({
   default: ({
     message,
     onClick,
-    onToggleStar,
   }: {
     message: MessageSummary;
     onClick: () => void;
-    onToggleStar?: (messageId: string, newStarred: boolean) => void;
   }) => {
-    latestToggleStar = onToggleStar;
     return (
       <div data-testid={`message-${message.id}`}>
         <button onClick={onClick}>{message.subject}</button>
-        <button onClick={() => onToggleStar?.(message.id, false)}>unstar</button>
       </div>
     );
   },
@@ -105,7 +101,6 @@ describe("StarredView", () => {
     mockMailState.activeAccountId = "account-1";
     mockMailState.selectedMessageId = null;
     mockMailState.setSelectedMessage = setSelectedMessage;
-    latestToggleStar = undefined;
   });
 
   it("shows Load More for a full first page and fetches the next page when clicked", () => {
@@ -121,7 +116,7 @@ describe("StarredView", () => {
 
     render(<StarredView />);
 
-    expect(useStarredMessagesQuery).toHaveBeenCalledWith("account-1", 0);
+    expect(useStarredMessagesQuery).toHaveBeenCalledWith("account-1");
     expect(screen.getByRole("button", { name: "Load More" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Load More" }));
@@ -129,7 +124,7 @@ describe("StarredView", () => {
     expect(fetchNextPage).toHaveBeenCalledTimes(1);
   });
 
-  it("clears the selected detail when the starred message is unstarred", () => {
+  it("filters unstarred rows from query data without closing selected detail prematurely", () => {
     const messages = [makeMessage("m-1")];
     useStarredMessagesQuery.mockReturnValue({
       data: messages,
@@ -140,16 +135,13 @@ describe("StarredView", () => {
       fetchNextPage,
     });
 
-    render(<StarredView />);
-
+    const { rerender } = render(<StarredView />);
     fireEvent.click(screen.getByRole("button", { name: "Subject m-1" }));
-
-    expect(screen.getByTestId("message-detail").textContent).toBe("m-1");
-
-    fireEvent.click(screen.getByRole("button", { name: "unstar" }));
-
+    messages[0].is_starred = false;
+    useStarredMessagesQuery.mockReturnValue({ data: [...messages], loading: false, error: null, hasNextPage: true, fetchNextPage });
+    rerender(<StarredView />);
     expect(screen.queryByTestId("message-m-1")).toBeNull();
-    expect(screen.queryByTestId("message-detail")).toBeNull();
+    expect(screen.getByTestId("message-detail").textContent).toBe("m-1");
   });
 
   it("restores a locally removed row when an unstar operation rolls back", () => {
@@ -162,12 +154,13 @@ describe("StarredView", () => {
       fetchNextPage,
     });
 
-    render(<StarredView />);
-    fireEvent.click(screen.getByRole("button", { name: "unstar" }));
+    const { rerender } = render(<StarredView />);
+    const data = useStarredMessagesQuery.mock.results.at(-1)!.value;
+    useStarredMessagesQuery.mockReturnValue({ ...data, data: [{ ...makeMessage("m-1"), is_starred: false }], hasNextPage: true });
+    rerender(<StarredView />);
     expect(screen.queryByTestId("message-m-1")).toBeNull();
-
-    act(() => latestToggleStar?.("m-1", true));
-
+    useStarredMessagesQuery.mockReturnValue(data);
+    rerender(<StarredView />);
     expect(screen.getByTestId("message-m-1")).toBeTruthy();
   });
 
@@ -197,10 +190,10 @@ describe("StarredView", () => {
       fetchNextPage,
     });
 
-    render(<StarredView />);
-
-    fireEvent.click(screen.getByRole("button", { name: "unstar" }));
-
+    const { rerender } = render(<StarredView />);
+    const data = useStarredMessagesQuery.mock.results.at(-1)!.value;
+    useStarredMessagesQuery.mockReturnValue({ ...data, data: [{ ...makeMessage("m-1"), is_starred: false }] });
+    rerender(<StarredView />);
     expect(screen.queryByText("No starred messages")).toBeNull();
     expect(screen.getByRole("button", { name: "Load More" })).toBeTruthy();
   });
@@ -216,13 +209,11 @@ describe("StarredView", () => {
     });
     const { rerender } = render(<StarredView />);
     fireEvent.click(screen.getByRole("button", { name: "Subject m-1" }));
-    fireEvent.click(screen.getByRole("button", { name: "unstar" }));
-
     mockMailState.activeAccountId = "account-2";
     rerender(<StarredView />);
 
     expect(screen.queryByTestId("message-detail")).toBeNull();
-    expect(useStarredMessagesQuery).toHaveBeenLastCalledWith("account-2", 0);
+    expect(useStarredMessagesQuery).toHaveBeenLastCalledWith("account-2");
   });
 
   it("keeps loaded messages visible when fetching another starred page fails", () => {

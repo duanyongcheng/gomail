@@ -8,11 +8,12 @@ import { useComposeStore, isComposeDirty } from "@/stores/compose.store";
 import { useConfirmStore } from "@/stores/confirm.store";
 import { useMailStore } from "@/stores/mail.store";
 import { useToastStore } from "@/stores/toast.store";
-import { archiveMessage, getMessage } from "@/lib/api";
+import { getMessage } from "@/lib/api";
+import { executeMembershipAction } from "@/hooks/mutations/mailActionsMutation";
 import { executeMessageFlags } from "@/hooks/mutations/messageFlagsMutation";
 import { queryClient } from "@/lib/query-client";
 import type { MessageSummary, ThreadSummary } from "@/lib/api";
-import { patchMessagesCache, readFirstCachedMessages } from "@/hooks/queries";
+import { readFirstCachedMessages } from "@/hooks/queries";
 import { CLOSE_MESSAGE_DETAIL_EVENT } from "@/hooks/useCloseMessageDetail";
 import i18n from "@/lib/i18n";
 
@@ -184,26 +185,14 @@ export function useKeyboard() {
         case "archive-message": {
           const { selectedMessageId } = useMailStore.getState();
           if (selectedMessageId) {
-            // Optimistic removal from React Query cache
-            patchMessagesCache(queryClient, (page) =>
-              page.filter((m) => m.id !== selectedMessageId),
-            );
-            useMailStore.getState().setSelectedMessage(null);
-            archiveMessage(selectedMessageId)
+            executeMembershipAction(queryClient, { action: "archive", messageId: selectedMessageId })
               .then((result) => {
                 if (result === "skipped") return;
-                queryClient.invalidateQueries({ queryKey: ["messages"] });
-                queryClient.invalidateQueries({ queryKey: ["threads"] });
-                // Archiving unread mail changes both the folder row and the
-                // mailbox badge, which are separate queries.
-                queryClient.invalidateQueries({ queryKey: ["folder-unread-counts"] });
-                queryClient.invalidateQueries({ queryKey: ["account-unread-counts"] });
+                if (useMailStore.getState().selectedMessageId === selectedMessageId) useMailStore.getState().setSelectedMessage(null);
                 const msg = result === "unarchived" ? i18n.t("messageActions.unarchiveSuccess", "Message moved to inbox") : i18n.t("messageActions.archiveSuccess", "Message archived");
                 useToastStore.getState().addToast({ message: msg, type: "success" });
               })
               .catch(() => {
-                queryClient.invalidateQueries({ queryKey: ["messages"] });
-                useMailStore.getState().setSelectedMessage(selectedMessageId);
                 useToastStore.getState().addToast({ message: i18n.t("messageActions.archiveFailed", "Failed to archive"), type: "error" });
               });
           }

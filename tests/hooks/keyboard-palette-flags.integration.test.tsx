@@ -13,7 +13,7 @@ import { useMailStore } from "@/stores/mail.store";
 import { useShortcutStore } from "@/stores/shortcut.store";
 import { useToastStore } from "@/stores/toast.store";
 import { useUIStore } from "@/stores/ui.store";
-import { getMessage, getRenderedHtml, updateMessageFlags } from "@/lib/api";
+import { archiveMessage, getMessage, getRenderedHtml, updateMessageFlags } from "@/lib/api";
 import type { Message } from "@/lib/api";
 import "@/lib/i18n";
 
@@ -253,6 +253,29 @@ describe("keyboard and palette share the flag mutation owner", () => {
     await act(async () => { stale.resolve({ ...base }); oldList.resolve({ pages: [[{ ...base }]], pageParams: [0] }); await Promise.all([detail, list]); });
     expectAll({ is_starred: true });
     await act(async () => write.resolve());
+  });
+
+  it.each(["keyboard", "palette"])("%s archive failure preserves newer flags and current selection without optimistic removal", async (entry) => {
+    const archive = deferred<string>();
+    vi.mocked(archiveMessage).mockReturnValue(archive.promise);
+    useShortcutStore.setState({ bindings: { "archive-message": "E" }, recording: null });
+    renderHook(() => useKeyboard(), { wrapper });
+    let done: void | Promise<void>;
+    act(() => {
+      if (entry === "keyboard") fireEvent.keyDown(document.body, { key: "e" });
+      else done = command("mail:archive").execute();
+    });
+    await waitFor(() => expect(archiveMessage).toHaveBeenCalledWith(base.id));
+    expect(queryClient.isMutating({ mutationKey: messageFlagsMutationKey })).toBe(1);
+    expectAll({ is_starred: false });
+    expect(useMailStore.getState().selectedMessageId).toBe(base.id);
+    useMailStore.setState({ selectedMessageId: second.id });
+    await act(async () => { await command("mail:star").execute(); });
+    await act(async () => { archive.reject(new Error("private sqlite error")); await done; });
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0));
+    for (const key of keys.slice(1)) expect(flags(key, second.id).is_starred).toBe(true);
+    expect(useMailStore.getState().selectedMessageId).toBe(second.id);
+    expect(useToastStore.getState().toasts.at(-1)?.message).toMatch(/^Failed to archive(?: message)?$/);
   });
 
   it("hook mutation still uses its injected provider client, not the keyboard singleton", async () => {

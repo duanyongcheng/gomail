@@ -8,6 +8,7 @@ export function useSearchQuery(query: string, limit?: number) {
   return useQuery({
     queryKey: searchQueryKey(query, limit),
     queryFn: () => searchMessages(query, limit),
+    networkMode: "always", // Basic search uses the local SQLite index.
     enabled: query.length > 0,
   });
 }

@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   folderCounts: {} as Record<string, number>,
   invalidateUnreadViews: vi.fn(),
+  invalidate: vi.fn(),
   markFolderAllRead: vi.fn(),
   triggerSync: vi.fn(),
   emptyTrash: vi.fn(),
@@ -139,6 +140,7 @@ import { useUIStore } from "../../src/stores/ui.store";
 
 function renderSidebar() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  vi.spyOn(queryClient, "invalidateQueries").mockImplementation(mocks.invalidate);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -228,7 +230,7 @@ describe("Sidebar folder context menu", () => {
     await waitFor(() =>
       expect(mocks.markFolderAllRead).toHaveBeenCalledWith("account-1", ["folder-inbox"]),
     );
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalled();
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] }));
     await waitFor(() => expect(screen.queryByTestId("folder-context-menu")).toBeNull());
   });
 

@@ -12,6 +12,7 @@ export default function AccountConnections({ accounts }: { accounts: Account[] }
   const query = useQuery({
     queryKey: ["account-connections", accounts.map((account) => account.id)],
     queryFn: () => AccountService.connections({}),
+    networkMode: "always", // Connection state is read from local account metadata.
     refetchInterval: 3000,
   });
   return <section aria-labelledby="account-connections-title" style={{ marginTop: 24, fontSize: 12 }}>

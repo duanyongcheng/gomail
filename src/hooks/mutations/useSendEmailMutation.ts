@@ -20,6 +20,9 @@ export function useSendEmailMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // send_email acknowledges a durable local enqueue, not Gmail submission.
+    // Backend replay owns connectivity and conservative send-outcome handling.
+    networkMode: "always",
     mutationFn: (params: SendEmailParams) =>
       sendEmail(
         params.accountId,

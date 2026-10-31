@@ -1,13 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_BINDINGS, useShortcutStore } from "../../src/stores/shortcut.store";
 import { useMailStore } from "../../src/stores/mail.store";
 
 const mocks = vi.hoisted(() => ({
-  queryClient: {
-    invalidateQueries: vi.fn(),
-    getQueriesData: vi.fn(),
-  },
+  queryClient: undefined as unknown as QueryClient & { getQueriesData: ReturnType<typeof vi.fn> },
   archiveMessage: vi.fn(),
   updateMessageFlags: vi.fn(),
   getMessage: vi.fn(),
@@ -16,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../src/lib/query-client", () => ({
-  queryClient: mocks.queryClient,
+  get queryClient() { return mocks.queryClient; }
 }));
 
 vi.mock("../../src/lib/api", () => ({
@@ -49,6 +47,9 @@ function pressEscape() {
 describe("useKeyboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.queryClient = new QueryClient() as typeof mocks.queryClient;
+    vi.spyOn(mocks.queryClient, "invalidateQueries");
+    vi.spyOn(mocks.queryClient, "getQueriesData");
     mocks.archiveMessage.mockResolvedValue("archived");
     mocks.queryClient.getQueriesData.mockReturnValue([]);
     useShortcutStore.setState({

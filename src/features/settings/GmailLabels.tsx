@@ -27,7 +27,11 @@ function LabelManager({ accountId }: { accountId: string }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const queryKey = ["gmail-labels", accountId];
-  const query = useQuery({ queryKey, queryFn: () => GmailLabelService.list({ accountId }) });
+  const query = useQuery({
+    queryKey,
+    queryFn: () => GmailLabelService.list({ accountId }),
+    networkMode: "always", // Display the locally cached Gmail labels; refresh remains explicit.
+  });
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");

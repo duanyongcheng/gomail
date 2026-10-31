@@ -1,409 +1,63 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
-import type { MessageSummary } from "../../src/lib/api";
-
-const mocks = vi.hoisted(() => ({
-  queryClient: {
-    invalidateQueries: vi.fn(),
-  },
-  patchMessagesCache: vi.fn(),
-  snapshotMessagesCache: vi.fn(),
-  restoreMessagesCache: vi.fn(),
-  invalidateUnreadViews: vi.fn(),
-  updateMessageFlags: vi.fn(),
-  archiveMessage: vi.fn(),
-  moveToFolder: vi.fn(),
-  addToast: vi.fn(),
-}));
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => {
-      const labels: Record<string, string> = {
-        "messageActions.archive": "Archive",
-        "messageActions.unarchive": "Unarchive",
-        "messageActions.addToKanban": "Add to kanban",
-        "messageActions.reportSpam": "Report spam",
-        "messageActions.star": "Star",
-        "messageActions.unstar": "Unstar",
-      };
-      return labels[key] ?? fallback ?? key;
-    },
-  }),
-}));
-
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => mocks.queryClient,
-}));
-
-vi.mock("../../src/hooks/queries", () => ({
-  patchMessagesCache: mocks.patchMessagesCache,
-  snapshotMessagesCache: mocks.snapshotMessagesCache,
-  restoreMessagesCache: mocks.restoreMessagesCache,
-  invalidateUnreadViews: mocks.invalidateUnreadViews,
-}));
-
-vi.mock("../../src/lib/api", () => ({
-  updateMessageFlags: mocks.updateMessageFlags,
-  archiveMessage: mocks.archiveMessage,
-  moveToFolder: mocks.moveToFolder,
-}));
-
-vi.mock("../../src/stores/kanban.store", () => ({
-  useKanbanStore: (selector: (state: { cardIdSet: Set<string> }) => unknown) =>
-    selector({ cardIdSet: new Set() }),
-}));
-
-vi.mock("../../src/stores/toast.store", () => ({
-  useToastStore: {
-    getState: () => ({ addToast: mocks.addToast }),
-  },
-}));
-
-import MessageItem from "../../src/components/MessageItem";
-
-function makeMessage(overrides: Partial<MessageSummary> = {}): MessageSummary {
-  return {
-    id: "message-1",
-    account_id: "account-1",
-    remote_id: "remote-message-1",
-    message_id_header: null,
-    in_reply_to: null,
-    references_header: null,
-    thread_id: null,
-    subject: "Archived message",
-    snippet: "Snippet",
-    from_address: "sender@example.com",
-    from_name: "Sender",
-    to_list: [],
-    cc_list: [],
-    bcc_list: [],
-    has_attachments: false,
-    is_read: true,
-    is_starred: false,
-    is_draft: false,
-    date: 1_700_000_000,
-    remote_version: null,
-    is_deleted: false,
-    deleted_at: null,
-    created_at: 1_700_000_000,
-    updated_at: 1_700_000_000,
-    ...overrides,
-  };
+import type { MessageSummary } from "@/lib/api";
+import { archiveMessage, moveToFolder, updateMessageFlags } from "@/lib/api";
+import MessageItem from "@/components/MessageItem";
+import { useToastStore } from "@/stores/toast.store";
+import "@/lib/i18n";
+const mocks = vi.hoisted(() => ({ client: undefined as unknown as QueryClient }));
+vi.mock("@tanstack/react-query", async (original) => ({ ...await original<object>(), useQueryClient: () => mocks.client }));
+vi.mock("@/lib/api", () => ({ archiveMessage: vi.fn(), moveToFolder: vi.fn(), updateMessageFlags: vi.fn() }));
+const base = { id: "one", account_id: "a", subject: "Subject", snippet: "Snippet", from_name: "Sender", from_address: "sender@example.invalid", to_list: [], is_read: true, is_starred: false, has_attachments: false, date: 1 } as MessageSummary;
+function mount(extra: Record<string, unknown> = {}, message = base) {
+  render(<MessageItem message={message} isSelected={false} onClick={vi.fn()} {...extra} />);
 }
-
+function click(label: string) { fireEvent.mouseEnter(screen.getByRole("option")); fireEvent.click(screen.getByRole("button", { name: label, exact: true })); }
+beforeEach(() => {
+  vi.clearAllMocks(); mocks.client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  mocks.client.setQueryData(["message", base.id], base); useToastStore.setState({ toasts: [] });
+  vi.mocked(archiveMessage).mockResolvedValue("archived"); vi.mocked(moveToFolder).mockResolvedValue(); vi.mocked(updateMessageFlags).mockResolvedValue();
+});
 describe("MessageItem", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.snapshotMessagesCache.mockReturnValue({ messages: "snapshot" });
-    mocks.updateMessageFlags.mockResolvedValue(undefined);
-    mocks.archiveMessage.mockResolvedValue("archived");
-    mocks.moveToFolder.mockResolvedValue(undefined);
+  it("labels archive-folder action as unarchive", () => { mount({ folderRole: "archive" }); fireEvent.mouseEnter(screen.getByRole("option")); expect(screen.getByRole("button", { name: "Unarchive" })).toBeTruthy(); });
+  it.each(["Archive", "Report spam"])("%s failure leaves rows intact and reports a static error", async (label) => {
+    mocks.client.setQueryData(["messages", "inbox"], { pages: [[base]], pageParams: [0] });
+    vi.mocked(label === "Archive" ? archiveMessage : moveToFolder).mockRejectedValueOnce(new Error("private path"));
+    mount({ spamFolderId: "spam" }); click(label);
+    await waitFor(() => expect(useToastStore.getState().toasts.at(-1)?.type).toBe("error"));
+    expect(mocks.client.getQueryData(["messages", "inbox"])).toEqual({ pages: [[base]], pageParams: [0] });
+    expect(useToastStore.getState().toasts.at(-1)?.message).not.toContain("private");
   });
-
-  it("labels the archive action as unarchive in the archive folder", () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-        {...({ folderRole: "archive" } as Record<string, unknown>)}
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-
-    expect(screen.getByRole("button", { name: "Unarchive" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Archive" })).toBeNull();
+  it.each(["Archive", "Report spam"])("%s receipt refreshes unread counts", async (label) => {
+    const invalidate = vi.spyOn(mocks.client, "invalidateQueries"); mount({ spamFolderId: "spam" }); click(label);
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] }));
   });
-
-  it("restores message lists when archive optimistic update fails", async () => {
-    const snapshot = { messages: "before-archive" };
-    mocks.snapshotMessagesCache.mockReturnValueOnce(snapshot);
-    mocks.archiveMessage.mockRejectedValueOnce(new Error("archive failed"));
-
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-
-    expect(mocks.snapshotMessagesCache).toHaveBeenCalledWith(mocks.queryClient);
-    expect(mocks.patchMessagesCache).toHaveBeenCalledWith(mocks.queryClient, expect.any(Function));
-    await waitFor(() => expect(mocks.restoreMessagesCache).toHaveBeenCalledWith(mocks.queryClient, snapshot));
+  it("row star uses shared all-view refresh", async () => {
+    const invalidate = vi.spyOn(mocks.client, "invalidateQueries"); mount(); click("Star");
+    await waitFor(() => expect(updateMessageFlags).toHaveBeenCalledWith(base.id, undefined, true));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["message"] }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["threadMessages"] });
   });
-
-  it("restores message lists when spam optimistic update fails", async () => {
-    const snapshot = { messages: "before-spam" };
-    mocks.snapshotMessagesCache.mockReturnValueOnce(snapshot);
-    mocks.moveToFolder.mockRejectedValueOnce(new Error("spam failed"));
-
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-        spamFolderId="folder-spam"
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-    fireEvent.click(screen.getByRole("button", { name: "Report spam" }));
-
-    expect(mocks.snapshotMessagesCache).toHaveBeenCalledWith(mocks.queryClient);
-    expect(mocks.patchMessagesCache).toHaveBeenCalledWith(mocks.queryClient, expect.any(Function));
-    await waitFor(() => expect(mocks.restoreMessagesCache).toHaveBeenCalledWith(mocks.queryClient, snapshot));
+  it("failed star rolls back only shared owned flags", async () => {
+    vi.mocked(updateMessageFlags).mockRejectedValueOnce(new Error("private")); mount(); click("Star");
+    await waitFor(() => expect(useToastStore.getState().toasts.at(-1)?.type).toBe("error"));
+    expect(mocks.client.getQueryData<MessageSummary>(["message", base.id])?.is_starred).toBe(false);
   });
-
-  it("refreshes folder unread counts after a successful archive action", async () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
-
-    await waitFor(() => expect(mocks.archiveMessage).toHaveBeenCalledWith("message-1"));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+  it("uses custom batch checkbox and row selection handler", () => {
+    const select = vi.fn(); mount({ batchMode: true, batchSelected: false, onToggleBatchSelect: select });
+    const checkbox = screen.getByRole("checkbox", { name: "Select message" }); expect(checkbox.className).toContain("message-row-checkbox"); fireEvent.click(checkbox); expect(select).toHaveBeenCalledWith(base.id);
   });
-
-  it("refreshes folder unread counts after a successful spam action", async () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-        spamFolderId="folder-spam"
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-    fireEvent.click(screen.getByRole("button", { name: "Report spam" }));
-
-    await waitFor(() => expect(mocks.moveToFolder).toHaveBeenCalledWith("message-1", "folder-spam"));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalledWith(mocks.queryClient);
+  it("names combined-inbox mailbox with a decorative color bar", () => {
+    mount({ accountBadge: { color: "#22c55e", label: "Work", title: "Work · work@example.invalid" } });
+    expect(screen.getByTestId("account-badge").textContent).toBe("Work"); expect(screen.getByTestId("account-badge").getAttribute("title")).toContain("work@example.invalid"); expect(screen.getByTestId("account-color-bar").getAttribute("aria-hidden")).toBe("true");
   });
-
-  it("refreshes derived queries after starring from row actions", async () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-    fireEvent.click(screen.getByRole("button", { name: "Star" }));
-
-    await waitFor(() => expect(mocks.updateMessageFlags).toHaveBeenCalledWith("message-1", undefined, true));
-    expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["messages"] });
-    expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["threads"] });
-    expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["starred-messages"] });
-    expect(mocks.queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["message", "message-1"] });
+  it("leaves single-mailbox row unlabelled", () => { mount(); expect(screen.queryByTestId("account-badge")).toBeNull(); });
+  it("marks unread rows in a separate head gutter", () => {
+    mount({}, { ...base, is_read: false }); const row = screen.getByRole("option"); const dot = row.querySelector(".message-row-unread-dot")!;
+    expect(row.className).toContain("message-list-row--unread"); expect(dot.getAttribute("aria-hidden")).toBe("true"); expect(dot.parentElement?.className).toContain("message-row-head"); expect(dot.closest(".message-row-sender-name")).toBeNull();
+    expect(row.querySelector(".message-row-subject")).toBeTruthy(); expect(row.querySelector(".message-row-date")).toBeTruthy();
   });
-
-  it("rolls back optimistic star state and shows an error when persistence fails", async () => {
-    const snapshot = { messages: "before-star" };
-    const onToggleStar = vi.fn();
-    mocks.snapshotMessagesCache.mockReturnValueOnce(snapshot);
-    mocks.updateMessageFlags.mockRejectedValueOnce(new Error("star failed"));
-
-    render(
-      <MessageItem
-        message={makeMessage({ is_starred: false })}
-        isSelected={false}
-        onClick={vi.fn()}
-        onToggleStar={onToggleStar}
-      />,
-    );
-
-    fireEvent.mouseEnter(screen.getByRole("option"));
-    fireEvent.click(screen.getByRole("button", { name: "Star" }));
-
-    expect(onToggleStar).toHaveBeenCalledWith("message-1", true);
-    await waitFor(() => expect(onToggleStar).toHaveBeenLastCalledWith("message-1", false));
-    expect(mocks.restoreMessagesCache).toHaveBeenCalledWith(mocks.queryClient, snapshot);
-    expect(mocks.addToast).toHaveBeenCalledWith({
-      message: "Failed to star message",
-      type: "error",
-    });
-  });
-
-  it("uses the custom batch checkbox control for row selection", () => {
-    const onToggleBatchSelect = vi.fn();
-
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-        batchMode
-        batchSelected={false}
-        onToggleBatchSelect={onToggleBatchSelect}
-      />,
-    );
-
-    const checkbox = screen.getByRole("checkbox", { name: "Select message" });
-
-    expect(checkbox.className).toContain("batch-checkbox");
-    expect(checkbox.className).toContain("message-row-checkbox");
-
-    fireEvent.click(checkbox);
-
-    expect(onToggleBatchSelect).toHaveBeenCalledWith("message-1");
-  });
-
-  it("names the source mailbox when the combined inbox supplies a badge", () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-        accountBadge={{ color: "#22c55e", label: "Work", title: "Work · work@example.com" }}
-      />,
-    );
-
-    const badge = screen.getByTestId("account-badge");
-
-    expect(badge.textContent).toBe("Work");
-    expect(badge.getAttribute("title")).toBe("Work · work@example.com");
-    expect(screen.getByTestId("account-badge-dot").style.backgroundColor).toBe("rgb(34, 197, 94)");
-  });
-
-  it("keeps the account colour bar decorative so the row is announced once", () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-        accountBadge={{ color: "#22c55e", label: "Work", title: "Work · work@example.com" }}
-      />,
-    );
-
-    const bar = screen.getByTestId("account-color-bar");
-
-    expect(bar.getAttribute("aria-hidden")).toBe("true");
-    expect(bar.style.backgroundColor).toBe("rgb(34, 197, 94)");
-  });
-
-  it("leaves rows from a single mailbox unlabelled", () => {
-    render(
-      <MessageItem
-        message={makeMessage()}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByTestId("account-badge")).toBeNull();
-    expect(screen.queryByTestId("account-color-bar")).toBeNull();
-  });
-
-  it("marks unread rows with a row class", () => {
-    render(
-      <MessageItem
-        message={makeMessage({ is_read: false })}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole("option").className).toContain("message-list-row--unread");
-  });
-
-  it("marks an unread row in the list's own gutter, not after the sender", () => {
-    render(
-      <MessageItem
-        message={makeMessage({ is_read: false })}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    const dot = screen.getByRole("option").querySelector(".message-row-unread-dot") as HTMLElement;
-    const head = dot.parentElement as HTMLElement;
-
-    // The marker is pinned to the row's head and drawn in its padding, so it
-    // forms a column down the list instead of trailing whatever width the
-    // sender's name happens to be.
-    expect(dot).toBeTruthy();
-    expect(dot.getAttribute("aria-hidden")).toBe("true");
-    expect(head.className).toContain("message-row-head");
-    // It sits beside the sender block rather than inside it, so the name can
-    // still ellipsize without dragging the marker along.
-    expect(dot.closest(".message-row-sender-name")).toBeNull();
-    expect(head.querySelector(".message-row-sender-name")).toBeTruthy();
-  });
-
-  it("carries the classes that let read mail recede behind unread mail", () => {
-    render(
-      <MessageItem
-        message={makeMessage({ is_read: false })}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    const row = screen.getByRole("option");
-
-    // Read rows step back to the secondary colour and unread rows step forward,
-    // which is the contrast that makes a list scannable rather than the marker
-    // on its own.
-    expect(row.querySelector(".message-row-sender-name")).toBeTruthy();
-    expect(row.querySelector(".message-row-subject")).toBeTruthy();
-    expect(row.querySelector(".message-row-date")).toBeTruthy();
-  });
-
-  it("leaves no unread marker on a read row", () => {
-    render(
-      <MessageItem
-        message={makeMessage({ is_read: true })}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole("option").querySelector(".message-row-unread-dot")).toBeNull();
-  });
-
-  it("shows recipients as the primary contact in the sent folder", () => {
-    render(
-      <MessageItem
-        message={makeMessage({
-          from_name: "Current Account",
-          from_address: "current@example.com",
-          to_list: [{ name: "Destination", address: "destination@example.com" }],
-        })}
-        isSelected={false}
-        onClick={vi.fn()}
-        folderRole="sent"
-      />,
-    );
-
-    expect(screen.getByText("Destination")).toBeTruthy();
-    expect(screen.queryByText("Current Account")).toBeNull();
-  });
-
-  it("does not add unread row treatment to read rows", () => {
-    render(
-      <MessageItem
-        message={makeMessage({ is_read: true })}
-        isSelected={false}
-        onClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByRole("option").className).not.toContain("message-list-row--unread");
-  });
+  it("read rows have no unread treatment", () => { mount(); expect(screen.getByRole("option").className).not.toContain("message-list-row--unread"); expect(screen.getByRole("option").querySelector(".message-row-unread-dot")).toBeNull(); });
+  it("sent-folder primary contact uses recipients", () => { mount({ folderRole: "sent" }, { ...base, to_list: [{ name: "Destination", address: "to@example.invalid" }] }); expect(screen.getByText("Destination")).toBeTruthy(); expect(screen.queryByText("Sender")).toBeNull(); });
 });

@@ -37,6 +37,24 @@ export function refreshMessageFlagViews(client: QueryClient) {
   }
 }
 
+/** All supported local mail producers cancel interfering reads on entry. */
+export async function cancelMessageFlagViews(client: QueryClient, messageId?: string) {
+  await Promise.all([...messageFlagsQueryRoots, "threads", "search"].map((root) =>
+    client.cancelQueries({ queryKey: root === "message" && messageId ? [root, messageId] : [root] }),
+  ));
+}
+
+/** Counts acknowledge each local receipt; message data waits for final settlement. */
+export function settleMessageFlagViews(client: QueryClient, changesUnreadCounts: boolean) {
+  if (changesUnreadCounts) {
+    void client.invalidateQueries({ queryKey: ["folder-unread-counts"] });
+    void client.invalidateQueries({ queryKey: ["account-unread-counts"] });
+  }
+  void client.invalidateQueries({ queryKey: ["pendingMailOps"] });
+  void client.invalidateQueries({ queryKey: ["pendingMailOpsList"] });
+  refreshMessageFlagViews(client);
+}
+
 export function messageFlagsMutationOptions(
   client: QueryClient,
   t: (key: string, fallback: string) => string,
@@ -49,9 +67,7 @@ export function messageFlagsMutationOptions(
     mutationFn: (params) => updateMessageFlags(params.messageId, params.isRead, params.isStarred),
     onMutate: async (params) => {
       if (params.isRead === false) recordManualUnread(client, params.messageId);
-      await Promise.all(messageFlagsQueryRoots.map((root) => client.cancelQueries({
-        queryKey: root === "message" ? [root, params.messageId] : [root],
-      })));
+      await cancelMessageFlagViews(client, params.messageId);
       // Resolve the intent only after cancellation, immediately before patching.
       // Each execution owns its variables, so rapid shortcuts see the preceding
       // optimistic toggle rather than a stale render/event-handler snapshot.
@@ -67,13 +83,7 @@ export function messageFlagsMutationOptions(
     },
     onSettled: (_data, _err, params, context) => {
       context?.finish();
-      if (params.isRead !== undefined) {
-        void client.invalidateQueries({ queryKey: ["folder-unread-counts"] });
-        void client.invalidateQueries({ queryKey: ["account-unread-counts"] });
-      }
-      // Counts acknowledge each local write immediately. Message views wait for
-      // the cache's final settled event (including simultaneous settlements).
-      refreshMessageFlagViews(client);
+      settleMessageFlagViews(client, params.isRead !== undefined);
     },
   };
 }

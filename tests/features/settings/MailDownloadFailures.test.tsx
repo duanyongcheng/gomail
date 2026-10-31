@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/api";
 import type { DownloadFailure } from "@/mygo";
@@ -12,6 +12,7 @@ import { listDownloadFailures, retryDownloads } from "@/lib/mailDownloads";
 import MailDownloadFailures from "@/features/settings/MailDownloadFailures";
 
 const accounts: Account[] = [{ id: "a", email: "a@example.invalid", display_name: "A", provider: "gmail", created_at: 1, updated_at: 1, color: null }];
+let online: boolean;
 function failure(overrides: Partial<DownloadFailure> = {}): DownloadFailure {
   return { account_id: "a", remote_id: "opaque-id", account_email: "a@example.invalid", subject: "", kind: "invalid_content", attempts: 1, next_retry_at: 1700000000, updated_at: 1700000000, ...overrides };
 }
@@ -22,15 +23,28 @@ function renderPanel() {
 
 beforeEach(() => {
   vi.clearAllMocks(); events.progress = undefined;
+  online = onlineManager.isOnline(); onlineManager.setOnline(true);
   vi.mocked(listDownloadFailures).mockReset().mockResolvedValue({ items: [], total: 0 });
   vi.mocked(retryDownloads).mockReset().mockResolvedValue(undefined);
 });
+afterEach(() => { cleanup(); onlineManager.setOnline(online); });
 
 describe("MailDownloadFailures", () => {
   it("shows an empty list and disables retry", async () => {
     renderPanel();
     expect(await screen.findByText("No failed downloads")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Retry failed downloads" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  it("loads local failures and runs the explicit retry action while browser connectivity is offline", async () => {
+    onlineManager.setOnline(false);
+    vi.mocked(listDownloadFailures).mockResolvedValue({ items: [failure()], total: 1 });
+    renderPanel();
+    await screen.findByText("The message could not be decoded.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry failed downloads" }));
+    await waitFor(() => expect(retryDownloads).toHaveBeenCalledWith(""));
+    expect(await screen.findByText("Retry finished.")).toBeTruthy();
+    await waitFor(() => expect(listDownloadFailures.mock.calls.length).toBeGreaterThan(1));
+    expect(onlineManager.isOnline()).toBe(false);
   });
   it("explains content and size failures without exposing opaque IDs", async () => {
     vi.mocked(listDownloadFailures).mockResolvedValue({ items: [failure(), failure({ remote_id: "large", kind: "too_large", subject: "Cached subject" })], total: 2 });

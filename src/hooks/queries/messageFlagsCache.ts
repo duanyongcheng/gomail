@@ -49,6 +49,33 @@ function mapMessages(data: unknown, root: unknown, update: (message: MessageSumm
   return { ...pages, pages: pages.pages.map((page) => page.map(update)) };
 }
 
+/** A count-only bulk receipt cannot patch individual rows. It can, however,
+ * retire rollback rights captured before that write for its requested fields.
+ * Only still-matching owners are retired: a newer explicit action keeps its
+ * rights. No private values or invented modified-message IDs are stored.
+ */
+export function captureMessageFlagReceipt(client: QueryClient, patch: Patch, includes: (message: MessageSummary) => boolean) {
+  const currentOwners = owners.get(client);
+  const captured = new Map<string, symbol>();
+  for (const [key, data] of client.getQueriesData({
+    predicate: (query) => messageFlagsQueryRoots.some((root) => query.queryKey[0] === root),
+  })) {
+    mapMessages(data, key[0], (message) => {
+      if (includes(message)) for (const field of fields) {
+        const ownerKey = `${message.id}:${field}`;
+        const token = currentOwners?.get(ownerKey);
+        if (patch[field] !== undefined && token) captured.set(ownerKey, token);
+      }
+      return message;
+    });
+  }
+  return () => {
+    for (const [key, token] of captured) {
+      if (currentOwners?.get(key) === token) currentOwners.delete(key);
+    }
+  };
+}
+
 export function patchMessageFlags(client: QueryClient, messageId: string, patch: Patch) {
   const token = Symbol();
   let currentOwners = owners.get(client);

@@ -9,6 +9,7 @@ export function useFoldersQuery(accountId: string | null) {
   return useQuery({
     queryKey: foldersQueryKey(accountId ?? ""),
     queryFn: () => listFolders(accountId!),
+    networkMode: "always", // Cached folders; remote label refresh is explicit.
     enabled: !!accountId,
     select: (folders) => [...folders].sort((a, b) => a.sort_order - b.sort_order),
   });
@@ -19,6 +20,7 @@ export function useFoldersForAccountsQuery(accountIds: string[]) {
     queries: accountIds.map((accountId) => ({
       queryKey: foldersQueryKey(accountId),
       queryFn: () => listFolders(accountId),
+      networkMode: "always" as const,
       enabled: !!accountId,
       staleTime: 60_000,
     })),

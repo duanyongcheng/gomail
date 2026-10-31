@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   counts: {} as Record<string, number>,
   invalidateUnreadViews: vi.fn(),
   markAccountAllRead: vi.fn(),
+  invalidate: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -88,6 +89,7 @@ function renderSidebar() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  vi.spyOn(queryClient, "invalidateQueries").mockImplementation(mocks.invalidate);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
@@ -136,7 +138,7 @@ describe("Sidebar mark-all-read", () => {
     fireEvent.click(button);
 
     await waitFor(() => expect(mocks.markAccountAllRead).toHaveBeenCalledWith("account-1"));
-    expect(mocks.invalidateUnreadViews).toHaveBeenCalled();
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["folder-unread-counts"] }));
   });
 
   it("hides the action when every account is shown at once", () => {

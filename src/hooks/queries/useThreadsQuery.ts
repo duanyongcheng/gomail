@@ -9,6 +9,7 @@ export function useThreadsQuery(folderId: string | null, limit = 50, offset = 0,
   const query = useInfiniteQuery({
     queryKey: threadsQueryKey(folderId ?? "", limit, offset, folderIds),
     queryFn: ({ pageParam }) => listThreads(folderId!, limit, pageParam, folderIds),
+    networkMode: "always", // Account-scoped conversations are stored locally.
     initialPageParam: offset,
     getNextPageParam: (lastPage, allPages) => lastPage.length < limit ? undefined : offset + allPages.length * limit,
     enabled: !!folderId,

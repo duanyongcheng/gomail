@@ -14,6 +14,7 @@ export function useAccountUnreadCounts(): Record<string, number> {
   const { data } = useQuery({
     queryKey: accountUnreadCountsQueryKey,
     queryFn: getAccountUnreadCounts,
+    networkMode: "always", // Local counts must follow offline writes.
     staleTime: 30_000,
     refetchInterval: 30_000,
   });

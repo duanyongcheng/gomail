@@ -12,6 +12,7 @@ export function useStarredMessagesQuery(accountId: string | null, offsetAdjustme
     queryKey: starredMessagesQueryKey(accountId ?? ""),
     queryFn: ({ pageParam }) =>
       listStarredMessages(accountId!, STARRED_MESSAGES_PAGE_SIZE, pageParam as number),
+    networkMode: "always", // Local starred membership, independent of replay.
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < STARRED_MESSAGES_PAGE_SIZE) return undefined;

@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/api";
 import type { GmailLabelsView } from "@/mygo";
@@ -19,14 +19,16 @@ function view(account = "a", name = "Work"): GmailLabelsView {
   ] };
 }
 let client: QueryClient;
+let online: boolean;
 function show() { return render(<QueryClientProvider client={client}><GmailLabels accounts={accounts} /></QueryClientProvider>); }
 beforeEach(() => {
   vi.resetAllMocks();
+  online = onlineManager.isOnline(); onlineManager.setOnline(true);
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   mocks.list.mockImplementation(async ({ accountId }) => view(accountId));
   mocks.change.mockResolvedValue(view()); mocks.confirm.mockResolvedValue(true);
 });
-afterEach(() => { cleanup(); client.clear(); });
+afterEach(() => { cleanup(); client.clear(); onlineManager.setOnline(online); });
 
 describe("Gmail server label settings", () => {
   it("loads locally and exposes no system edit/delete actions", async () => {
@@ -36,6 +38,16 @@ describe("Gmail server label settings", () => {
     expect(screen.queryByRole("button", { name: "Rename: Inbox" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Refresh from Gmail" }));
     await waitFor(() => expect(mocks.change).toHaveBeenCalledWith(expect.objectContaining({ accountId: "a", action: "refresh" })));
+  });
+  it("loads and refreshes cached Gmail labels while browser connectivity is offline", async () => {
+    onlineManager.setOnline(false);
+    show(); await screen.findByText("Work");
+    mocks.list.mockResolvedValue(view("a", "Cached after reconnect"));
+    await act(async () => { await client.invalidateQueries({ queryKey: ["gmail-labels", "a"] }); });
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Cached after reconnect")).toBeTruthy();
+    expect(mocks.change).not.toHaveBeenCalled();
+    expect(onlineManager.isOnline()).toBe(false);
   });
   it("creates and renames a custom label with busy protection", async () => {
     let finish!: (value: GmailLabelsView) => void;

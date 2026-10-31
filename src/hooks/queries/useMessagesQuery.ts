@@ -20,6 +20,7 @@ export function useMessagesQuery(
     queryKey: messagesQueryKey(folderId ?? "", folderIds),
     queryFn: ({ pageParam }) =>
       listMessages(folderId!, MESSAGES_PAGE_SIZE, pageParam as number, folderIds),
+    networkMode: "always", // Pagination reads the local cache, not Gmail.
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length < MESSAGES_PAGE_SIZE ? undefined : allPages.length * MESSAGES_PAGE_SIZE,

@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader, MailOpen } from "lucide-react";
-import { markAccountAllRead } from "@/lib/api";
-import { invalidateUnreadViews } from "@/hooks/queries";
+import { executeMarkAllRead } from "@/hooks/mutations/mailActionsMutation";
 import { useToastStore } from "@/stores/toast.store";
 
 interface Props {
@@ -25,8 +24,8 @@ interface Props {
  *
  * The work happens in the backend (which also refreshes the app icon badge);
  * this component only reports the outcome and refreshes the cached views. It is
- * disabled while a run is in flight because a large mailbox can take a while to
- * write back to the provider.
+ * disabled while the local durable write is in flight. Remote replay does not
+ * block acknowledgement.
  */
 export default function MarkAllReadButton({
   accountId,
@@ -39,6 +38,7 @@ export default function MarkAllReadButton({
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [marking, setMarking] = useState(false);
+  const busy = useRef(false);
 
   const label = t("messageActions.markAllRead", "Mark all as read in {{account}}", {
     account: accountLabel,
@@ -46,11 +46,11 @@ export default function MarkAllReadButton({
   const disabled = marking || unread === 0;
 
   async function handleClick() {
-    if (disabled) return;
+    if (disabled || busy.current) return;
+    busy.current = true;
     setMarking(true);
     try {
-      const count = await markAccountAllRead(accountId);
-      invalidateUnreadViews(queryClient);
+      const count = await executeMarkAllRead(queryClient, { accountId });
       addToast({
         message: t(
           "messageActions.markAllReadSuccess",
@@ -65,6 +65,7 @@ export default function MarkAllReadButton({
         type: "error",
       });
     } finally {
+      busy.current = false;
       setMarking(false);
     }
   }
