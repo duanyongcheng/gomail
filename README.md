@@ -47,6 +47,31 @@ bun run generate
 bun run dev
 ```
 
+### Local macOS build
+
+```sh
+bun run build:local
+# Or run the script directly, from any working directory:
+./scripts/build-local.sh
+```
+
+The script checks Go/Bun/Node/codesign, installs dependencies with the frozen
+Bun lockfile, regenerates bindings, type-checks/builds the frontend, and packages
+an ad-hoc signed app for the current Mac's architecture. It reuses the existing
+`.env` OAuth build configuration without sourcing it as shell code. DMG creation
+and notarization are skipped; the bundle signature is verified before success.
+The native app is written to `build/darwin-<arch>/Pebble Go.app`, and the script
+prints its path and an `open` command. It does not launch/install the app or
+modify your profile. For Apple Silicon:
+
+```sh
+open "build/darwin-arm64/Pebble Go.app"
+```
+
+For a DMG or other platform targets, keep using `bun run build` with MyGO flags.
+The local script replaces the target directory after a successful build, so a
+previous DMG in that directory is removed rather than left as a stale package.
+
 An empty profile opens a normal app and stays running. Token restoration does
 not contact the network. Once the UI loads the profile's realtime preference,
 configured Gmail accounts start syncing unless the preference is `manual`.
