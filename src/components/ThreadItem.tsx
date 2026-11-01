@@ -1,9 +1,10 @@
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 import { Star, Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ThreadSummary } from "@/lib/api";
 import type { AccountBadgeInfo } from "@/lib/accountIdentity";
 import AccountBadge from "./AccountBadge";
+import { deriveAccountColor } from "@/lib/accountColors";
 
 interface Props {
   thread: ThreadSummary;
@@ -11,6 +12,7 @@ interface Props {
   onClick: () => void;
   /** Only supplied by the combined inbox, where rows come from many mailboxes. */
   accountBadge?: AccountBadgeInfo;
+  rowIndex?: number;
 }
 
 function formatDate(timestamp: number): string {
@@ -26,33 +28,20 @@ function formatDate(timestamp: number): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function ThreadItem({ thread, isSelected, onClick, accountBadge }: Props) {
+function ThreadItem({ thread, isSelected, onClick, accountBadge, rowIndex }: Props) {
   const { t } = useTranslation();
   const hasUnread = thread.unread_count > 0;
-  const fontWeight = hasUnread ? "600" : "normal";
   const participantText = thread.participants.slice(0, 3).join(", ") +
     (thread.participants.length > 3 ? ` +${thread.participants.length - 3}` : "");
 
   return (
     <div
-      className={`thread-list-row${hasUnread ? " thread-list-row--unread" : ""}`}
+      className={`mail-row thread-list-row${hasUnread ? " thread-list-row--unread" : ""}`}
       role="option"
       aria-selected={isSelected}
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      style={{
-        position: "relative",
-        color: "var(--color-text-primary)",
-        fontWeight,
-        cursor: "pointer",
-        padding: "10px 14px",
-        borderBottom: "1px solid var(--color-border)",
-        height: "76px",
-        boxSizing: "border-box",
-        overflow: "hidden",
-        transition: "background-color 0.12s ease",
-      }}
     >
       {/* Decorative companion to the badge below: a colour to scan down the
           list by, while the badge spells the mailbox out. Hidden from
@@ -72,54 +61,49 @@ function ThreadItem({ thread, isSelected, onClick, accountBadge }: Props) {
           }}
         />
       )}
-      <div
-        className="thread-row-head"
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2px" }}
+      {rowIndex !== undefined && <span className="mail-row-index" aria-hidden="true">{String(rowIndex + 1).padStart(2, "0")}</span>}
+      <span
+        className="mail-row-avatar"
+        aria-hidden="true"
+        style={{ "--sender-color": deriveAccountColor(thread.participants[0] ?? thread.thread_id) } as CSSProperties}
       >
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            fontSize: "13px",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            flex: 1,
-            marginRight: "8px",
-            minWidth: 0,
-          }}
-        >
-          {accountBadge && <AccountBadge badge={accountBadge} />}
-          <span className="thread-row-participants" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-            {participantText}
-            {thread.message_count > 1 && (
-              <span style={{ color: "var(--color-text-secondary)", fontWeight: "normal", marginLeft: "4px" }}>
-                ({thread.message_count})
+        {Array.from((thread.participants[0] ?? "?").trim())[0]?.toLocaleUpperCase() || "?"}
+      </span>
+      <div className="mail-row-main">
+        <div className="thread-row-head">
+          <span className="mail-row-contact">
+            {accountBadge && <AccountBadge badge={accountBadge} />}
+            <span className="thread-row-participants">
+              {participantText}
+              {thread.message_count > 1 && (
+                <span style={{ color: "var(--color-text-secondary)", fontWeight: "normal", marginLeft: "4px" }}>
+                  ({thread.message_count})
+                </span>
+              )}
+            </span>
+            {/* How much of this thread is unread. A dot says "something"; the count
+                says whether opening it is worth the interruption. */}
+            {hasUnread && (
+              <span className="thread-row-unread-count" aria-hidden="true">
+                {thread.unread_count > 99 ? "99+" : thread.unread_count}
               </span>
             )}
           </span>
-          {/* How much of this thread is unread. A dot says "something"; the count
-              says whether opening it is worth the interruption. */}
-          {hasUnread && (
-            <span className="thread-row-unread-count" aria-hidden="true">
-              {thread.unread_count > 99 ? "99+" : thread.unread_count}
+          <div className="mail-row-flags">
+            {thread.is_starred && <Star size={13} fill="#f59e0b" color="#f59e0b" />}
+            {thread.has_attachments && <Paperclip size={13} color="var(--color-text-secondary)" />}
+            <span className="thread-row-date">
+              {formatDate(thread.last_date)}
             </span>
-          )}
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-          {thread.is_starred && <Star size={13} fill="#f59e0b" color="#f59e0b" />}
-          {thread.has_attachments && <Paperclip size={13} color="var(--color-text-secondary)" />}
-          <span className="thread-row-date" style={{ fontSize: "11px" }}>
-            {formatDate(thread.last_date)}
-          </span>
+          </div>
+          {hasUnread && <span className="thread-row-unread-dot" aria-hidden="true" />}
         </div>
-        {hasUnread && <span className="thread-row-unread-dot" aria-hidden="true" />}
-      </div>
-      <div className="thread-row-subject" style={{ fontSize: "12.5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "2px" }}>
-        {thread.subject || t("inbox.noSubject")}
-      </div>
-      <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "normal" }}>
-        {thread.snippet}
+        <div className="thread-row-subject">
+          {thread.subject || t("inbox.noSubject")}
+        </div>
+        <div className="mail-row-snippet">
+          {thread.snippet}
+        </div>
       </div>
     </div>
   );

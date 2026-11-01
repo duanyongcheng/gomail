@@ -206,19 +206,16 @@ export default function StatusBar() {
 
   return (
     <footer
-      className="flex items-center px-3 h-6 text-xs border-t gap-3"
-      style={{
-        backgroundColor: "var(--color-statusbar-bg)",
-        borderColor: "var(--color-border)",
-        color: "var(--color-text-secondary)",
-      }}
+      className="app-statusbar"
+      data-network={networkStatus}
+      data-sync={syncStatus}
     >
       {networkStatus === "offline" ? (
         <span
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="flex items-center gap-1"
+          className="app-statusbar-primary flex items-center gap-1"
           style={{ color: "var(--color-error, #ef4444)" }}
         >
           <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -234,7 +231,7 @@ export default function StatusBar() {
         </span>
       ) : (
         <>
-          <span role="status" aria-live="polite" aria-atomic="true">{syncText}</span>
+          <span className="app-statusbar-primary" role="status" aria-live="polite" aria-atomic="true">{syncText}</span>
           {realtimeStatusText && (
             <span
               role="status"

@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/query-client";
 import { initializeProfileStorageNamespace } from "@/lib/profileStorage";
 import { logStartupTiming } from "@/lib/startupTiming";
 import "./styles/index.css";
+import "./styles/redesign.css";
 
 async function bootstrap() {
   logStartupTiming("frontend entry loaded");

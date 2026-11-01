@@ -1,4 +1,20 @@
 {
+  "appThemes": {
+    "title": "Interface theme",
+    "description": "Five visual directions for the same mailbox. Color mode and message templates stay independent.",
+    "colorMode": "Color mode",
+    "selected": "Selected",
+    "paper": "Quiet Paper",
+    "paperDesc": "Warm paper, serif headings and fine rules. A quiet place for long reads.",
+    "clay": "Warm Clay",
+    "clayDesc": "Terracotta warmth, soft corners and gently raised cards.",
+    "glass": "Midnight Glass",
+    "glassDesc": "Layered panels, electric blue and precise, compact information.",
+    "editorial": "Editorial",
+    "editorialDesc": "Magazine-like typography, bold rules and a red editorial mark.",
+    "minimal": "Minimal Tool",
+    "minimalDesc": "Neutral surfaces, tight rows and a single blue accent. Just the essentials."
+  },
   "cloudDrafts": {
     "notice": "Autosave is encrypted on this device only; not synced to Gmail automatically. Upload saved changes explicitly. Sending a linked draft consumes its Gmail copy only after Gmail accepts the send. Do not edit the same draft in Gmail and Pebble at the same time.",
     "localDelete": "Only the local draft will be removed. Any Gmail copy remains in Gmail.",
@@ -125,6 +141,11 @@
     "expand": "Expand sidebar"
   },
   "inbox": {
+    "loadedMessages": "{{count}} loaded",
+    "loadedThreads": "{{count}} conversations loaded",
+    "selectMessage": "Your next good read",
+    "selectMessageHint": "Select a message or conversation from the list to read it here.",
+    "mailbox": "Mailbox",
     "searchPlaceholder": "Search messages...",
     "noSubject": "(no subject)",
     "emailContent": "Email content",
@@ -1053,6 +1074,8 @@
   "messageThemes": {
     "title": "Message theme",
     "picker": "Message theme",
+    "app": "Follow interface",
+    "appDesc": "Match the selected interface style, including its reading typography and surfaces.",
     "card": "Card",
     "cardDesc": "Centred reading column built from two cards. Follows the app's light or dark colours.",
     "mailbox": "Mailbox",

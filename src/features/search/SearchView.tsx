@@ -12,6 +12,7 @@ import SearchFilters from "./SearchFilters";
 import SearchResultItem from "./SearchResultItem";
 import MessageDetail from "@/components/MessageDetail";
 import { useCloseMessageDetail } from "@/hooks/useCloseMessageDetail";
+import { getAppTheme } from "@/lib/appThemes";
 
 const emptyFilters: AdvancedSearchQuery = {};
 
@@ -29,6 +30,7 @@ function hasActiveFilters(filters: AdvancedSearchQuery): boolean {
 
 export default function SearchView() {
   const { t } = useTranslation();
+  const appTheme = useUIStore((s) => s.appTheme);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AdvancedSearchQuery>(emptyFilters);
   const [showFilters, setShowFilters] = useState(false);
@@ -69,10 +71,12 @@ export default function SearchView() {
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => resultsParentRef.current,
-    estimateSize: () => 76,
+    estimateSize: () => getAppTheme(appTheme).rowHeight,
     measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 5,
   });
+
+  useEffect(() => { virtualizer.measure(); }, [appTheme, virtualizer]);
 
   const doSearch = useCallback(() => {
     const t = query.trim();
@@ -124,7 +128,7 @@ export default function SearchView() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div className={`search-workspace${selectedId ? " search-workspace--detail-open" : ""}`} style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       <form onSubmit={handleSubmit} className="search-toolbar">
         <div className="search-input-shell">
           <Search size={16} aria-hidden="true" />
@@ -169,17 +173,15 @@ export default function SearchView() {
       )}
 
       {/* Results + Detail split layout */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div className={`secondary-mail-workspace${selectedId ? " secondary-mail-workspace--detail-open" : ""}`}>
         {/* Results list */}
         <div
           ref={resultsParentRef}
-          className="scroll-region search-results-scroll"
+          className="scroll-region search-results-scroll secondary-mail-list"
           style={{
-            width: selectedId ? "clamp(260px, 32%, 360px)" : "100%",
             flexShrink: 0,
             overflow: "auto",
             borderRight: selectedId ? "1px solid var(--color-border)" : "none",
-            transition: "width 0.15s ease",
           }}
         >
           {loading && (
@@ -309,7 +311,7 @@ export default function SearchView() {
 
         {/* Detail panel */}
         {selectedId && (
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div className="secondary-mail-detail">
             <MessageDetail
               messageId={selectedId}
               onBack={() => setSelectedId(null)}

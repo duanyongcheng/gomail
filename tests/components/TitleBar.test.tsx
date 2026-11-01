@@ -47,4 +47,13 @@ describe("TitleBar", () => {
     expect(logo?.className).toContain("bg-transparent");
     expect(logo?.getAttribute("draggable")).toBe("false");
   });
+
+  it("shows the current view without breaking the native drag region", () => {
+    render(<TitleBar viewLabel="Starred" />);
+
+    const breadcrumb = screen.getByText("Starred");
+    expect(breadcrumb.className).toContain("app-titlebar-breadcrumb");
+    expect(breadcrumb.hasAttribute("data-tauri-drag-region")).toBe(true);
+    expect(breadcrumb.closest(".app-titlebar")?.hasAttribute("data-tauri-drag-region")).toBe(true);
+  });
 });

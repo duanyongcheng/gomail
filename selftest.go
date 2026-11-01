@@ -224,6 +224,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	checks["opening unread message updates locally without Gmail"] = readFast
 	readLatencies["messageMilliseconds"] = readElapsed.Milliseconds()
 	capture("message-read.png")
+	selftestUIThemes(ctx, window, checks, capture)
 	if waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(会话视图|会话模式|Thread view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
 		opened, threadReadFast, threadReadElapsed := selftestOpenUnread(ctx, runtime, window, "selftest-gmail:m4",
 			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row||!row.classList.contains('thread-list-row--unread'))return false;row.click();return true; })()`,

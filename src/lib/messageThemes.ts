@@ -19,14 +19,17 @@ import type { CSSProperties } from "react";
  * nothing else: a unit test asserts every field is filled in, so a half-written
  * theme fails loudly instead of silently rendering unstyled.
  *
- * ## The eight templates
+ * ## The templates
  *
  * Two families, listed in that order in {@link MESSAGE_THEMES}:
  *
  * **Neutral** — the general-purpose arrangements, which defer to the app's own
  * tokens (`paletteMode: "adaptive"`) except where the whole point is a material:
  *
- * 1. **Card** — the default; a centred 760px reading column built from a header
+ * **Follow interface** is the default and uses the selected A-E interface's
+ * reading treatment. An explicitly chosen template stays independent of it.
+ *
+ * 1. **Card** — a centred 760px reading column built from a header
  *    card and a body card. Hierarchy comes from elevation.
  * 2. **Mailbox** — the same column flattened: full-bleed hairlines, no cards,
  *    denser type, actions on the sender's own line.
@@ -63,6 +66,7 @@ import type { CSSProperties } from "react";
  */
 
 export type MessageThemeId =
+  | "app"
   | "card"
   | "mailbox"
   | "letter"
@@ -73,7 +77,7 @@ export type MessageThemeId =
   | "imessage";
 
 export const MESSAGE_THEME_STORAGE_KEY = "pebble-message-theme";
-export const DEFAULT_MESSAGE_THEME: MessageThemeId = "card";
+export const DEFAULT_MESSAGE_THEME: MessageThemeId = "app";
 
 /** How the header and the body are arranged relative to each other. */
 export interface MessageThemeLayout {
@@ -290,6 +294,53 @@ const card: MessageTheme = {
     },
   },
   body: { lightSheet: false, sheetBackground: "transparent", sheetTextColor: "var(--color-text-primary)" },
+};
+
+/** The interface's own reading surface; explicit templates keep their layouts. */
+const app: MessageTheme = {
+  ...card,
+  id: "app",
+  labelKey: "messageThemes.app",
+  descriptionKey: "messageThemes.appDesc",
+  layout: {
+    ...card.layout,
+    contentWidth: "var(--ui-reader-width, 760px)",
+    gutter: "var(--ui-reader-gutter, 32px)",
+    sectionGap: "24px",
+    headerCard: false,
+    headerFullBleed: true,
+    toolbarIndent: "0",
+  },
+  page: { background: "var(--color-reader-bg, var(--color-bg))" },
+  header: {
+    ...card.header,
+    background: "transparent",
+    cardBackground: "transparent",
+    cardBorder: "none",
+    cardRadius: "0",
+    cardShadow: "none",
+    padding: "0",
+  },
+  surface: { background: "var(--color-reader-surface, transparent)", border: "none", radius: "0", shadow: "none", padding: "0" },
+  avatar: {
+    ...card.avatar,
+    size: "32px",
+    radius: "var(--ui-radius-md, 8px)",
+    background: "var(--color-accent-soft, var(--color-bg-hover))",
+  },
+  type: {
+    ...card.type,
+    fontFamily: "var(--font-ui, sans-serif)",
+    displayFamily: "var(--font-display, serif)",
+    title: { ...card.type.title, size: "var(--ui-reader-title-size, 27px)", weight: 700, leading: 1.3 },
+    meta: { ...card.type.meta, size: "11.5px" },
+    body: {
+      ...card.type.body,
+      fontFamily: "var(--font-reading, serif)",
+      size: "var(--ui-reader-body-size, 14.5px)",
+      leading: 1.8,
+    },
+  },
 };
 
 /**
@@ -938,6 +989,7 @@ const imessage: MessageTheme = {
 };
 
 export const MESSAGE_THEMES: readonly MessageTheme[] = [
+  app,
   card,
   mailbox,
   letter,
@@ -1130,7 +1182,7 @@ export function messageThemeVariables(theme: MessageTheme): MessageThemeStyle {
     "--msg-body-font": t.body.fontFamily,
     "--msg-body-size": t.body.size,
     "--msg-body-weight": String(t.body.weight),
-    "--msg-body-line-height": String(t.body.leading),
+    "--msg-body-line-height": theme.id === "app" ? "var(--ui-reader-leading, 1.8)" : String(t.body.leading),
     "--msg-body-color": t.body.color,
     "--msg-link-color": t.body.linkColor,
   };
@@ -1185,6 +1237,36 @@ export const MESSAGE_THEME_DARK_SHEET_CSS = `:host-context([data-theme="dark"]) 
 export function messageThemeContentCss(theme: MessageTheme): string {
   const doubled = ":host([data-pebble-message-theme]) .pebble-email-content.pebble-email-content";
   const guard = theme.paletteMode === "adaptive" ? `\n        ${MESSAGE_THEME_DARK_SHEET_CSS}` : "";
+  // The dark UI's pale accent is not readable on the guard's white mail sheet.
+  const sheetLinks = theme.id === "app" ? `
+        :host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content a {
+          color: #315fbd;
+        }` : "";
+  // These defaults never outrank the sender's inline styles or alter sanitizing.
+  const interfaceProse = theme.id === "app" ? `
+        ${doubled} p { margin: 0 0 1.1em; }
+        ${doubled} ul, ${doubled} ol { margin: 0 0 1.1em; padding-left: 22px; }
+        ${doubled} li { margin-bottom: .35em; }
+        ${doubled} blockquote {
+          margin: 20px 0;
+          padding: 2px 0 2px 15px;
+          border-left: 2px solid var(--color-border);
+        }
+        ${doubled} code { font-family: var(--font-mono, monospace); font-size: .9em; }
+        :host-context([data-ui-theme="clay"]) .pebble-email-content.pebble-email-content blockquote,
+        :host-context([data-ui-theme="glass"]) .pebble-email-content.pebble-email-content blockquote,
+        :host-context([data-ui-theme="minimal"]) .pebble-email-content.pebble-email-content blockquote {
+          padding: 12px 16px;
+          border-radius: var(--ui-radius-md, 8px);
+          background: color-mix(in srgb, currentColor 4%, transparent);
+        }
+        :host-context([data-ui-theme="clay"]) .pebble-email-content.pebble-email-content blockquote,
+        :host-context([data-ui-theme="glass"]) .pebble-email-content.pebble-email-content blockquote,
+        :host-context([data-ui-theme="editorial"]) .pebble-email-content.pebble-email-content blockquote {
+          border-left-color: var(--color-accent);
+        }
+        :host-context([data-ui-theme="editorial"]) .pebble-email-content.pebble-email-content blockquote { font-style: italic; }
+      ` : "";
   // A template with a display face of its own (Claude's serif) lends it to the
   // sender's headings. Only headings the sender left unstyled are affected — an
   // inline `font-family` in the mail still wins — and a template whose display
@@ -1204,6 +1286,7 @@ export function messageThemeContentCss(theme: MessageTheme): string {
           font-size: ${theme.type.body.size};
           font-weight: ${theme.type.body.weight};
           line-height: ${theme.type.body.leading};
+          ${theme.id === "app" ? "line-height: var(--ui-reader-leading, 1.8);" : ""}
           color: ${theme.type.body.color};
         }
         :host([data-pebble-message-theme]) a {
@@ -1211,7 +1294,7 @@ export function messageThemeContentCss(theme: MessageTheme): string {
         }${headings}
         ${doubled} {
           ${messageThemeBodyRule(theme)}
-        }${guard}
+        }${interfaceProse}${guard}${sheetLinks}
       `;
 }
 

@@ -228,6 +228,22 @@ function deferred<T>() {
 }
 
 describe("ComposeView", () => {
+  it("groups save and send together after the separate back and title area", () => {
+    render(<ComposeView />);
+    const save = screen.getByRole("button", { name: "Save and close" });
+    const send = screen.getByRole("button", { name: "Send" });
+    const back = screen.getByRole("button", { name: "Back" });
+    const actions = save.closest(".compose-workspace-actions");
+    expect(actions).not.toBeNull();
+    expect(Array.from(actions!.children)).toEqual([save, send]);
+    expect(actions!.contains(back)).toBe(false);
+    const header = actions!.closest(".compose-workspace-header");
+    expect(header?.children.length).toBe(2);
+    expect(header?.firstElementChild?.contains(back)).toBe(true);
+    expect(header?.firstElementChild?.contains(screen.getByText("New Message"))).toBe(true);
+    expect(header?.lastElementChild).toBe(actions);
+  });
+
   it("blocks unsupported templates and AI while keeping compose controls available", () => {
     render(<ComposeView />);
     for (const name of ["Templates", "ai.menuTooltip"]) {

@@ -7,7 +7,7 @@ import i18n from "@/lib/i18n";
 
 const isMac = navigator.userAgent.includes("Macintosh");
 
-export default function TitleBar() {
+export default function TitleBar({ viewLabel }: { viewLabel?: string }) {
   const { t } = useTranslation();
   const appWindow = getCurrentWindow();
 
@@ -26,13 +26,11 @@ export default function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="flex items-center justify-between h-9 select-none"
-      style={{ backgroundColor: "var(--color-titlebar-bg)" }}
+      className={`app-titlebar${isMac ? " app-titlebar--mac" : ""}`}
     >
       <div
         data-tauri-drag-region
-        className="flex items-center gap-2 px-3"
-        style={isMac ? { paddingLeft: "78px" } : undefined}
+        className="app-titlebar-brand"
       >
         <img
           data-tauri-drag-region
@@ -40,20 +38,26 @@ export default function TitleBar() {
           alt=""
           aria-hidden="true"
           draggable={false}
-          className="h-5 w-5 shrink-0 bg-transparent object-contain"
+          className="app-titlebar-logo h-5 w-5 shrink-0 bg-transparent object-contain"
         />
         <span
-          className="text-sm font-semibold"
-          style={{ color: "var(--color-text-primary)" }}
+          data-tauri-drag-region
+          className="app-titlebar-name"
         >
           Pebble Go
         </span>
+        {viewLabel && (
+          <span data-tauri-drag-region className="app-titlebar-breadcrumb">
+            {viewLabel}
+          </span>
+        )}
       </div>
       {!isMac && (
-        <div className="flex items-center">
+        <div className="app-titlebar-controls">
           <button
+            type="button"
             onClick={() => appWindow.minimize()}
-            className="h-9 w-11 inline-flex items-center justify-center hover:bg-black/5"
+            className="app-window-button"
             aria-label={t("titleBar.minimize")}
           >
             <svg width="10" height="1" viewBox="0 0 10 1">
@@ -61,8 +65,9 @@ export default function TitleBar() {
             </svg>
           </button>
           <button
+            type="button"
             onClick={() => appWindow.toggleMaximize()}
-            className="h-9 w-11 inline-flex items-center justify-center hover:bg-black/5"
+            className="app-window-button"
             aria-label={t("titleBar.maximize")}
           >
             <svg width="10" height="10" viewBox="0 0 10 10">
@@ -78,8 +83,9 @@ export default function TitleBar() {
             </svg>
           </button>
           <button
+            type="button"
             onClick={() => void handleCloseWindow()}
-            className="h-9 w-11 inline-flex items-center justify-center hover:bg-red-500 hover:text-white"
+            className="app-window-button app-window-button--close"
             aria-label={t("titleBar.close")}
           >
             <svg width="10" height="10" viewBox="0 0 10 10">

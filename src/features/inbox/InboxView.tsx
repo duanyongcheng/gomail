@@ -23,6 +23,7 @@ import { useCloseMessageDetail } from "@/hooks/useCloseMessageDetail";
 import type { ThreadSummary } from "@/lib/api";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { refreshMessageFlagViews } from "@/hooks/mutations/messageFlagsMutation";
+import { getAppTheme } from "@/lib/appThemes";
 
 const EMPTY_THREADS: ThreadSummary[] = [];
 
@@ -103,6 +104,17 @@ export default function InboxView() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const detailOpen = threadView ? selectedThreadId !== null : selectedMessageId !== null;
+  const folderTitle = activeFolderRole
+    ? t(`sidebar.${activeFolderRole}`)
+    : folders.find((folder) => folder.id === activeFolderId)?.name ?? t("sidebar.mail");
+  const loadedCount = threadView ? threads.length : messages.length;
+  const loadedCountLabel = threadView
+    ? t("inbox.loadedThreads", "{{count}} conversations loaded", { count: loadedCount })
+    : t("inbox.loadedMessages", "{{count}} loaded", { count: loadedCount });
+  const moreAvailable = threadView ? moreThreads : hasNextPage;
+  const mailboxLabel = activeAccountId
+    ? accounts.find((account) => account.id === activeAccountId)?.account_label || accounts.find((account) => account.id === activeAccountId)?.email
+    : t("sidebar.allAccounts", "All accounts");
 
   // Escape closes whatever this view has open — a thread or a single message.
   useCloseMessageDetail(detailOpen, () => {
@@ -172,91 +184,96 @@ export default function InboxView() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <div className="inbox-toolbar-row">
-        <div className="inbox-toolbar-search">
-          <SearchBar onSearch={() => {}} onClear={() => {}} />
-        </div>
-        {draftAccounts.map((account) => <button
-          key={account.id}
-          type="button"
-          onClick={() => useComposeStore.getState().openCompose("new", null, { gmailDraftsAccountId: account.id })}
-          style={{ padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-bg-primary)", color: "var(--color-text-primary)", fontSize: 12 }}
-          title={account.email}
-        >
-          {t("cloudDrafts.manage", "Manage Gmail drafts")}{draftAccounts.length > 1 ? `: ${account.email}` : ""}
-        </button>)}
-        {isTrashFolder && messages.length > 0 && (
-          <>
-            <button
-              disabled={!isFeatureAvailable("permanentDelete")}
-              onClick={() => { if (isFeatureAvailable("permanentDelete")) setShowTrashConfirm(true); }}
-              style={{
-                background: "none", border: "1px solid var(--color-border)", cursor: "pointer",
-                padding: "4px 10px", borderRadius: "4px", color: "var(--color-text-secondary)",
-                display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", marginRight: "4px",
-              }}
-              title={isFeatureAvailable("permanentDelete") ? t("messageActions.emptyTrash", "Empty Trash") : unavailableReason()}
+    <div className={`mail-workspace${detailOpen ? " mail-workspace--detail-open" : ""}`}>
+      <section className="mail-list-panel" aria-label={folderTitle}>
+        <header className="mail-list-heading">
+          <div className="mail-list-kicker">{mailboxLabel}</div>
+          <div className="mail-list-title-row">
+            <h1 className="mail-list-title">{folderTitle}</h1>
+            <span
+              className="mail-list-count"
+              title={loadedCountLabel}
+              aria-label={loadedCountLabel}
             >
-              <Trash2 size={14} />
-              {t("messageActions.emptyTrash", "Empty Trash")}
-            </button>
-            {isFeatureAvailable("permanentDelete") && showTrashConfirm && (
-              <ConfirmDialog
-                title={t("messageActions.emptyTrash", "Empty Trash")}
-                message={t("messageActions.emptyTrashConfirm", "Permanently delete all messages in Trash?")}
-                destructive
-                onCancel={() => setShowTrashConfirm(false)}
-                onConfirm={async () => {
-                  if (!isFeatureAvailable("permanentDelete")) return;
-                  setShowTrashConfirm(false);
-                  try {
-                    const targetAccountIds = activeAccountId ? [activeAccountId] : accounts.map((account) => account.id);
-                    const counts = await Promise.all(targetAccountIds.map((accountId) => emptyTrash(accountId)));
-                    const count = counts.reduce((sum, current) => sum + current, 0);
-                    queryClient.invalidateQueries({ queryKey: ["messages"] });
-                    addToast({ message: t("messageActions.emptyTrashSuccess", { count }), type: "success" });
-                  } catch {
-                    addToast({ message: t("messageActions.emptyTrashFailed"), type: "error" });
-                  }
-                }}
-              />
-            )}
-          </>
-        )}
-        {!threadView && (
-          <button
+              {loadedCount.toLocaleString()}{moreAvailable ? "+" : ""}
+            </span>
+            <div className="mail-list-view-tools">
+              {!threadView && (
+                <button
+                  type="button"
+                  onClick={() => useMailStore.getState().toggleBatchMode()}
+                  aria-label={t("batch.toggle", "Batch select")}
+                  className="inbox-toolbar-button"
+                  title={t("batch.toggle", "Batch select")}
+                >
+                  <CheckSquare size={15} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleThreadView}
+                aria-label={threadView ? t("inbox.messageView") : t("inbox.threadView")}
+                className="inbox-toolbar-button"
+                title={threadView ? t("inbox.messageView") : t("inbox.threadView")}
+              >
+                {threadView ? <List size={15} /> : <MessageSquare size={15} />}
+              </button>
+            </div>
+          </div>
+        </header>
+        <div className="inbox-toolbar-row">
+          <div className="inbox-toolbar-search">
+            <SearchBar onSearch={() => {}} onClear={() => {}} />
+          </div>
+          {draftAccounts.map((account) => <button
+            key={account.id}
             type="button"
-            onClick={() => useMailStore.getState().toggleBatchMode()}
-            aria-label={t("batch.toggle", "Batch select")}
-            className="inbox-toolbar-button"
-            title={t("batch.toggle", "Batch select")}
+            onClick={() => useComposeStore.getState().openCompose("new", null, { gmailDraftsAccountId: account.id })}
+            style={{ padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-bg-primary)", color: "var(--color-text-primary)", fontSize: 12 }}
+            title={account.email}
           >
-            <CheckSquare size={16} />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={toggleThreadView}
-          aria-label={threadView ? t("inbox.messageView") : t("inbox.threadView")}
-          className="inbox-toolbar-button inbox-toolbar-button--end"
-          title={threadView ? t("inbox.messageView") : t("inbox.threadView")}
-        >
-          {threadView ? <List size={16} /> : <MessageSquare size={16} />}
-        </button>
-      </div>
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {/* List panel */}
-        <div
-          style={{
-            width: detailOpen ? "clamp(260px, 32%, 360px)" : "100%",
-            flexShrink: 0,
-            borderRight: detailOpen ? "1px solid var(--color-border)" : "none",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-        >
+            {t("cloudDrafts.manage", "Manage Gmail drafts")}{draftAccounts.length > 1 ? `: ${account.email}` : ""}
+          </button>)}
+          {isTrashFolder && messages.length > 0 && (
+            <>
+              <button
+                disabled={!isFeatureAvailable("permanentDelete")}
+                onClick={() => { if (isFeatureAvailable("permanentDelete")) setShowTrashConfirm(true); }}
+                style={{
+                  background: "none", border: "1px solid var(--color-border)", cursor: "pointer",
+                  padding: "4px 10px", borderRadius: "4px", color: "var(--color-text-secondary)",
+                  display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", marginRight: "4px",
+                }}
+                title={isFeatureAvailable("permanentDelete") ? t("messageActions.emptyTrash", "Empty Trash") : unavailableReason()}
+              >
+                <Trash2 size={14} />
+                {t("messageActions.emptyTrash", "Empty Trash")}
+              </button>
+              {isFeatureAvailable("permanentDelete") && showTrashConfirm && (
+                <ConfirmDialog
+                  title={t("messageActions.emptyTrash", "Empty Trash")}
+                  message={t("messageActions.emptyTrashConfirm", "Permanently delete all messages in Trash?")}
+                  destructive
+                  onCancel={() => setShowTrashConfirm(false)}
+                  onConfirm={async () => {
+                    if (!isFeatureAvailable("permanentDelete")) return;
+                    setShowTrashConfirm(false);
+                    try {
+                      const targetAccountIds = activeAccountId ? [activeAccountId] : accounts.map((account) => account.id);
+                      const counts = await Promise.all(targetAccountIds.map((accountId) => emptyTrash(accountId)));
+                      const count = counts.reduce((sum, current) => sum + current, 0);
+                      queryClient.invalidateQueries({ queryKey: ["messages"] });
+                      addToast({ message: t("messageActions.emptyTrashSuccess", { count }), type: "success" });
+                    } catch {
+                      addToast({ message: t("messageActions.emptyTrashFailed"), type: "error" });
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
+        <div className="mail-list-rows">
           {threadView ? (
             <ThreadList
               threads={threads}
@@ -282,10 +299,10 @@ export default function InboxView() {
             />
           )}
         </div>
-
-        {/* Detail panel */}
-        {detailOpen && (
-          <div style={{ flex: 1, overflow: "hidden" }}>
+      </section>
+      <section className={`mail-reader-panel${detailOpen ? "" : " mail-reader-panel--empty"}`} aria-label={t("inbox.emailContent", "Email content")}>
+        {detailOpen ? (
+          <>
             {threadView && selectedThreadId ? (
               <ThreadView />
             ) : selectedMessageId ? (
@@ -295,9 +312,15 @@ export default function InboxView() {
                 folderRole={activeFolderRole}
               />
             ) : null}
+          </>
+        ) : (
+          <div className="mail-reader-empty">
+            <div className="mail-reader-empty-mark" aria-hidden="true"><Mail size={30} strokeWidth={1.1} /></div>
+            <h2>{t("inbox.selectMessage", "Your next good read")}</h2>
+            <p>{t("inbox.selectMessageHint", "Select a message or conversation from the list to read it here.")}</p>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
@@ -318,14 +341,20 @@ function ThreadList({ threads, selectedThreadId, onSelectThread, loading, error,
 }) {
   const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
+  const appTheme = useUIStore((s) => s.appTheme);
+  const rowHeight = getAppTheme(appTheme).rowHeight;
   const virtualizer = useVirtualizer({
     count: threads.length,
     getItemKey: (index) => threads[index].thread_id,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 76,
+    estimateSize: () => rowHeight,
     measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 5,
   });
+
+  useEffect(() => {
+    virtualizer.measure();
+  }, [appTheme, virtualizer]);
 
   // Scroll selected thread into view on keyboard navigation
   useEffect(() => {
@@ -370,6 +399,7 @@ function ThreadList({ threads, selectedThreadId, onSelectThread, loading, error,
               }}
             >
               <ThreadItem
+                rowIndex={virtualItem.index}
                 thread={thread}
                 isSelected={thread.thread_id === selectedThreadId}
                 onClick={() => onSelectThread(thread.thread_id)}

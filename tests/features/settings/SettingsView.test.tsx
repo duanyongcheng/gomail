@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SettingsView from "../../../src/features/settings/SettingsView";
 import { useUIStore } from "../../../src/stores/ui.store";
 
@@ -80,6 +80,8 @@ describe("SettingsView", () => {
     useUIStore.setState({ settingsTab: "accounts" });
   });
 
+  afterEach(() => { vi.unstubAllGlobals(); });
+
   it("exposes the pending remote writes queue as a settings tab", () => {
     render(<SettingsView />);
 
@@ -118,6 +120,35 @@ describe("SettingsView", () => {
     fireEvent.keyDown(screen.getByRole("tab", { name: "General" }), { key: "ArrowDown" });
     expect(useUIStore.getState().settingsTab).toBe("appearance");
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Appearance" }));
+  });
+
+  it("updates the narrow tab orientation and skips disabled settings with horizontal keys", () => {
+    let changed: (() => void) | undefined;
+    const media = {
+      matches: false,
+      addEventListener: vi.fn((_event: string, listener: () => void) => { changed = listener; }),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal("matchMedia", vi.fn(() => media));
+    const view = render(<SettingsView />);
+    const tabs = screen.getByRole("tablist", { name: "Settings tabs" });
+    expect(tabs.getAttribute("aria-orientation")).toBe("vertical");
+
+    act(() => { media.matches = true; changed?.(); });
+    expect(tabs.getAttribute("aria-orientation")).toBe("horizontal");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "General" }), { key: "ArrowRight" });
+    expect(useUIStore.getState().settingsTab).toBe("appearance");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Appearance" }));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
+    expect(useUIStore.getState().settingsTab).toBe("general");
+    fireEvent.keyDown(document.activeElement!, { key: "End" });
+    expect(useUIStore.getState().settingsTab).toBe("about");
+    fireEvent.keyDown(document.activeElement!, { key: "Home" });
+    expect(useUIStore.getState().settingsTab).toBe("accounts");
+    expect(screen.getByRole("tab", { name: "Accounts" }).tabIndex).toBe(0);
+
+    view.unmount();
+    expect(media.removeEventListener).toHaveBeenCalledWith("change", changed);
   });
 
   it("does not animate all properties on settings tabs", () => {

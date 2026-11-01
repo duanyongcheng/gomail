@@ -8,6 +8,7 @@ import { getMessageLabelsBatch } from "@/lib/api";
 import { executeBatchMailAction, type BatchMailAction } from "@/hooks/mutations/mailActionsMutation";
 import { useAccountsQuery, useFoldersForAccountsQuery } from "@/hooks/queries";
 import { useMailStore } from "@/stores/mail.store";
+import { useUIStore } from "@/stores/ui.store";
 import { useToastStore } from "@/stores/toast.store";
 import { useConfirmStore } from "@/stores/confirm.store";
 import { roleForSelection } from "@/lib/folderAggregation";
@@ -15,6 +16,7 @@ import { accountBadges } from "@/lib/accountIdentity";
 import MessageItem from "./MessageItem";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { MessageListSkeleton } from "./Skeleton";
+import { getAppTheme } from "@/lib/appThemes";
 
 interface Props {
   messages: MessageSummary[];
@@ -39,6 +41,8 @@ export default function MessageList({
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const parentRef = useRef<HTMLDivElement>(null);
+  const appTheme = useUIStore((s) => s.appTheme);
+  const rowHeight = getAppTheme(appTheme).rowHeight;
   const batchMode = useMailStore((s) => s.batchMode);
   const selectedMessageIds = useMailStore((s) => s.selectedMessageIds);
   const toggleBatchMode = useMailStore((s) => s.toggleBatchMode);
@@ -78,11 +82,16 @@ export default function MessageList({
 
   const virtualizer = useVirtualizer({
     count: messages.length,
+    getItemKey: (index) => messages[index].id,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 76,
+    estimateSize: () => rowHeight,
     measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 5,
   });
+
+  useEffect(() => {
+    virtualizer.measure();
+  }, [appTheme, virtualizer]);
 
   // Scroll selected message into view on keyboard navigation
   useEffect(() => {
@@ -167,10 +176,10 @@ export default function MessageList({
   const deleteUnavailable = cannotDeleteMessages(selectedMessageIds);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div className="mail-list-content" style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       {/* Batch toolbar */}
       {batchMode && (
-        <div style={{
+        <div className="mail-batch-toolbar" style={{
           display: "flex", alignItems: "center", gap: "6px",
           padding: "6px 10px", borderBottom: "1px solid var(--color-border)",
           backgroundColor: "var(--color-bg)", flexShrink: 0,
@@ -229,6 +238,7 @@ export default function MessageList({
                 }}
               >
                 <MessageItem
+                  rowIndex={virtualItem.index}
                   message={message}
                   labels={labelsByMessage[message.id] ?? []}
                   isSelected={message.id === selectedMessageId}

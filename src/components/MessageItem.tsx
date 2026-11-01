@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Star, Paperclip, Archive, LayoutGrid, ShieldAlert, RotateCcw } from "lucide-react";
@@ -10,6 +10,7 @@ import { useKanbanStore } from "@/stores/kanban.store";
 import { useToastStore } from "@/stores/toast.store";
 import AccountBadge from "./AccountBadge";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
+import { deriveAccountColor } from "@/lib/accountColors";
 
 interface Props {
   message: MessageSummary;
@@ -23,6 +24,7 @@ interface Props {
   folderRole?: Folder["role"];
   /** Only supplied by the combined inbox, where rows come from many mailboxes. */
   accountBadge?: AccountBadgeInfo;
+  rowIndex?: number;
 }
 
 function formatDate(timestamp: number): string {
@@ -48,11 +50,10 @@ function recipientLabel(addresses: EmailAddress[]): string {
   return addresses.map(addressLabel).filter(Boolean).join(", ");
 }
 
-function MessageItem({ message, labels = [], isSelected, onClick, batchMode, batchSelected, onToggleBatchSelect, spamFolderId, folderRole, accountBadge }: Props) {
+function MessageItem({ message, labels = [], isSelected, onClick, batchMode, batchSelected, onToggleBatchSelect, spamFolderId, folderRole, accountBadge, rowIndex }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showActions, setShowActions] = useState(false);
-  const fontWeight = message.is_read ? "normal" : "600";
   const inKanban = useKanbanStore((s) => s.cardIdSet.has(message.id));
   const archiveActionLabel = folderRole === "archive"
     ? t("messageActions.unarchive", "Unarchive")
@@ -64,23 +65,11 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
 
   return (
     <div
-      className={`message-list-row${message.is_read ? "" : " message-list-row--unread"}`}
+      className={`mail-row message-list-row${message.is_read ? "" : " message-list-row--unread"}`}
       onClick={onClick}
       tabIndex={0}
       role="option"
       aria-selected={isSelected}
-      style={{
-        position: "relative",
-        color: "var(--color-text-primary)",
-        fontWeight,
-        cursor: "pointer",
-        padding: "10px 14px",
-        borderBottom: "1px solid var(--color-border)",
-        height: "76px",
-        boxSizing: "border-box",
-        overflow: "hidden",
-        transition: "background-color 0.12s ease",
-      }}
       onMouseEnter={() => {
         setShowActions(true);
       }}
@@ -97,7 +86,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
         }
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           onClick();
         }
@@ -121,125 +110,84 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
           }}
         />
       )}
-      <div
-        className="message-row-head"
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2px" }}
+      {rowIndex !== undefined && <span className="mail-row-index" aria-hidden="true">{String(rowIndex + 1).padStart(2, "0")}</span>}
+      <span
+        className="mail-row-avatar"
+        aria-hidden="true"
+        style={{ "--sender-color": deriveAccountColor(message.from_address) } as CSSProperties}
       >
-        {batchMode && (
-          <input
-            type="checkbox"
-            checked={batchSelected}
-            aria-label={t("batch.selectMessage", "Select message")}
-            className="batch-checkbox message-row-checkbox"
-            onChange={(e) => {
-              e.stopPropagation();
-              onToggleBatchSelect?.(message.id);
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            fontSize: "13px",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            flex: 1,
-            marginRight: "8px",
-            minWidth: 0,
-          }}
-        >
-          {accountBadge && <AccountBadge badge={accountBadge} />}
-          <span className="message-row-sender-name" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-            {primaryContact}
+        {Array.from(primaryContact.trim())[0]?.toLocaleUpperCase() || "?"}
+      </span>
+      <div className="mail-row-main">
+        <div className="message-row-head">
+          {batchMode && (
+            <input
+              type="checkbox"
+              checked={batchSelected}
+              aria-label={t("batch.selectMessage", "Select message")}
+              className="batch-checkbox message-row-checkbox"
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleBatchSelect?.(message.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+          <span className="mail-row-contact">
+            {accountBadge && <AccountBadge badge={accountBadge} />}
+            <span className="message-row-sender-name">
+              {primaryContact}
+            </span>
           </span>
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-          {isFeatureAvailable("kanban") && inKanban && (
-            <LayoutGrid size={13} color="var(--color-accent)" />
-          )}
-          {message.is_starred && (
-            <Star size={13} fill="#f59e0b" color="#f59e0b" />
-          )}
-          {message.has_attachments && (
-            <Paperclip size={13} color="var(--color-text-secondary)" />
-          )}
-          <span
-            className="message-row-date"
-            style={{
-              fontSize: "11px",
-            }}
-          >
-            {formatDate(message.date)}
-          </span>
+          <div className="mail-row-flags">
+            {isFeatureAvailable("kanban") && inKanban && (
+              <LayoutGrid size={13} color="var(--color-accent)" />
+            )}
+            {message.is_starred && (
+              <Star size={13} fill="#f59e0b" color="#f59e0b" />
+            )}
+            {message.has_attachments && (
+              <Paperclip size={13} color="var(--color-text-secondary)" />
+            )}
+            <span className="message-row-date">
+              {formatDate(message.date)}
+            </span>
+          </div>
+          {/* Marks the row as unread in the list's own gutter, beside the sender
+              rather than after the name, so the markers form a column. */}
+          {!message.is_read && <span className="message-row-unread-dot" aria-hidden="true" />}
         </div>
-        {/* Marks the row as unread in the list's own gutter, beside the sender
-            rather than after the name, so the markers form a column. */}
-        {!message.is_read && <span className="message-row-unread-dot" aria-hidden="true" />}
-      </div>
-      <div
-        className="message-row-subject"
-        style={{
-          fontSize: "12.5px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          marginBottom: "2px",
-        }}
-      >
-        {message.subject || t("inbox.noSubject")}
-      </div>
-      <div
-        style={{
-          fontSize: "12px",
-          color: "var(--color-text-secondary)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontWeight: "normal",
-        }}
-      >
-        {message.snippet}
-        {isFeatureAvailable("localLabels") && labels.length > 0 && labels.map((l) => (
-          <span
-            key={l.id}
-            style={{
-              display: "inline-block",
-              fontSize: "10px",
-              padding: "0 5px",
-              borderRadius: "3px",
-              backgroundColor: l.color + "22",
-              color: l.color,
-              border: `1px solid ${l.color}44`,
-              marginLeft: "6px",
-              verticalAlign: "middle",
-              lineHeight: "16px",
-              fontWeight: 500,
-            }}
-          >
-            {l.name}
-          </span>
-        ))}
+        <div className="message-row-subject">
+          {message.subject || t("inbox.noSubject")}
+        </div>
+        <div className="mail-row-snippet">
+          {message.snippet}
+          {isFeatureAvailable("localLabels") && labels.length > 0 && labels.map((l) => (
+            <span
+              key={l.id}
+              style={{
+                display: "inline-block",
+                fontSize: "10px",
+                padding: "0 5px",
+                borderRadius: "3px",
+                backgroundColor: l.color + "22",
+                color: l.color,
+                border: `1px solid ${l.color}44`,
+                marginLeft: "6px",
+                verticalAlign: "middle",
+                lineHeight: "16px",
+                fontWeight: 500,
+              }}
+            >
+              {l.name}
+            </span>
+          ))}
+        </div>
       </div>
       {showActions && (
         <div
+          className="mail-row-actions"
           onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "absolute",
-            right: "8px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            display: "flex",
-            alignItems: "center",
-            gap: "2px",
-            backgroundColor: "var(--color-bg)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "6px",
-            padding: "2px",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-          }}
         >
           <button
             onClick={(e) => {
@@ -261,16 +209,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
             }}
             aria-label={archiveActionLabel}
             title={archiveActionLabel}
-            style={{
-              padding: "4px",
-              border: "none",
-              background: "transparent",
-              borderRadius: "4px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              color: "var(--color-text-secondary)",
-            }}
+            className="mail-row-action"
           >
             <ArchiveActionIcon size={14} />
           </button>
@@ -288,16 +227,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
               }}
               aria-label={t("messageActions.reportSpam", "Report spam")}
               title={t("messageActions.reportSpam", "Report spam")}
-              style={{
-                padding: "4px",
-                border: "none",
-                background: "transparent",
-                borderRadius: "4px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                color: "var(--color-text-secondary)",
-              }}
+              className="mail-row-action"
             >
               <ShieldAlert size={14} />
             </button>
@@ -317,16 +247,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
             aria-label={t("messageActions.addToKanban")}
             disabled={!isFeatureAvailable("kanban")}
             title={isFeatureAvailable("kanban") ? t("messageActions.addToKanban") : unavailableReason()}
-            style={{
-              padding: "4px",
-              border: "none",
-              background: "transparent",
-              borderRadius: "4px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              color: "var(--color-text-secondary)",
-            }}
+            className="mail-row-action"
           >
             <LayoutGrid size={14} />
           </button>
@@ -338,16 +259,8 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
             aria-label={message.is_starred ? t("messageActions.unstar") : t("messageActions.star")}
             aria-pressed={message.is_starred}
             title={message.is_starred ? t("messageActions.unstar") : t("messageActions.star")}
-            style={{
-              padding: "4px",
-              border: "none",
-              background: "transparent",
-              borderRadius: "4px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              color: message.is_starred ? "#f59e0b" : "var(--color-text-secondary)",
-            }}
+            className="mail-row-action"
+            style={{ color: message.is_starred ? "#f59e0b" : undefined }}
           >
             <Star
               size={14}

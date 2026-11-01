@@ -160,6 +160,43 @@ describe("Sidebar navigation", () => {
     expect(sidebar.style.flexShrink).toBe("0");
   });
 
+  it("opens a new message from the sidebar compose action", () => {
+    useUIStore.setState({ activeView: "inbox" });
+    useComposeStore.setState({ composeDirty: false, composeMode: null });
+    renderSidebar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Compose" }));
+
+    expect(useUIStore.getState().activeView).toBe("compose");
+    expect(useUIStore.getState().previousView).toBe("inbox");
+    expect(useComposeStore.getState().composeMode).toBe("new");
+  });
+
+  it("does not replace the current draft when compose is already open", () => {
+    const key = useComposeStore.getState().composeKey;
+    renderSidebar();
+
+    const compose = screen.getByRole("button", { name: "Compose" }) as HTMLButtonElement;
+    expect(compose.disabled).toBe(true);
+    fireEvent.click(compose);
+
+    expect(useComposeStore.getState().composeKey).toBe(key);
+    expect(useComposeStore.getState().composeDirty).toBe(true);
+    expect(useConfirmStore.getState().confirm).not.toHaveBeenCalled();
+  });
+
+  it("keeps compose reachable from a collapsed sidebar", () => {
+    useUIStore.setState({ activeView: "inbox", sidebarCollapsed: true });
+    useComposeStore.setState({ composeDirty: false, composeMode: null });
+    renderSidebar();
+
+    const compose = screen.getByRole("button", { name: "Compose" });
+    expect(compose.getAttribute("type")).toBe("button");
+    fireEvent.click(compose);
+
+    expect(useUIStore.getState().activeView).toBe("compose");
+  });
+
   it("folds and unfolds the sidebar from the row that names the state", () => {
     useUIStore.setState({ sidebarCollapsed: false });
     const { unmount } = renderSidebar();

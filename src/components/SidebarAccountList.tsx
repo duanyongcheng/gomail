@@ -142,6 +142,7 @@ function SortableAccountGroup({
   return (
     <div
       ref={setNodeRef}
+      className="sidebar-mailbox-group"
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -183,7 +184,7 @@ function avatarStyle(color: string, isActive: boolean, collapsed: boolean): Reac
   return {
     width: size,
     height: size,
-    borderRadius: "50%",
+    borderRadius: "var(--sidebar-avatar-radius, 50%)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -377,7 +378,7 @@ export default function SidebarAccountList({
         // because a tooltip that repeats the label is only noise.
         title={folderLeafName(folder.name) === folder.name ? undefined : folder.name}
       >
-        <span className="sidebar-row-icon">{folderIcon(folder.role, 16)}</span>
+        <span className="sidebar-row-icon" aria-hidden="true">{folderIcon(folder.role, 16)}</span>
         <span className="sidebar-row-label">{label}</span>
         <span className="sidebar-count-slot">
           {unread > 0 && <span className="sidebar-count">{formatUnread(unread)}</span>}
@@ -432,6 +433,7 @@ export default function SidebarAccountList({
         >
           <span style={avatarStackStyle()}>
             <span
+              className="sidebar-account-avatar"
               style={avatarStyle(group.color ?? "var(--color-accent)", group.selected, collapsed)}
               data-testid={`account-avatar-${group.id}`}
               aria-hidden="true"
@@ -511,6 +513,7 @@ export default function SidebarAccountList({
           rail too: with the labels gone they are still the only way to reach
           Starred and Snoozed from the sidebar. */}
       {pinnedRows}
+      {!collapsed && <div className="sidebar-section-label">{t("sidebar.mail", "Mail")}</div>}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext
@@ -530,7 +533,10 @@ export default function SidebarAccountList({
             ) : (
               // The combined view is a destination rather than a mailbox, so it
               // is not draggable and owns no account.
-              <div key={group.id}>
+              <div
+                key={group.id}
+                className={`sidebar-mailbox-group${group.account ? "" : " sidebar-mailbox-group--combined"}`}
+              >
                 {renderGroupHeader(group)}
                 {renderChildren(group)}
               </div>

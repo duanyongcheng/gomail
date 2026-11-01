@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MessageDetail from "../../src/components/MessageDetail";
 import { useUIStore } from "../../src/stores/ui.store";
@@ -118,7 +118,7 @@ describe("MessageDetail themes", () => {
     useUIStore.setState({ messageTheme: "card", theme: "light" });
   });
 
-  it("renders on the default template and publishes its layout", () => {
+  it("preserves an explicitly chosen card template and publishes its layout", () => {
     renderDetail();
 
     expect(container().getAttribute("data-message-theme")).toBe("card");
@@ -129,6 +129,27 @@ describe("MessageDetail themes", () => {
     expect(container().style.getPropertyValue("--msg-page-background")).toBe(
       getMessageTheme("card").page.background,
     );
+  });
+
+  it("follows interface style without replacing an explicit message-template preference", () => {
+    useUIStore.setState({ messageTheme: "app", appTheme: "paper" });
+    renderDetail();
+
+    expect(container().getAttribute("data-message-theme")).toBe("app");
+    expect(document.querySelector(".app-reader-sheet h2")?.textContent).toBe("Quarterly numbers");
+    expect(document.querySelector(".app-reader-sheet .message-body-scroll")).not.toBeNull();
+    expect(document.querySelector(".app-reader-toolbar")?.textContent).toContain("message actions");
+    expect(container().style.getPropertyValue("--msg-title-font")).toContain("--font-display");
+
+    act(() => useUIStore.getState().setAppTheme("editorial"));
+    expect(useUIStore.getState().messageTheme).toBe("app");
+    expect(container().getAttribute("data-message-theme")).toBe("app");
+
+    act(() => useUIStore.getState().setMessageTheme("wechat"));
+    act(() => useUIStore.getState().setAppTheme("glass"));
+    expect(container().getAttribute("data-message-theme")).toBe("wechat");
+    expect(container().style.getPropertyValue("--msg-accent")).toBe("#07c160");
+    expect(document.querySelector(".app-reader-sheet")).toBeNull();
   });
 
   it("shows the sender monogram in the templates that ask for one", () => {

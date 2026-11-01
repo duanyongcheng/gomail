@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 import type { Account, Folder, MessageSummary } from "../../src/lib/api";
 import { useMailStore } from "../../src/stores/mail.store";
+import { useUIStore } from "../../src/stores/ui.store";
+import { APP_THEMES } from "@/lib/appThemes";
 
 const mocks = vi.hoisted(() => ({
   accounts: [] as Account[],
@@ -17,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   batchStar: vi.fn(),
   addToast: vi.fn(),
   confirm: vi.fn(),
+  measure: vi.fn(),
+  estimateSize: vi.fn(),
+  itemKey: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -34,17 +39,22 @@ vi.mock("@tanstack/react-query", async (original) => ({
 }));
 
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: ({ count }: { count: number }) => ({
-    getTotalSize: () => count * 76,
-    getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
-        index,
-        key: `row-${index}`,
-        start: index * 76,
-      })),
-    measureElement: vi.fn(),
-    scrollToIndex: vi.fn(),
-  }),
+  useVirtualizer: ({ count, estimateSize, getItemKey }: { count: number; estimateSize: () => number; getItemKey: (index: number) => string }) => {
+    mocks.estimateSize(estimateSize());
+    if (count > 0) mocks.itemKey(getItemKey(0));
+    return {
+      getTotalSize: () => count * 76,
+      getVirtualItems: () =>
+        Array.from({ length: count }, (_, index) => ({
+          index,
+          key: `row-${index}`,
+          start: index * 76,
+        })),
+      measureElement: vi.fn(),
+      measure: mocks.measure,
+      scrollToIndex: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("../../src/hooks/queries", () => ({
@@ -183,6 +193,20 @@ describe("MessageList", () => {
       selectedMessageIds: new Set(),
       batchMode: false,
     });
+    useUIStore.setState({ appTheme: "paper" });
+  });
+
+  it("re-measures virtual rows when the interface density changes and retains message identity", () => {
+    render(<MessageList messages={[makeMessage("stable-id")]} selectedMessageId={null} onSelectMessage={vi.fn()} loading={false} />);
+    expect(mocks.itemKey).toHaveBeenLastCalledWith("stable-id");
+    expect(mocks.estimateSize).toHaveBeenLastCalledWith(APP_THEMES.find((theme) => theme.id === "paper")?.rowHeight);
+    mocks.measure.mockClear();
+
+    act(() => useUIStore.setState({ appTheme: "minimal" }));
+
+    expect(mocks.estimateSize).toHaveBeenLastCalledWith(APP_THEMES.find((theme) => theme.id === "minimal")?.rowHeight);
+    expect(mocks.measure).toHaveBeenCalled();
+    expect(screen.getByTestId("message-stable-id")).toBeTruthy();
   });
 
   it("does not show Load more just because the current page has 50 messages", () => {

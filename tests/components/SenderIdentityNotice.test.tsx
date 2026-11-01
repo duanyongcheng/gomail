@@ -6,7 +6,6 @@ import { profileLocalStorage } from "../../src/lib/profileStorage";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (_key: string, fallback: string) => fallback }) }));
 vi.mock("../../src/hooks/queries", () => ({ useAccountsQuery: vi.fn() }));
-vi.mock("../../src/stores/ui.store", () => ({ useUIStore: { getState: vi.fn() } }));
 vi.mock("../../src/lib/profileStorage", () => ({ profileLocalStorage: { getItem: vi.fn(), setItem: vi.fn() } }));
 
 describe("sender identity upgrade notice", () => {
@@ -21,6 +20,8 @@ describe("sender identity upgrade notice", () => {
 
   it("previews outgoing names without exposing local labels or Outlook overrides", () => {
     render(<SenderIdentityNotice />);
+    expect(screen.getByRole("heading", { name: "Review your sender names", level: 3 })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Review in account settings" })).toBeNull();
     expect(screen.getByText("Public Name <sender@example.com>")).toBeTruthy();
     expect(screen.queryByText(/Private Description/)).toBeNull();
     expect(screen.queryByText(/Ignored Name/)).toBeNull();
@@ -31,6 +32,15 @@ describe("sender identity upgrade notice", () => {
 
   it("remains dismissed when opened again in the same profile", () => {
     vi.mocked(profileLocalStorage.getItem).mockReturnValue("seen");
+    render(<SenderIdentityNotice />);
+    expect(screen.queryByRole("complementary")).toBeNull();
+  });
+
+  it("does not show a reminder without an eligible sender name", () => {
+    vi.mocked(useAccountsQuery).mockReturnValue({ data: [
+      { id: "gmail", provider: "gmail", email: "sender@example.com", display_name: "  " },
+      { id: "outlook", provider: "outlook", email: "outlook@example.com", display_name: "Provider name" },
+    ] } as ReturnType<typeof useAccountsQuery>);
     render(<SenderIdentityNotice />);
     expect(screen.queryByRole("complementary")).toBeNull();
   });

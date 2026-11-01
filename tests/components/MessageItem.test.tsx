@@ -59,5 +59,21 @@ describe("MessageItem", () => {
     expect(row.querySelector(".message-row-subject")).toBeTruthy(); expect(row.querySelector(".message-row-date")).toBeTruthy();
   });
   it("read rows have no unread treatment", () => { mount(); expect(screen.getByRole("option").className).not.toContain("message-list-row--unread"); expect(screen.getByRole("option").querySelector(".message-row-unread-dot")).toBeNull(); });
+  it("uses theme-driven sizing and decorative sender/row markers", () => {
+    mount({ rowIndex: 7 });
+    const row = screen.getByRole("option");
+    expect(row.style.height).toBe("");
+    expect(row.querySelector(".mail-row-avatar")?.getAttribute("aria-hidden")).toBe("true");
+    expect(row.querySelector(".mail-row-index")?.textContent).toBe("08");
+    expect(row.querySelector(".mail-row-index")?.getAttribute("aria-hidden")).toBe("true");
+  });
+  it("does not open the message when a nested action receives a keyboard activation", () => {
+    const open = vi.fn(); mount({ onClick: open });
+    fireEvent.focus(screen.getByRole("option"));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Archive" }), { key: "Enter" });
+    expect(open).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("option"), { key: "Enter" });
+    expect(open).toHaveBeenCalledOnce();
+  });
   it("sent-folder primary contact uses recipients", () => { mount({ folderRole: "sent" }, { ...base, to_list: [{ name: "Destination", address: "to@example.invalid" }] }); expect(screen.getByText("Destination")).toBeTruthy(); expect(screen.queryByText("Sender")).toBeNull(); });
 });

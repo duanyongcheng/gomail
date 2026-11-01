@@ -27,20 +27,8 @@ export default function PrivacyBanner({ rendered, onLoadImages, onTrustSender, b
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        flexWrap: "wrap",
-        padding: "8px 14px",
-        backgroundColor: "rgba(245, 158, 11, 0.08)",
-        borderBottom: "1px solid var(--color-border)",
-        fontSize: "12px",
-        color: "var(--color-text-secondary)",
-      }}
-    >
-      <Shield size={14} color="#f59e0b" />
+    <div className="privacy-banner">
+      <Shield size={14} className="privacy-banner-icon" />
       {error && <span role="alert" style={{ width: "100%" }}>{error}</span>}
       <span style={{ flex: 1 }}>
         {t("privacy.blocked", { items: parts.join(` ${t("privacy.and")} `) })}
@@ -48,57 +36,33 @@ export default function PrivacyBanner({ rendered, onLoadImages, onTrustSender, b
       {rendered.images_blocked > 0 && (
         <>
           <button
+            className="privacy-banner-button"
             onClick={onLoadImages}
             disabled={busy}
-            style={{
-              fontSize: "12px",
-              padding: "2px 8px",
-              borderRadius: "4px",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "transparent",
-              color: "var(--color-text-primary)",
-              cursor: "pointer",
-            }}
           >
             {t("privacy.loadImages")}
           </button>
           <button
+            className="privacy-banner-button"
             onClick={() => onTrustSender("images")}
             disabled={busy}
             title={t(
               "privacy.trustImagesHint",
               "Always load images from this sender. Trackers stay blocked.",
             )}
-            style={{
-              fontSize: "12px",
-              padding: "2px 8px",
-              borderRadius: "4px",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "transparent",
-              color: "var(--color-text-primary)",
-              cursor: "pointer",
-            }}
           >
             {t("privacy.trustImages", "Trust images")}
           </button>
         </>
       )}
       <button
+        className="privacy-banner-button"
         onClick={() => onTrustSender("all")}
         disabled={busy}
         title={t(
           "privacy.trustAllHint",
           "Fully trust this sender: load images and stop stripping trackers.",
         )}
-        style={{
-          fontSize: "12px",
-          padding: "2px 8px",
-          borderRadius: "4px",
-          border: "1px solid var(--color-border)",
-          backgroundColor: "transparent",
-          color: "var(--color-text-primary)",
-          cursor: "pointer",
-        }}
       >
         {t("privacy.trustAll", "Trust sender")}
       </button>

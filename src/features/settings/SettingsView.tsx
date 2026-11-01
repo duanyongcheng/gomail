@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { isSettingsTabAvailable, unavailableReason } from "@/lib/availability";
 import { useUIStore, type SettingsTab } from "@/stores/ui.store";
 import AccountsTab from "./AccountsTab";
@@ -35,6 +35,17 @@ const TAB_LABEL_KEYS: Record<string, string> = {
 
 export default function SettingsView() {
   const { t } = useTranslation();
+  const [compactNavigation, setCompactNavigation] = useState(() =>
+    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(max-width: 760px)");
+    const changed = () => setCompactNavigation(query.matches);
+    changed();
+    query.addEventListener("change", changed);
+    return () => query.removeEventListener("change", changed);
+  }, []);
   const restoredTab = useUIStore((s) => s.settingsTab);
   const activeTab = isSettingsTabAvailable(restoredTab) ? restoredTab : "accounts";
   const availableTabs = TAB_IDS.filter(isSettingsTabAvailable);
@@ -48,22 +59,18 @@ export default function SettingsView() {
   }
 
   return (
-    <div style={{ display: "flex", height: "100%" }}>
+    <div className="settings-workspace">
       {/* Tab sidebar */}
       <div
         role="tablist"
-        aria-orientation="vertical"
+        className="settings-navigation scroll-region"
+        aria-orientation={compactNavigation ? "horizontal" : "vertical"}
         aria-label={t("settings.tabs", "Settings tabs")}
-        style={{
-          width: "180px",
-          borderRight: "1px solid var(--color-border)",
-          padding: "16px 0",
-          flexShrink: 0,
-        }}
       >
         {TAB_IDS.map((id) => (
           <button
             key={id}
+            className="settings-navigation-tab"
             id={`settings-tab-${id}`}
             role="tab"
             disabled={!isSettingsTabAvailable(id)}
@@ -75,8 +82,8 @@ export default function SettingsView() {
             onKeyDown={(e) => {
               const index = availableTabs.indexOf(id);
               let nextIndex = index;
-              if (e.key === "ArrowDown") { nextIndex = (index + 1) % availableTabs.length; }
-              else if (e.key === "ArrowUp") { nextIndex = (index - 1 + availableTabs.length) % availableTabs.length; }
+              if (e.key === "ArrowDown" || (compactNavigation && e.key === "ArrowRight")) { nextIndex = (index + 1) % availableTabs.length; }
+              else if (e.key === "ArrowUp" || (compactNavigation && e.key === "ArrowLeft")) { nextIndex = (index - 1 + availableTabs.length) % availableTabs.length; }
               else if (e.key === "Home") { nextIndex = 0; }
               else if (e.key === "End") { nextIndex = availableTabs.length - 1; }
               else { return; }
@@ -113,14 +120,17 @@ export default function SettingsView() {
         style={{
           flex: 1,
           minWidth: 0,
-          padding: "32px",
-          maxWidth: activeTab === "remoteWrites" ? "980px" : "640px",
+          maxWidth: activeTab === "remoteWrites" || activeTab === "appearance" ? "1040px" : "760px",
           boxSizing: "border-box",
           overflowY: "auto",
           overflowX: "hidden",
         }}
       >
-        <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+        <header className="settings-panel-heading">
+          <p className="workspace-eyebrow">{t("sidebar.settings", "Settings")}</p>
+          <h1>{t(TAB_LABEL_KEYS[activeTab])}</h1>
+        </header>
+        <p className="settings-availability-note">
           {t("settings.unavailableHint", "Disabled settings are not available in Pebble Go yet.")}
         </p>
         {activeTab === "accounts" && <AccountsTab />}

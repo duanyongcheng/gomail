@@ -44,4 +44,31 @@ describe("AppearanceTab supported local preferences", () => {
     fireEvent.click(screen.getByRole("button", { name: "English" }));
     expect(useUIStore.getState().language).toBe("en");
   });
+
+  it("exposes the selected color mode without changing the independent interface theme", () => {
+    useUIStore.setState({ appTheme: "clay" });
+    render(<AppearanceTab />);
+    const light = screen.getByRole("button", { name: /settings.themeLight/ });
+    const dark = screen.getByRole("button", { name: /settings.themeDark/ });
+    const system = screen.getByRole("button", { name: /settings.themeSystem/ });
+    for (const [button, mode] of [[light, "light"], [dark, "dark"], [system, "system"]] as const) {
+      expect(button.getAttribute("type")).toBe("button");
+      expect(button.getAttribute("data-color-mode")).toBe(mode);
+      expect(button.style.minWidth).toBe("0");
+      expect(button.style.borderRadius).toBe("var(--ui-radius-md)");
+    }
+    expect(light.getAttribute("aria-pressed")).toBe("true");
+    expect(dark.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(dark);
+    expect(light.getAttribute("aria-pressed")).toBe("false");
+    expect(dark.getAttribute("aria-pressed")).toBe("true");
+    expect(system.getAttribute("aria-pressed")).toBe("false");
+    expect(useUIStore.getState().appTheme).toBe("clay");
+  });
+
+  it("allows the message-template grid to shrink below its preferred card width", () => {
+    render(<AppearanceTab />);
+    const templates = screen.getByRole("radiogroup", { name: "Message theme" });
+    expect(templates.style.gridTemplateColumns).toBe("repeat(auto-fit, minmax(min(250px, 100%), 1fr))");
+  });
 });

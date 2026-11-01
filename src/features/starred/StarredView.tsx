@@ -10,9 +10,13 @@ import { extractErrorMessage } from "@/lib/extractErrorMessage";
 import MessageItem from "@/components/MessageItem";
 import MessageDetail from "@/components/MessageDetail";
 import { useCloseMessageDetail } from "@/hooks/useCloseMessageDetail";
+import { useUIStore } from "@/stores/ui.store";
+import { getAppTheme } from "@/lib/appThemes";
 
 export default function StarredView() {
   const { t } = useTranslation();
+  const appTheme = useUIStore((s) => s.appTheme);
+  const rowHeight = getAppTheme(appTheme).rowHeight;
   const activeAccountId = useMailStore((s) => s.activeAccountId);
   const [stateAccountId, setStateAccountId] = useState(activeAccountId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -43,10 +47,12 @@ export default function StarredView() {
   const virtualizer = useVirtualizer({
     count: visibleMessages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 76,
+    estimateSize: () => rowHeight,
     measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 5,
   });
+
+  useEffect(() => { virtualizer.measure(); }, [appTheme, virtualizer]);
 
   function handleOpen(messageId: string) {
     setSelectedId(messageId);
@@ -110,16 +116,14 @@ export default function StarredView() {
   }
 
   return (
-    <div className="fade-in" style={{ display: "flex", height: "100%" }}>
-      <div style={{
-        width: scopedSelectedId ? "340px" : "100%",
+    <div className={`fade-in secondary-mail-workspace${scopedSelectedId ? " secondary-mail-workspace--detail-open" : ""}`}>
+      <div className="secondary-mail-list" style={{
         borderRight: scopedSelectedId ? "1px solid var(--color-border)" : "none",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        transition: "width 0.15s ease",
       }}>
-        <div style={{
+        <div className="secondary-mail-heading" style={{
           padding: "12px 16px", borderBottom: "1px solid var(--color-border)",
           fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)",
           display: "flex", alignItems: "center", gap: "8px",
@@ -153,6 +157,7 @@ export default function StarredView() {
                   }}
                 >
                   <MessageItem
+                    rowIndex={virtualItem.index}
                     message={msg}
                     isSelected={msg.id === scopedSelectedId}
                     onClick={() => handleOpen(msg.id)}
@@ -191,7 +196,7 @@ export default function StarredView() {
       </div>
 
       {scopedSelectedId && (
-        <div className="scroll-region starred-detail-scroll" style={{ flex: 1, overflow: "auto" }}>
+        <div className="secondary-mail-detail starred-detail-scroll">
           <MessageDetail
             messageId={scopedSelectedId}
             onBack={() => setSelectedId(null)}

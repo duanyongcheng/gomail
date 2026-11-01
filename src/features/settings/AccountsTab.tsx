@@ -33,6 +33,7 @@ import { useMailStore } from "@/stores/mail.store";
 import { useUIStore, type RealtimeStatus } from "@/stores/ui.store";
 import { useToastStore } from "@/stores/toast.store";
 import AccountSetup from "@/components/AccountSetup";
+import SenderIdentityNotice from "@/components/SenderIdentityNotice";
 import { extractErrorMessage } from "@/lib/extractErrorMessage";
 import { clearLegacySignature, getSignature, setSignature } from "@/lib/signatures";
 import { ACCOUNT_COLOR_PRESETS, assignAccountColors, getAccountColor } from "@/lib/accountColors";
@@ -224,6 +225,8 @@ export default function AccountsTab() {
           {t("settings.accountOrderHint", "The first account is the sender new messages default to.")}
         </p>
       )}
+
+      <SenderIdentityNotice />
 
       {/* Empty state */}
       {accounts.length === 0 ? (

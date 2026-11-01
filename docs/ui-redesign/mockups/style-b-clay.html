@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>方向 B · 暖陶 Warm Clay — Pebble Go UI</title>
+<style>
+  /* ============================================================
+     DIRECTION B — WARM CLAY / 暖陶
+     Thesis: keep Pebble's clay accent but make it an atmosphere
+     instead of a highlight. Soft tinted surfaces, rounded geometry,
+     generous padding, no hard rules. Depth comes from tone-on-tone
+     layering, never from borders.
+     ============================================================ */
+
+  :root {
+    --clay-900: #5a2a17;
+    --clay-700: #8c4127;
+    --clay-600: #b05a38;
+    --clay-500: #c4704e;   /* Pebble's existing accent, now a surface */
+    --clay-300: #e8b69c;
+    --clay-100: #f7e2d6;
+    --clay-50:  #fdf1ea;
+
+    --sand-50:  #fdfaf7;
+    --sand-100: #f8f2ec;
+    --sand-200: #f1e8df;
+    --sand-300: #e6d9cc;
+
+    --ink-900: #2a211c;
+    --ink-700: #574941;
+    --ink-500: #8a7a70;
+    --ink-300: #b5a79d;
+
+    --sage: #6f8577;
+    --sage-soft: #e6ece7;
+
+    --ui: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --display: "PingFang SC", "Noto Sans SC", -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+    --sidebar: 244px;
+    --list: 380px;
+    --sh-1: 0 1px 2px rgba(90, 42, 23, .05), 0 4px 12px rgba(90, 42, 23, .04);
+    --sh-2: 0 2px 6px rgba(90, 42, 23, .07), 0 12px 32px rgba(90, 42, 23, .07);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--ui); font-size: 13px; line-height: 1.6; color: var(--ink-900);
+    background: radial-gradient(1200px 700px at 20% -10%, #fbe9dd 0%, #f6ede5 45%, #efe6de 100%);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .window {
+    height: 100vh; width: min(1520px, 100%); margin: 0 auto;
+    display: grid; grid-template-rows: 40px 1fr 28px;
+    background: var(--sand-50);
+    box-shadow: 0 0 0 1px rgba(90,42,23,.06), 0 30px 80px -20px rgba(90,42,23,.25);
+    overflow: hidden;
+  }
+
+  /* ---------- titlebar ---------- */
+  .titlebar {
+    display: flex; align-items: center; gap: 10px; padding: 0 16px 0 88px;
+    background: linear-gradient(180deg, #fff9f5, #fdf4ee);
+    border-bottom: 1px solid var(--sand-200); user-select: none;
+  }
+  .mark {
+    width: 22px; height: 22px; border-radius: 8px;
+    background: linear-gradient(145deg, #d98a63, #a94f2c);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 2px 5px rgba(169,79,44,.3);
+    display: grid; place-items: center; color: #fff; font-size: 11px;
+  }
+  .app-name { font-weight: 650; font-size: 12.5px; letter-spacing: .01em; }
+  .acct-switch {
+    display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 4px;
+    background: #fff; border: 1px solid var(--sand-300); border-radius: 100px;
+    font-size: 11.5px; color: var(--ink-700); cursor: pointer; margin-left: 8px;
+    box-shadow: var(--sh-1);
+  }
+  .dot { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 8.5px; font-weight: 700; }
+  .dot.c1 { background: linear-gradient(145deg,#a08a68,#6f5c40); }
+  .dot.c2 { background: linear-gradient(145deg,#7d9a8c,#4e6b62); }
+
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .sync { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-500); }
+  .live { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 3px rgba(111,133,119,.18); }
+  .round-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: 0; background: transparent;
+    color: var(--ink-500); cursor: pointer; display: grid; place-items: center;
+  }
+  .round-btn:hover { background: var(--sand-200); color: var(--ink-900); }
+
+  /* ---------- body ---------- */
+  .body { display: grid; grid-template-columns: var(--sidebar) var(--list) 1fr; min-height: 0; }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    padding: 14px 12px 10px; display: flex; flex-direction: column; min-height: 0;
+    background: linear-gradient(180deg, #fbf2ea 0%, #f7ece3 100%);
+    border-right: 1px solid var(--sand-200);
+  }
+  .compose {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    height: 36px; border-radius: 12px; border: 0; width: 100%;
+    background: linear-gradient(150deg, #cf7c56, #ab4c28);
+    color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 4px 12px rgba(171,76,40,.3);
+    margin-bottom: 18px; font-family: inherit;
+  }
+  .compose:hover { filter: brightness(1.05); }
+
+  .section-label {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: var(--ink-300);
+    text-transform: uppercase; padding: 0 10px; margin: 12px 0 6px;
+  }
+  .nav-row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 7px 10px; border: 0; border-radius: 9px; background: transparent;
+    color: var(--ink-700); font-size: 13px; cursor: pointer; font-family: inherit;
+    text-align: left; transition: background .12s ease;
+  }
+  .nav-row:hover { background: #f3e5da; }
+  .nav-row[aria-current="true"] {
+    background: #fff; color: var(--clay-700); font-weight: 600;
+    box-shadow: var(--sh-1);
+  }
+  .nav-ic { width: 16px; height: 16px; display: grid; place-items: center; opacity: .8; flex: none; font-size: 13px; }
+  .pill {
+    margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px;
+    background: var(--clay-100); color: var(--clay-700); font-size: 10.5px; font-weight: 700;
+    display: grid; place-items: center; font-variant-numeric: tabular-nums;
+  }
+  .nav-row[aria-current="true"] .pill { background: var(--clay-500); color: #fff; }
+
+  .account {
+    margin-top: 16px; background: #fff; border-radius: 14px; padding: 10px;
+    box-shadow: var(--sh-1);
+  }
+  .account + .account { margin-top: 10px; }
+  .account-top { display: flex; align-items: center; gap: 9px; padding: 2px 4px 8px; }
+  .account-top .dot { width: 22px; height: 22px; font-size: 10px; }
+  .account-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+  .account-name small { display: block; font-size: 10.5px; color: var(--ink-500); font-weight: 400; }
+  .folder { padding-left: 32px; font-size: 12.5px; border-radius: 8px; }
+
+  .sidebar-foot { margin-top: auto; padding-top: 10px; display: flex; gap: 6px; }
+  .soft-btn {
+    flex: 1; height: 28px; border: 0; border-radius: 9px; background: #f2e4d8;
+    color: var(--ink-700); font-size: 11.5px; cursor: pointer; font-family: inherit;
+  }
+  .soft-btn:hover { background: #ecdccd; }
+
+  /* ---------- list ---------- */
+  .list { display: flex; flex-direction: column; min-height: 0; background: #fffdfb; border-right: 1px solid var(--sand-200); }
+  .list-head { padding: 16px 16px 12px; }
+  .title-row { display: flex; align-items: center; gap: 8px; }
+  .title { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+  .count-badge {
+    font-size: 11px; font-weight: 600; color: var(--clay-700); background: var(--clay-50);
+    border-radius: 100px; padding: 2px 8px;
+  }
+  .title-row .tools { margin-left: auto; display: flex; gap: 2px; }
+  .tool-btn {
+    width: 28px; height: 26px; border-radius: 8px; border: 0; background: transparent;
+    color: var(--ink-500); cursor: pointer; display: grid; place-items: center;
+  }
+  .tool-btn:hover { background: var(--sand-200); color: var(--ink-900); }
+
+  .search {
+    margin-top: 12px; display: flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 12px; border-radius: 12px;
+    background: #f7efe8; border: 1px solid transparent; color: var(--ink-500);
+  }
+  .search:focus-within { border-color: var(--clay-300); background: #fff; box-shadow: 0 0 0 3px rgba(196,112,78,.12); }
+  .search input { border: 0; outline: 0; background: transparent; flex: 1; font: inherit; font-size: 12.5px; color: var(--ink-900); }
+  .search input::placeholder { color: var(--ink-300); }
+
+  .chips { display: flex; gap: 6px; margin-top: 12px; overflow: hidden; }
+  .chip {
+    padding: 4px 11px; border-radius: 100px; border: 1px solid var(--sand-300);
+    background: #fff; font-size: 11.5px; color: var(--ink-700); cursor: pointer;
+    white-space: nowrap; font-family: inherit;
+  }
+  .chip:hover { border-color: var(--clay-300); }
+  .chip[aria-pressed="true"] { background: var(--clay-500); border-color: var(--clay-500); color: #fff; font-weight: 600; box-shadow: 0 2px 6px rgba(196,112,78,.28); }
+
+  .rows { flex: 1; overflow-y: auto; min-height: 0; padding: 8px 10px 20px; }
+  .day {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--ink-300);
+    padding: 12px 8px 6px; text-transform: uppercase;
+  }
+
+  .card {
+    position: relative; display: grid; grid-template-columns: 34px 1fr auto; gap: 0 10px;
+    padding: 11px 12px; border-radius: 14px; cursor: pointer; margin-bottom: 2px;
+    transition: background .12s ease;
+  }
+  .card:hover { background: var(--sand-100); }
+  .card[aria-selected="true"] {
+    background: #fff; box-shadow: var(--sh-2);
+    outline: 1px solid rgba(196,112,78,.22);
+  }
+  .card > div { min-width: 0; }
+  .card .avatar {
+    width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center;
+    font-size: 12px; font-weight: 700; color: #fff; grid-row: 1 / span 2;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .av-a { background: linear-gradient(145deg,#b7a281,#7d6a4a); }
+  .av-b { background: linear-gradient(145deg,#8fb0a2,#547a6c); }
+  .av-c { background: linear-gradient(145deg,#d6a07f,#a85832); }
+  .av-d { background: linear-gradient(145deg,#a8a8b8,#6b6b80); }
+
+  .card-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .from { font-size: 13px; font-weight: 500; color: var(--ink-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card.unread .from { font-weight: 700; color: var(--ink-900); }
+  .subject { font-size: 12.5px; color: var(--ink-700); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card.unread .subject { color: var(--ink-900); font-weight: 600; }
+  .snippet {
+    grid-column: 2 / -1; font-size: 12px; color: var(--ink-500); margin-top: 3px; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .when { font-size: 11px; color: var(--ink-300); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .card.unread .when { color: var(--clay-600); font-weight: 600; }
+  .badges { grid-column: 2 / -1; display: flex; gap: 4px; align-items: center; margin-top: 5px; flex-wrap: wrap; }
+  .badge {
+    font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 100px;
+    background: var(--clay-50); color: var(--clay-700); letter-spacing: .02em;
+  }
+  .badge.ok { background: var(--sage-soft); color: #4d6557; }
+  .badge.warn { background: #fbe7dc; color: #a9522b; }
+  .unread-ring {
+    position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--clay-500);
+  }
+
+  /* ---------- reader ---------- */
+  .reader { display: flex; flex-direction: column; min-height: 0; background: var(--sand-50); }
+  .reader-bar {
+    display: flex; align-items: center; gap: 6px; padding: 10px 18px; min-height: 50px;
+    border-bottom: 1px solid var(--sand-200);
+  }
+  .act {
+    height: 28px; padding: 0 10px; border-radius: 9px; border: 0; background: transparent;
+    color: var(--ink-700); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;
+    font-family: inherit;
+  }
+  .act:hover { background: #f3e5da; color: var(--ink-900); }
+  .spacer { flex: 1; }
+  .primary-act {
+    height: 30px; padding: 0 14px; border-radius: 10px; border: 0; cursor: pointer;
+    background: var(--clay-500); color: #fff; font-size: 12px; font-weight: 600;
+    box-shadow: 0 2px 8px rgba(196,112,78,.3); font-family: inherit;
+  }
+
+  .reader-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+  .sheet { max-width: 800px; margin: 22px 26px 40px; }
+  .sheet-card {
+    background: #fff; border-radius: 18px; padding: 30px 40px 34px;
+    box-shadow: var(--sh-1); outline: 1px solid rgba(90,42,23,.04);
+  }
+
+  .banner {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+    background: linear-gradient(100deg, #fdf3ec, #fbeadf);
+    border-radius: 12px; font-size: 12px; color: #8a5232;
+    margin-bottom: 22px;
+  }
+  .banner b { font-weight: 600; }
+  .banner .spacer { flex: 1; }
+  .banner button {
+    border: 0; background: rgba(255,255,255,.85); border-radius: 8px; padding: 4px 10px;
+    font-size: 11.5px; color: #8a5232; cursor: pointer; font-weight: 600; font-family: inherit;
+  }
+
+  h1.subject {
+    font-family: var(--display); font-size: 27px; line-height: 1.32; letter-spacing: -.025em;
+    font-weight: 700; margin: 0 0 20px; color: var(--ink-900);
+  }
+  .sender { display: flex; align-items: center; gap: 12px; }
+  .sender .avatar { width: 38px; height: 38px; border-radius: 12px; font-size: 13px; }
+  .sender-name { font-size: 13.5px; font-weight: 650; }
+  .sender-name span { font-weight: 400; color: var(--ink-500); font-size: 12px; }
+  .sender-meta { font-size: 11.5px; color: var(--ink-500); margin-top: 2px; }
+  .sender-meta b { color: var(--ink-700); font-weight: 500; }
+  .sender .round-btn { margin-left: auto; }
+
+  .body-prose { margin-top: 24px; font-size: 14px; line-height: 1.8; color: #3a2f29; }
+  .body-prose p { margin: 0 0 15px; }
+  .body-prose ul { margin: 0 0 15px; padding-left: 4px; list-style: none; }
+  .body-prose li { position: relative; padding-left: 20px; margin-bottom: 7px; }
+  .body-prose li::before {
+    content: ""; position: absolute; left: 5px; top: 10px; width: 5px; height: 5px;
+    border-radius: 50%; background: var(--clay-300);
+  }
+  .quote {
+    margin: 20px 0; padding: 14px 18px; border-radius: 12px;
+    background: var(--clay-50); color: var(--clay-700); font-size: 13.5px;
+    border-left: 3px solid var(--clay-300);
+  }
+
+  .attach-wrap { margin-top: 26px; }
+  .attach-title { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-300); margin-bottom: 10px; }
+  .attach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .attach-card {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--sand-100); border-radius: 12px; font-size: 12.5px;
+  }
+  .attach-card .ext {
+    width: 34px; height: 38px; border-radius: 8px; background: #fff; display: grid; place-items: center;
+    font-family: var(--mono); font-size: 9.5px; font-weight: 700; color: var(--clay-600);
+    box-shadow: var(--sh-1);
+  }
+  .attach-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attach-sub { font-size: 11px; color: var(--ink-500); }
+  .attach-card .round-btn { margin-left: auto; }
+
+  .reply-box {
+    margin-top: 22px; display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    border-radius: 14px; background: var(--sand-100); color: var(--ink-300); font-size: 12.5px;
+  }
+
+  /* ---------- statusbar ---------- */
+  .statusbar {
+    display: flex; align-items: center; gap: 14px; padding: 0 16px 0 88px;
+    background: #fbf3ec; border-top: 1px solid var(--sand-200);
+    font-size: 11px; color: var(--ink-500); user-select: none;
+  }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; }
+  .sb-right { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: #e2d2c4; border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="window">
+
+  <!-- TITLEBAR -->
+  <header class="titlebar">
+    <span class="mark">✉</span>
+    <span class="app-name">Pebble</span>
+    <button class="acct-switch">
+      <span class="dot c1">林</span>
+      林知遥 · lin@studio.design
+      <span style="color:var(--ink-300)">▾</span>
+    </button>
+    <div class="tb-right">
+      <span class="sync"><span class="live"></span> 刚刚同步 · 12 封新邮件</span>
+      <button class="round-btn" title="命令面板">⌘</button>
+      <button class="round-btn" title="设置">⚙</button>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <button class="compose">＋ 写邮件</button>
+
+      <div class="section-label">快捷</div>
+      <button class="nav-row" aria-current="true"><span class="nav-ic">▣</span>收件箱<span class="pill">12</span></button>
+      <button class="nav-row"><span class="nav-ic">✦</span>已加星<span class="pill">4</span></button>
+      <button class="nav-row"><span class="nav-ic">✈</span>已发送</button>
+      <button class="nav-row"><span class="nav-ic">▤</span>草稿<span class="pill">2</span></button>
+      <button class="nav-row"><span class="nav-ic">◧</span>看板</button>
+
+      <div class="section-label">账户</div>
+      <div class="account">
+        <div class="account-top">
+          <span class="dot c1">林</span>
+          <div class="account-name">lin@studio.design<small>个人 · 8 未读</small></div>
+        </div>
+        <button class="nav-row folder">收件箱<span class="pill">8</span></button>
+        <button class="nav-row folder">已加星<span class="pill">2</span></button>
+        <button class="nav-row folder">归档</button>
+        <button class="nav-row folder">垃圾箱</button>
+        <button class="nav-row folder">垃圾邮件<span class="pill">3</span></button>
+      </div>
+      <div class="account">
+        <div class="account-top">
+          <span class="dot c2">工</span>
+          <div class="account-name">hello@pebble.app<small>工作 · 4 未读</small></div>
+        </div>
+        <button class="nav-row folder">收件箱<span class="pill">4</span></button>
+        <button class="nav-row folder">草稿<span class="pill">1</span></button>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="soft-btn">⚙ 设置</button>
+        <button class="soft-btn">⌥ 快捷键</button>
+      </div>
+    </nav>
+
+    <!-- LIST -->
+    <section class="list">
+      <div class="list-head">
+        <div class="title-row">
+          <h1 class="title">收件箱</h1>
+          <span class="count-badge">12 未读</span>
+          <div class="tools">
+            <button class="tool-btn" title="批量">☑</button>
+            <button class="tool-btn" title="会话">◫</button>
+            <button class="tool-btn" title="更多">⋯</button>
+          </div>
+        </div>
+        <div class="search">
+          <span>⌕</span>
+          <input placeholder="搜索全部邮件" />
+        </div>
+        <div class="chips">
+          <button class="chip" aria-pressed="true">未读</button>
+          <button class="chip">附件</button>
+          <button class="chip">待回复</button>
+          <button class="chip">今天</button>
+        </div>
+      </div>
+
+      <div class="rows">
+        <div class="day">今天</div>
+
+        <article class="card unread" tabindex="0">
+          <span class="unread-ring"></span>
+          <div class="avatar av-a">沈</div>
+          <div class="card-top"><span class="from">沈墨白</span></div>
+          <div class="when">09:42</div>
+          <div class="subject">Re: 阅读器排版 —— 行高与字重的取舍</div>
+          <div class="snippet">三稿我都看过了。中文字体在 14.5px / 1.85 行高下最稳，但标题用宋体会让信息型邮件显得过于文艺……</div>
+          <div class="badges"><span class="badge">设计评审</span></div>
+        </article>
+
+        <article class="card unread" tabindex="0">
+          <span class="unread-ring"></span>
+          <div class="avatar av-d">N</div>
+          <div class="card-top"><span class="from">Notion</span></div>
+          <div class="when">08:15</div>
+          <div class="subject">你关注的「Pebble 设计语言」有 3 条新动态</div>
+          <div class="snippet">何川、沈墨白、林知遥 更新了同一个页面……</div>
+          <div class="badges"><span class="badge ok">更新</span></div>
+        </article>
+
+        <article class="card" aria-selected="true" tabindex="0">
+          <div class="avatar av-a">林</div>
+          <div class="card-top"><span class="from">林知遥</span></div>
+          <div class="when">21:04</div>
+          <div class="subject">周五的设计分享：我们把邮件客户端重新做了一遍</div>
+          <div class="snippet">分享大纲先发你过目。这次重点讲「离线优先」和「未知结果不重发」这两个约束如何反过来塑造界面……</div>
+          <div class="badges"><span class="badge">★ 已加星</span></div>
+        </article>
+
+        <div class="day">昨天</div>
+
+        <article class="card unread" tabindex="0">
+          <span class="unread-ring"></span>
+          <div class="avatar av-c">G</div>
+          <div class="card-top"><span class="from">GitHub</span></div>
+          <div class="when">18:30</div>
+          <div class="subject">[pebble-go] main 分支 CI 失败 #2481</div>
+          <div class="snippet">internal/store: TestQueueMessageOpsAtomic failed —— 期望 1 行 pending，实际 0 行。</div>
+          <div class="badges"><span class="badge warn">构建失败</span></div>
+        </article>
+
+        <article class="card" tabindex="0">
+          <div class="avatar av-b">茶</div>
+          <div class="card-top"><span class="from">茶室订阅</span></div>
+          <div class="when">11:20</div>
+          <div class="subject">十一月：霜降之后，白茶的三种泡法</div>
+          <div class="snippet">这一期我们聊聊冷泡与热泡的温度窗口，以及为什么今年的秋白茶格外甜。</div>
+        </article>
+
+        <article class="card unread" tabindex="0">
+          <span class="unread-ring"></span>
+          <div class="avatar av-c">何</div>
+          <div class="card-top"><span class="from">何川</span></div>
+          <div class="when">10:02</div>
+          <div class="subject">关于账户重连的那条提示文案</div>
+          <div class="snippet">「授权需要关注」这个说法太技术了。能不能改成「需要重新连接一次」？</div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- READER -->
+    <main class="reader">
+      <div class="reader-bar">
+        <button class="act">⌸ 归档</button>
+        <button class="act">⌫ 删除</button>
+        <button class="act">✉ 未读</button>
+        <button class="act">◷ 稍后</button>
+        <button class="act">⌗ 标签</button>
+        <span class="spacer"></span>
+        <button class="act">⭐</button>
+        <button class="primary-act">↩ 回复</button>
+      </div>
+
+      <div class="reader-scroll">
+        <div class="sheet">
+          <div class="sheet-card">
+
+            <div class="banner">
+              <span>◈</span>
+              <span><b>3 个图片</b> 与 <b>1 个跟踪像素</b> 已被阻止，发送方 linzhiyao.design</span>
+              <span class="spacer"></span>
+              <button>显示图片</button>
+              <button>信任发件人</button>
+            </div>
+
+            <h1 class="subject">周五的设计分享：<br/>我们把邮件客户端重新做了一遍</h1>
+
+            <div class="sender">
+              <div class="avatar av-a">林</div>
+              <div>
+                <div class="sender-name">林知遥 <span>&lt;lin@studio.design&gt;</span></div>
+                <div class="sender-meta">发送至 <b>hello@pebble.app</b> · 10 月 31 日 21:04 · 本地加密</div>
+              </div>
+              <button class="round-btn" title="更多">⋯</button>
+            </div>
+
+            <div class="body-prose">
+              <p>知遥你好，</p>
+              <p>分享大纲我先整理了一版，你看看顺序对不对。这次我不想讲「我们做了哪些功能」，而是想讲约束如何反过来决定界面。</p>
+              <ul>
+                <li>离线时所有操作先落本地，界面立刻给反馈，而不是转圈</li>
+                <li>远端写入结果未知时，绝不自动重发 —— 界面上要有一个明确的「结果未知」状态</li>
+                <li>加解密发生在核心层，阅读器只拿到已消毒的 HTML</li>
+              </ul>
+              <p>第三条其实最容易被忽视：我们花了很久才让「跟踪像素」这件事在界面上变得诚实。</p>
+              <div class="quote">好的邮件客户端不该让人感到「在用软件」，而是像在读信。</div>
+              <p>周五 15:00，会议室 B。需要我先发阅读材料吗？</p>
+              <p style="margin-bottom:0">知遥</p>
+            </div>
+
+            <div class="attach-wrap">
+              <div class="attach-title">2 个附件</div>
+              <div class="attach-grid">
+                <div class="attach-card">
+                  <span class="ext">PDF</span>
+                  <div><div class="attach-name">分享大纲_v3.pdf</div><div class="attach-sub">248 KB</div></div>
+                  <button class="round-btn">↓</button>
+                </div>
+                <div class="attach-card">
+                  <span class="ext">FIG</span>
+                  <div><div class="attach-name">阅读器排版探索.fig</div><div class="attach-sub">12.4 MB</div></div>
+                  <button class="round-btn">↓</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="reply-box">
+            <span class="dot c2">工</span>
+            回复 林知遥…　<span style="margin-left:auto;font-size:11px">⌘R</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <footer class="statusbar">
+    <span>离线可用 · 本地 1,284 封</span>
+    <div class="sb-right">
+      <span><span class="sdot" style="background:var(--clay-500);display:inline-block"></span> 待发送 1 封</span>
+      <span><span class="sdot" style="background:var(--sage);display:inline-block"></span> 队列 2 项</span>
+      <span>⌘K 命令</span>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

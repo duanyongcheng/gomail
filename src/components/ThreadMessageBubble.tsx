@@ -18,10 +18,12 @@ import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { ShadowDomEmail } from "./ShadowDomEmail";
 import ContactAddressAction from "./ContactAddressAction";
 import { uniqueContactParticipants } from "./contact-participants";
+import { messageThemeVariables, type MessageTheme } from "@/lib/messageThemes";
 
 interface Props {
   message: Message;
   defaultExpanded?: boolean;
+  theme?: MessageTheme;
 }
 
 function formatFullDate(timestamp: number): string {
@@ -35,7 +37,7 @@ export default function ThreadMessageBubble(props: Props) {
   return <ThreadBubble key={props.message.id} {...props} />;
 }
 
-function ThreadBubble({ message, defaultExpanded = false }: Props) {
+function ThreadBubble({ message, defaultExpanded = false, theme }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const client = useQueryClient();
@@ -118,49 +120,33 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
 
   return (
     <div
-      style={{
-        border: "1px solid var(--color-border)",
-        borderRadius: "8px",
-        marginBottom: "8px",
-        overflow: "hidden",
-        backgroundColor: "var(--color-bg)",
-      }}
+      className="thread-message-bubble"
+      data-expanded={expanded}
+      style={theme ? messageThemeVariables(theme) : undefined}
     >
       {/* Header - always visible */}
       <button
+        className="thread-message-bubble-toggle"
         onClick={() => {
           if (!expanded) openedUnreadVersion.current = manualUnreadVersion(client, message.id);
           setExpanded(!expanded);
         }}
         aria-expanded={expanded}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "10px 14px",
-          cursor: "pointer",
-          backgroundColor: expanded ? "var(--color-bg-hover)" : "transparent",
-          border: "none",
-          width: "100%",
-          textAlign: "left",
-          color: "inherit",
-          font: "inherit",
-        }}
       >
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         <span style={{ fontSize: "13px", fontWeight: 500, flex: 1 }}>
           {message.from_name || message.from_address}
         </span>
-        <span style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
+        <span className="thread-message-bubble-date">
           {formatFullDate(message.date)}
         </span>
       </button>
 
       {/* Body - only when expanded */}
       {expanded && (
-        <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border)" }}>
+        <div className="thread-message-bubble-content">
           {/* To/Cc line */}
-          <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "8px" }}>
+          <div style={{ fontSize: "12px", color: "var(--msg-meta-color, var(--color-text-secondary))", marginBottom: "8px" }}>
             <div>
               {t("thread.to")} {message.to_list?.map((r: { address: string }) => r.address).join(", ")}
             </div>
@@ -190,17 +176,17 @@ function ThreadBubble({ message, defaultExpanded = false }: Props) {
           {trust.error && !rendered && <p role="alert">{trust.error}</p>}
           {/* Body content */}
           {rendered?.html ? (
-            <ShadowDomEmail html={rendered.html} />
+            <ShadowDomEmail html={rendered.html} theme={theme} />
           ) : (
             <pre style={{
-              fontSize: "13px", color: "var(--color-text-primary)",
+              fontSize: "var(--msg-body-size, 13px)", color: "var(--msg-body-color, var(--color-text-primary))",
               whiteSpace: "pre-wrap", wordBreak: "break-word",
-              margin: 0, fontFamily: "inherit",
+              margin: 0, fontFamily: "var(--msg-body-font, inherit)", lineHeight: "var(--msg-body-line-height, 1.8)",
             }}>
               {message.body_text}
             </pre>
           )}
-          <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+          <div className="thread-message-bubble-actions">
             {(["reply", "reply-all", "forward"] as const).map((mode) => <button key={mode} disabled={busy} onClick={() => void compose(mode)}>
               {t(mode === "reply-all" ? "messageActions.replyAll" : `messageActions.${mode}`)}
             </button>)}

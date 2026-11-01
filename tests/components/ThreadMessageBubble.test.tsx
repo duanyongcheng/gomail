@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ThreadMessageBubble from "../../src/components/ThreadMessageBubble";
 import type { Message } from "../../src/lib/api";
 import { getRenderedHtml, getMessage, updateMessageFlags } from "../../src/lib/api";
+import { getMessageTheme } from "../../src/lib/messageThemes";
 const mocks = vi.hoisted(() => ({ openCompose: vi.fn(), invalidate: vi.fn(), changed: undefined as undefined | ((event: { payload: { accountId: string; email: string } }) => void) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: (_name: string, callback: typeof mocks.changed) => { mocks.changed = callback; return Promise.resolve(() => {}); } }));
 vi.mock("../../src/stores/compose.store", () => ({ useComposeStore: { getState: () => ({ openCompose: mocks.openCompose }) } }));
@@ -27,7 +28,7 @@ vi.mock("../../src/lib/api", () => ({
 }));
 
 vi.mock("../../src/components/ShadowDomEmail", () => ({
-  ShadowDomEmail: ({ html }: { html: string }) => <div>{html}</div>,
+  ShadowDomEmail: ({ html, theme }: { html: string; theme?: { id: string } }) => <div data-testid="thread-shadow" data-message-template={theme?.id}>{html}</div>,
 }));
 
 vi.mock("../../src/components/ContactAddressAction", () => ({
@@ -80,6 +81,14 @@ beforeEach(() => {
 afterEach(() => { cleanup(); client.clear(); });
 
 describe("ThreadMessageBubble", () => {
+  it("passes interface reading typography to expanded messages without changing read state", async () => {
+    render(<ThreadMessageBubble message={message} defaultExpanded theme={getMessageTheme("app")} />);
+    await screen.findByText("<p>Rendered</p>");
+    expect(screen.getByTestId("thread-shadow").getAttribute("data-message-template")).toBe("app");
+    expect(document.querySelector<HTMLElement>(".thread-message-bubble")?.style.getPropertyValue("--msg-body-font")).toContain("--font-reading");
+    expect(updateMessageFlags).not.toHaveBeenCalled();
+  });
+
   it("shows copied recipients when expanded", async () => {
     render(<ThreadMessageBubble message={message} defaultExpanded />);
 

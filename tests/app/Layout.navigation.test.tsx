@@ -1,4 +1,6 @@
-vi.mock("../../src/components/SenderIdentityNotice", () => ({ default: () => null }));
+vi.mock("../../src/components/SenderIdentityNotice", () => ({
+  default: () => <aside aria-label="Sender identity notice">Sender identity notice</aside>,
+}));
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Layout from "../../src/app/Layout";
@@ -171,6 +173,19 @@ describe("Layout navigation", () => {
     });
   });
 
+  it.each([
+    ["inbox", "Inbox panel"],
+    ["starred", "Starred panel"],
+    ["search", "Search panel"],
+    ["compose", "Compose panel"],
+  ] as const)("does not mount the account reminder in the %s shell", async (activeView, panelLabel) => {
+    useUIStore.setState({ activeView });
+    render(<Layout />);
+    expect(await screen.findByText(panelLabel)).toBeTruthy();
+    expect(screen.getByText("Title bar")).toBeTruthy();
+    expect(screen.queryByRole("complementary", { name: "Sender identity notice" })).toBeNull();
+  });
+
   it.each(["kanban", "contacts", "snoozed"] as const)("rejects a restored %s view before mounting it", (activeView) => {
     useUIStore.setState({ activeView });
     render(<Layout />);
@@ -192,5 +207,6 @@ describe("Layout navigation", () => {
     expect(screen.getByRole("button", { name: "Settings" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByText("Loading...")).toBeTruthy();
     expect(screen.queryByText("Inbox panel")).toBeNull();
+    expect(screen.queryByRole("complementary", { name: "Sender identity notice" })).toBeNull();
   });
 });

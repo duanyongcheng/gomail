@@ -148,6 +148,21 @@ describe("InboxView all accounts", () => {
     expect(mocks.useFoldersForAccountsQuery).toHaveBeenCalledWith(["account-1", "account-2"]);
     expect(mocks.useMessagesQuery).toHaveBeenCalledWith("a1-inbox", ["a1-inbox", "a2-inbox"]);
   });
+  it("keeps search inside the list panel and an honest empty reader beside it", () => {
+    const { container } = render(<InboxView />);
+    expect(screen.getByText("Search bar").closest(".mail-list-panel")).toBeTruthy();
+    expect(container.querySelector(".mail-list-title")?.textContent).toBe("sidebar.inbox");
+    expect(container.querySelector(".mail-reader-panel--empty")).toBeTruthy();
+    expect(screen.getByText("Your next good read")).toBeTruthy();
+    expect(container.querySelector(".mail-workspace--detail-open")).toBeNull();
+  });
+  it("marks an open detail for the narrow-screen list-to-reader transition", () => {
+    mocks.mailState.selectedMessageId = "selected";
+    const { container } = render(<InboxView />);
+    expect(container.querySelector(".mail-workspace--detail-open")).toBeTruthy();
+    expect(container.querySelector(".mail-reader-panel--empty")).toBeNull();
+    expect(screen.getByText("Message detail")).toBeTruthy();
+  });
   it("opens the explicitly selected Gmail draft manager without guessing a remote draft ID", () => {
     mocks.mailState.activeAccountId = "account-1";
     mocks.mailState.activeFolderId = "a1-drafts";

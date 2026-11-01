@@ -508,6 +508,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
 
   return (
     <div
+      className="compose-workspace"
       aria-busy={sendInProgress || savingAndClosing}
       inert={sendInProgress || savingAndClosing}
       style={{
@@ -519,9 +520,9 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
     >
       {/* Header */}
       <div
+        className="compose-workspace-header"
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 20px",
           borderBottom: "1px solid var(--color-border)",
           flexShrink: 0,
         }}
@@ -536,31 +537,33 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
             <ArrowLeft size={16} />
             {t("compose.back", "Back")}
           </button>
-          <span style={{ fontWeight: 600, fontSize: "15px", color: "var(--color-text-primary)" }}>
+          <span className="compose-workspace-title">
             {title}
           </span>
         </div>
-        <button type="button" onClick={() => void handleSaveAndClose()} disabled={!editorReady || !fromAccountId || pendingAttachmentStagingCount > 0 || savingAndClosing}
-          style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 13 }}>
-          <Save size={14} /> {t("compose.saveAndClose", "Save and close")}
-        </button>
-        <button
-          onClick={handleSend}
-          title={sendingUnavailable ? t("compose.sendUnavailable", "Sending is not available yet. You can save a local draft.") : undefined}
-          disabled={sendDisabled}
-          style={{
-            display: "flex", alignItems: "center", gap: "6px",
-            padding: "7px 20px",
-            backgroundColor: sendInProgress || sendMutation.isPending ? "var(--color-text-secondary)" : "var(--color-accent, #2563eb)",
-            color: "#fff", border: "none", borderRadius: "6px",
-            cursor: sendDisabled ? "default" : "pointer",
-            opacity: hasToRecipient ? 1 : 0.5,
-            fontSize: "13px", fontWeight: 500,
-          }}
-        >
-          <Send size={14} />
-          {sendInProgress || sendMutation.isPending ? t("compose.sending", "Sending...") : t("compose.send", "Send")}
-        </button>
+        <div className="compose-workspace-actions">
+          <button type="button" className="compose-save-button" onClick={() => void handleSaveAndClose()} disabled={!editorReady || !fromAccountId || pendingAttachmentStagingCount > 0 || savingAndClosing}>
+            <Save size={14} /> {t("compose.saveAndClose", "Save and close")}
+          </button>
+          <button
+            className="compose-send-button"
+            onClick={handleSend}
+            title={sendingUnavailable ? t("compose.sendUnavailable", "Sending is not available yet. You can save a local draft.") : undefined}
+            disabled={sendDisabled}
+            style={{
+              display: "flex", alignItems: "center", gap: "6px",
+              padding: "7px 20px",
+              backgroundColor: sendInProgress || sendMutation.isPending ? "var(--color-text-secondary)" : "var(--color-accent, #2563eb)",
+              color: "var(--color-accent-contrast, #fff)", border: "none", borderRadius: "var(--ui-radius-md, 6px)",
+              cursor: sendDisabled ? "default" : "pointer",
+              opacity: hasToRecipient ? 1 : 0.5,
+              fontSize: "13px", fontWeight: 500,
+            }}
+          >
+            <Send size={14} />
+            {sendInProgress || sendMutation.isPending ? t("compose.sending", "Sending...") : t("compose.send", "Send")}
+          </button>
+        </div>
       </div>
 
       <div role={saveStatus === "error" ? "alert" : "status"} style={{ padding: "6px 20px", fontSize: 12 }}>

@@ -17,6 +17,7 @@ const mockMailState = {
 };
 
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: vi.fn() },
   useTranslation: () => ({
     t: (_key: string, fallback?: string) => fallback ?? _key,
   }),
@@ -32,6 +33,7 @@ vi.mock("@tanstack/react-virtual", () => ({
         start: index * 76,
       })),
     measureElement: vi.fn(),
+    measure: vi.fn(),
   }),
 }));
 

@@ -326,7 +326,7 @@ describe("Sidebar account list", () => {
 
     const row = screen.getByTestId("account-row-account-work");
     const avatar = row.querySelector("span[aria-hidden='true']") as HTMLElement;
-    expect(avatar.style.borderRadius).toBe("50%");
+    expect(avatar.style.borderRadius).toBe("var(--sidebar-avatar-radius, 50%)");
 
     // Stated once: the avatar no longer repeats the number.
     expect(row.textContent?.match(/3/g)).toHaveLength(1);
@@ -344,7 +344,7 @@ describe("Sidebar account list", () => {
     // avatar instead of disappearing.
     expect(badge.style.position).toBe("absolute");
     const avatar = badge.parentElement?.firstElementChild as HTMLElement;
-    expect(avatar.style.borderRadius).toBe("50%");
+    expect(avatar.style.borderRadius).toBe("var(--sidebar-avatar-radius, 50%)");
   });
 
   it("keeps counting while the sidebar is collapsed", () => {

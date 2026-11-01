@@ -6,9 +6,15 @@ import { useAccountsQuery, useFoldersForAccountsQuery, useThreadMessagesQuery, u
 import { folderIdsForSelection } from "@/lib/folderAggregation";
 import ThreadMessageBubble from "@/components/ThreadMessageBubble";
 import Spinner from "@/components/Spinner";
+import { useUIStore } from "@/stores/ui.store";
+import { useResolvedAppTheme } from "@/hooks/useResolvedAppTheme";
+import { getMessageTheme, messageThemeVariables, resolveMessageTheme } from "@/lib/messageThemes";
 
 export default function ThreadView() {
   const { t } = useTranslation();
+  const messageThemeId = useUIStore((s) => s.messageTheme);
+  const colorMode = useResolvedAppTheme();
+  const theme = resolveMessageTheme(getMessageTheme(messageThemeId), colorMode === "dark");
   const selectedThreadId = useMailStore((s) => s.selectedThreadId);
   const setSelectedThreadId = useMailStore((s) => s.setSelectedThreadId);
   const activeFolderId = useMailStore((s) => s.activeFolderId);
@@ -44,9 +50,9 @@ export default function ThreadView() {
   </div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: "var(--color-bg)" }}>
+    <div className="thread-reader" data-message-theme={theme.id} style={messageThemeVariables(theme)}>
       {/* Header */}
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-border)", flexShrink: 0 }}>
+      <div className="thread-reader-header">
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <button
             onClick={() => setSelectedThreadId(null)}
@@ -58,10 +64,7 @@ export default function ThreadView() {
           >
             <ArrowLeft size={18} />
           </button>
-          <h2 style={{
-            fontSize: "15px", fontWeight: "600", color: "var(--color-text-primary)",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0, flex: 1,
-          }}>
+          <h2 className="thread-reader-title">
             {thread?.subject || threadMessages[threadMessages.length - 1]?.subject || t("thread.title")}
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--color-text-secondary)", fontSize: "12px" }}>
@@ -72,13 +75,14 @@ export default function ThreadView() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="scroll-region thread-message-scroll" style={{ flex: 1, overflow: "auto", padding: "16px" }}>
+      <div ref={scrollRef} className="scroll-region thread-message-scroll">
         {threadMessages.length === 0 && <p>{t("common.noThreads")}</p>}
         {threadMessages.map((msg, i) => (
           <ThreadMessageBubble
             key={msg.id}
             message={msg}
             defaultExpanded={i === threadMessages.length - 1}
+            theme={theme}
           />
         ))}
       </div>

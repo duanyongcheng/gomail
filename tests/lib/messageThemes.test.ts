@@ -110,13 +110,14 @@ function arrangementSignature(theme: MessageTheme): string {
 describe("message theme registry", () => {
   it("ships a pickable set of templates with unique ids", () => {
     expect(MESSAGE_THEMES.length).toBeGreaterThanOrEqual(4);
-    expect(MESSAGE_THEMES.length).toBeLessThanOrEqual(8);
+    expect(MESSAGE_THEMES.length).toBe(9);
     expect(new Set(MESSAGE_THEME_IDS).size).toBe(MESSAGE_THEMES.length);
     expect(MESSAGE_THEME_IDS[0]).toBe(DEFAULT_MESSAGE_THEME);
   });
 
   it("lists the neutral arrangements first, then the brand skins", () => {
     expect(MESSAGE_THEME_IDS).toEqual([
+      "app",
       "card",
       "mailbox",
       "letter",
@@ -217,6 +218,18 @@ describe("message theme registry", () => {
     expect(getMessageTheme(null).id).toBe(DEFAULT_MESSAGE_THEME);
     expect(getMessageTheme(undefined).id).toBe(DEFAULT_MESSAGE_THEME);
     expect(getMessageTheme("telegram").id).toBe("telegram");
+  });
+
+  it("follows interface typography and surfaces only when explicitly using the app template", () => {
+    const theme = getMessageTheme("app");
+    expect(DEFAULT_MESSAGE_THEME).toBe("app");
+    expect(theme.paletteMode).toBe("adaptive");
+    expect(theme.page.background).toContain("--color-reader-bg");
+    expect(theme.type.displayFamily).toContain("--font-display");
+    expect(theme.type.body.fontFamily).toContain("--font-reading");
+    expect(messageThemeVariables(theme)["--msg-body-line-height"]).toContain("--ui-reader-leading");
+    expect(messageThemeContentCss(theme)).toContain(MESSAGE_THEME_DARK_SHEET_CSS);
+    expect(getMessageTheme("card").type.fontFamily).not.toContain("--font-");
   });
 
   it("validates stored ids instead of trusting them", () => {
@@ -577,6 +590,26 @@ describe("message theme content css", () => {
     }
   });
 
+  it("gives interface-native prose style-aware defaults without forcing sender colours", () => {
+    const css = messageThemeContentCss(getMessageTheme("app"));
+    expect(css).toContain(':host-context([data-ui-theme="editorial"])');
+    expect(css).toContain("blockquote { font-style: italic; }");
+    expect(css).toContain("background: color-mix(in srgb, currentColor 4%, transparent)");
+    expect(css).not.toContain("!important");
+    expect(messageThemeContentCss(getMessageTheme("card"))).not.toContain("data-ui-theme");
+  });
+
+  it("keeps links readable on the interface-native dark-mode white sheet", () => {
+    const css = messageThemeContentCss(getMessageTheme("app"));
+    const linkRule = ':host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content a';
+    expect(css).toContain(linkRule);
+    expect(css).toContain("color: #315fbd;");
+    expect(css.indexOf(linkRule)).toBeGreaterThan(css.indexOf(MESSAGE_THEME_DARK_SHEET_CSS));
+    expect(css).not.toContain("!important");
+    expect(messageThemeContentCss(getMessageTheme("wechat"))).not.toContain(linkRule);
+    expect(messageThemeContentCss(getMessageTheme("card"))).not.toContain(linkRule);
+  });
+
   it("lends the display face to the sender's headings only when the theme has one", () => {
     for (const theme of MESSAGE_THEMES) {
       const css = messageThemeContentCss(theme);
@@ -584,10 +617,10 @@ describe("message theme content css", () => {
       expect(css.includes(" h1")).toBe(hasOwnFace);
       if (hasOwnFace) expect(css).toContain(`font-family: ${theme.type.displayFamily}`);
     }
-    // Only Claude sets a display face its body copy does not already use —
+    // Interface typography and Claude distinguish headings from body copy.
     // Letter's body is serif too, so its headings have nothing to switch to.
     const own = MESSAGE_THEMES.filter((t) => t.type.displayFamily !== t.type.body.fontFamily);
-    expect(own.map((t) => t.id)).toEqual(["claude"]);
+    expect(own.map((t) => t.id)).toEqual(["app", "claude"]);
   });
 
   it("never leaks the template id into the injected css", () => {

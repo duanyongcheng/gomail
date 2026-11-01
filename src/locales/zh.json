@@ -1,4 +1,20 @@
 {
+  "appThemes": {
+    "title": "界面主题",
+    "description": "同一个邮箱，五种视觉风格。明暗模式与邮件阅读模板可独立选择。",
+    "colorMode": "明暗模式",
+    "selected": "使用中",
+    "paper": "静纸",
+    "paperDesc": "暖白纸、衬线标题与细分隔线，为长邮件留一处安静。",
+    "clay": "暖陶",
+    "clayDesc": "陶土暖色、柔和圆角与轻轻浮起的卡片。",
+    "glass": "午夜玻璃",
+    "glassDesc": "分层面板、电光蓝与紧凑精确的信息呈现。",
+    "editorial": "编辑部",
+    "editorialDesc": "杂志式排版、醒目粗线与一抹编辑红。",
+    "minimal": "极简工具",
+    "minimalDesc": "中性界面、紧凑列表与单一蓝色强调，只保留必要。"
+  },
   "cloudDrafts": {
     "notice": "自动保存仅在本机加密，不会自动同步 Gmail。请主动上传已保存的修改；发送已关联的草稿时，Gmail 接受发送后才会移除其云端副本。请勿同时在 Gmail 和 Pebble 编辑同一份草稿。",
     "localDelete": "仅删除本地草稿，Gmail 副本仍保留在 Gmail 中。",
@@ -125,6 +141,11 @@
     "expand": "展开侧边栏"
   },
   "inbox": {
+    "loadedMessages": "已载入 {{count}} 封",
+    "loadedThreads": "已载入 {{count}} 个会话",
+    "selectMessage": "选一封邮件，静心阅读",
+    "selectMessageHint": "从列表中选择邮件或会话，即可在此阅读。",
+    "mailbox": "邮箱",
     "searchPlaceholder": "搜索邮件...",
     "noSubject": "（无主题）",
     "emailContent": "邮件内容",
@@ -1053,6 +1074,8 @@
   "messageThemes": {
     "title": "邮件详情主题",
     "picker": "邮件详情主题",
+    "app": "跟随界面",
+    "appDesc": "使用当前界面风格的阅读排版、字体与背景。",
     "card": "卡片",
     "cardDesc": "居中阅读栏 + 双卡片，配色跟随应用的明暗模式。",
     "mailbox": "收件箱",

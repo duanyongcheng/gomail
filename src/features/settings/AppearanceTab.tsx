@@ -7,6 +7,7 @@ import type { BackgroundImageFit, Language, Theme } from "@/stores/ui.store";
 import { backgroundImageUrl, deleteBackgroundImage, importBackgroundImage } from "@/lib/backgroundImage";
 import { MESSAGE_THEMES } from "@/lib/messageThemes";
 import { MessageThemeOption } from "@/components/MessageThemePicker";
+import AppThemePicker from "@/components/AppThemePicker";
 
 const THEMES: { id: Theme; labelKey: string; descKey: string }[] = [
   { id: "light", labelKey: "settings.themeLight", descKey: "settings.themeLightDesc" },
@@ -38,6 +39,8 @@ export default function AppearanceTab() {
   const [error, setError] = useState<string | null>(null);
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
+  const appTheme = useUIStore((s) => s.appTheme);
+  const setAppTheme = useUIStore((s) => s.setAppTheme);
   const language = useUIStore((s) => s.language);
   const setLanguage = useUIStore((s) => s.setLanguage);
   const backgroundImage = useUIStore((s) => s.backgroundImage);
@@ -87,17 +90,26 @@ export default function AppearanceTab() {
   }
 
   return (
-    <div>
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px" }}>{t("settings.theme")}</h3>
-      <div style={{ display: "flex", gap: "12px" }}>
+    <div className="appearance-settings">
+      <h3 className="appearance-section-title">{t("appThemes.title", "Interface theme")}</h3>
+      <p className="appearance-section-description">
+        {t("appThemes.description", "Five visual directions for the same mailbox. Color mode and message templates stay independent.")}
+      </p>
+      <AppThemePicker activeTheme={appTheme} onSelect={setAppTheme} />
+      <h3 className="appearance-section-title appearance-section-title--spaced">{t("appThemes.colorMode", "Color mode")}</h3>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
         {THEMES.map((th) => (
           <button
             key={th.id}
+            type="button"
+            data-color-mode={th.id}
+            aria-pressed={theme === th.id}
             onClick={() => setTheme(th.id)}
             style={{
               flex: 1,
+              minWidth: 0,
               padding: "16px",
-              borderRadius: "8px",
+              borderRadius: "var(--ui-radius-md)",
               border: theme === th.id ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
               backgroundColor: theme === th.id ? "var(--color-bg-hover)" : "transparent",
               cursor: "pointer",
@@ -125,7 +137,7 @@ export default function AppearanceTab() {
         aria-label={t("settings.messageTheme", "Message theme")}
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(250px, 100%), 1fr))",
           gap: "8px",
         }}
       >

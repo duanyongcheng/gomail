@@ -1,9 +1,7 @@
 import TitleBar from "../components/TitleBar";
 import WindowResizeHandles from "../components/WindowResizeHandles";
-import SenderIdentityNotice from "../components/SenderIdentityNotice";
 import Sidebar from "../components/Sidebar";
 import StatusBar from "../components/StatusBar";
-import ComposeFAB from "../components/ComposeFAB";
 import InboxView from "../features/inbox/InboxView";
 import CommandPalette from "../features/command-palette/CommandPalette";
 import ToastContainer from "../components/ToastContainer";
@@ -67,6 +65,16 @@ export default function Layout() {
   const theme = useUIStore((s) => s.theme);
   const backgroundImage = useUIStore((s) => s.backgroundImage);
   const { t } = useTranslation();
+  const viewLabels = {
+    inbox: t("sidebar.inbox", "Inbox"),
+    compose: t("sidebar.compose", "Compose"),
+    starred: t("sidebar.starred", "Starred"),
+    search: t("sidebar.search", "Search"),
+    settings: t("sidebar.settings", "Settings"),
+    contacts: t("sidebar.contacts", "Contacts"),
+    kanban: t("sidebar.kanban", "Kanban"),
+    snoozed: t("sidebar.snoozed", "Snoozed"),
+  };
   const queryClient = useQueryClient();
 
   useKeyboard();
@@ -136,8 +144,7 @@ export default function Layout() {
     >
       <AppBackground image={isFeatureAvailable("backgroundImage") ? backgroundImage : null} />
       <WindowResizeHandles />
-      <TitleBar />
-      <SenderIdentityNotice />
+      <TitleBar viewLabel={viewLabels[displayedView]} />
       <div className="flex flex-1 min-h-0 app-shell-content">
         <Sidebar />
         <main className="flex-1 min-w-0 overflow-auto scroll-region app-main-scroll" style={{ position: "relative" }}>
@@ -156,7 +163,6 @@ export default function Layout() {
           </ViewErrorBoundary>
         </main>
       </div>
-      <ComposeFAB />
       <StatusBar />
       <CommandPalette />
       <ToastContainer />

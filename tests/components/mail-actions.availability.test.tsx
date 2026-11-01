@@ -22,7 +22,7 @@ import { useConfirmStore } from "@/stores/confirm.store";
 vi.mock("@/mygo", () => ({ MessageService: { archive: vi.fn(), delete: vi.fn(), restore: vi.fn(), batchDelete: vi.fn(), rendered: vi.fn(), get: vi.fn(), flags: vi.fn() } }));
 vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, fallback?: string | { defaultValue?: string }) => typeof fallback === "string" ? fallback : fallback?.defaultValue ?? key }) }));
-vi.mock("@tanstack/react-virtual", () => ({ useVirtualizer: ({ count }: { count: number }) => ({ getTotalSize: () => count * 76, getVirtualItems: () => Array.from({ length: count }, (_, index) => ({ index, key: index, start: index * 76 })), measureElement: vi.fn(), scrollToIndex: vi.fn() }) }));
+vi.mock("@tanstack/react-virtual", () => ({ useVirtualizer: ({ count }: { count: number }) => ({ getTotalSize: () => count * 76, getVirtualItems: () => Array.from({ length: count }, (_, index) => ({ index, key: index, start: index * 76 })), measureElement: vi.fn(), measure: vi.fn(), scrollToIndex: vi.fn() }) }));
 
 const message: Message = {
   id: "m", account_id: "a", remote_id: "remote", message_id_header: null, in_reply_to: null, references_header: null,

@@ -300,6 +300,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   const layout = theme.layout;
   const inColumns = layout.structure === "columns";
   const toolbarInSidebar = layout.toolbar === "sidebar";
+  const followInterface = theme.id === "app";
 
   const backButton = (
     <button
@@ -437,9 +438,139 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
     <AttachmentList messageId={message.id} variant={inColumns ? "panel" : "bar"} />
   ) : null;
 
+  const privacyNode = rendered ? (
+    <PrivacyBanner
+      rendered={rendered}
+      onLoadImages={handleLoadImages}
+      onTrustSender={handleTrustSender}
+      busy={trust.busy}
+      error={trust.error}
+    />
+  ) : null;
+  const summaryNode = isFeatureAvailable("ai") && showAiSummary ? (
+    <AiSummaryCard messageId={messageId} onClose={() => setShowAiSummary(false)} />
+  ) : null;
+  const titleNode = (
+    <h2 className="message-detail-title">
+      {message.subject || t("inbox.noSubject", "(no subject)")}
+    </h2>
+  );
+  const bodyNode = (
+    <div
+      className="scroll-region message-body-scroll"
+      tabIndex={0}
+      role="region"
+      aria-label={t("messageDetail.body", "Message body")}
+      style={{
+        flex: followInterface ? "none" : 1,
+        overflow: followInterface ? "visible" : "auto",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: followInterface ? 0 : "var(--msg-page-padding)",
+      }}
+      onContextMenu={handleContextMenu}
+    >
+      <div
+        className="message-body-surface"
+        style={{
+          width: "100%",
+          maxWidth: "var(--msg-content-width)",
+          boxSizing: "border-box",
+          background: "var(--msg-surface-background)",
+          border: "var(--msg-surface-border)",
+          borderRadius: "var(--msg-surface-radius)",
+          boxShadow: "var(--msg-surface-shadow)",
+          padding: "var(--msg-surface-padding)",
+        }}
+      >
+        {bilingualMode && bilingualLoading ? (
+          <div style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>{t("common.translating", "Translating...")}</div>
+        ) : bilingualMode && bilingualResult ? (
+          <>
+            {bilingualWarning && (
+              <div
+                role="status"
+                style={{
+                  fontSize: "12px",
+                  color: "var(--color-warning, #e67e22)",
+                  marginBottom: "10px",
+                }}
+              >
+                {t(
+                  "common.translationIncomplete",
+                  "Some content could not be translated ({{done}}/{{total}}).",
+                  { done: bilingualWarning.done, total: bilingualWarning.total },
+                )}
+              </div>
+            )}
+            {(bilingualResult as TranslateResult & { _isHtml?: boolean })._isHtml ? (
+              <ShadowDomEmail html={bilingualResult.translated} theme={theme} />
+            ) : (
+              <BilingualView segments={bilingualResult.segments ?? []} />
+            )}
+          </>
+        ) : bilingualMode ? (
+          <>
+            <div
+              role="alert"
+              style={{
+                fontSize: "12px",
+                lineHeight: 1.5,
+                color: "var(--color-error, #dc2626)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                marginBottom: "12px",
+              }}
+            >
+              {bilingualErrorReason(bilingualError)}
+            </div>
+            {/* The mail itself stays readable — a failed translation must not hide it. */}
+            {rendered && rendered.html ? (
+              <ShadowDomEmail html={rendered.html} theme={theme} />
+            ) : (
+              <pre
+                className="message-body-text"
+                style={{
+                  fontSize: "var(--msg-body-size)",
+                  lineHeight: "var(--msg-body-line-height)" as CSSProperties["lineHeight"],
+                  color: "var(--msg-body-color)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  margin: 0,
+                  fontFamily: "var(--msg-body-font)",
+                }}
+              >
+                {message.body_text}
+              </pre>
+            )}
+          </>
+        ) : rendered && rendered.html ? (
+          <ShadowDomEmail html={rendered.html} theme={theme} />
+        ) : (
+          <pre
+            className="message-body-text"
+            style={{
+              fontSize: "var(--msg-body-size)",
+              lineHeight: "var(--msg-body-line-height)" as CSSProperties["lineHeight"],
+              color: "var(--msg-body-color)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              margin: 0,
+              fontFamily: "var(--msg-body-font)",
+            }}
+          >
+            {message.body_text}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
-      className="message-detail-container"
+      className={`message-detail-container${followInterface ? " message-detail-container--app" : ""}`}
       data-message-theme={theme.id}
       data-msg-structure={layout.structure}
       data-msg-align={layout.align}
@@ -456,167 +587,68 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
         ...messageThemeVariables(theme),
       }}
     >
-      {/* Header — subject, sender identity and the action toolbar */}
-      <div className="message-detail-header">
-        <div className="message-detail-header-inner">
-          {/* `display: contents` promotes these three into the header grid, so the
-              back button, subject and icon cluster can be placed by template. */}
-          <div className="message-detail-topbar">
+      {followInterface ? (
+        <>
+          <div className="message-detail-header app-reader-toolbar">
             {backButton}
-            <h2 className="message-detail-title">
-              {message.subject || t("inbox.noSubject", "(no subject)")}
-            </h2>
+            {actionToolbar}
             {headerActions}
           </div>
-          {!inColumns && avatarNode}
-          {!inColumns && identityNode}
-          {!inColumns && !toolbarInSidebar && actionToolbar}
-        </div>
-      </div>
-
-      {/* Body — one column, or a details sidebar plus the reading column */}
-      <div className="message-detail-body-area">
-        {inColumns && (
-          <aside className="message-detail-aside">
-            {avatarNode}
-            {identityNode}
-            {actionToolbar}
-            {attachmentNode}
-          </aside>
-        )}
-
-        <div className="message-detail-reading">
-          {/* Privacy Banner */}
-          {rendered && (
-            <PrivacyBanner
-              rendered={rendered}
-              onLoadImages={handleLoadImages}
-              onTrustSender={handleTrustSender}
-              busy={trust.busy}
-              error={trust.error}
-            />
-          )}
-
-          {/* AI summary — sits outside the body so reading it can never alter the mail */}
-          {isFeatureAvailable("ai") && showAiSummary && (
-            <AiSummaryCard messageId={messageId} onClose={() => setShowAiSummary(false)} />
-          )}
-
-          <div
-            className="scroll-region message-body-scroll"
-            tabIndex={0}
-            role="region"
-            aria-label={t("messageDetail.body", "Message body")}
-            style={{
-              flex: 1,
-              overflow: "auto",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              padding: "var(--msg-page-padding)",
-            }}
-            onContextMenu={handleContextMenu}
-          >
-            <div
-              className="message-body-surface"
-              style={{
-                width: "100%",
-                maxWidth: "var(--msg-content-width)",
-                boxSizing: "border-box",
-                background: "var(--msg-surface-background)",
-                border: "var(--msg-surface-border)",
-                borderRadius: "var(--msg-surface-radius)",
-                boxShadow: "var(--msg-surface-shadow)",
-                padding: "var(--msg-surface-padding)",
-              }}
-            >
-              {bilingualMode && bilingualLoading ? (
-                <div style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>{t("common.translating", "Translating...")}</div>
-              ) : bilingualMode && bilingualResult ? (
-                <>
-                  {bilingualWarning && (
-                    <div
-                      role="status"
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--color-warning, #e67e22)",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      {t(
-                        "common.translationIncomplete",
-                        "Some content could not be translated ({{done}}/{{total}}).",
-                        { done: bilingualWarning.done, total: bilingualWarning.total },
-                      )}
-                    </div>
-                  )}
-                  {(bilingualResult as TranslateResult & { _isHtml?: boolean })._isHtml ? (
-                    <ShadowDomEmail html={bilingualResult.translated} theme={theme} />
-                  ) : (
-                    <BilingualView segments={bilingualResult.segments ?? []} />
-                  )}
-                </>
-              ) : bilingualMode ? (
-                <>
-                  <div
-                    role="alert"
-                    style={{
-                      fontSize: "12px",
-                      lineHeight: 1.5,
-                      color: "var(--color-error, #dc2626)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "6px",
-                      padding: "8px 10px",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    {bilingualErrorReason(bilingualError)}
-                  </div>
-                  {/* The mail itself stays readable — a failed translation must not hide it. */}
-                  {rendered && rendered.html ? (
-                    <ShadowDomEmail html={rendered.html} theme={theme} />
-                  ) : (
-                    <pre
-                      className="message-body-text"
-                      style={{
-                        fontSize: "var(--msg-body-size)",
-                        lineHeight: "var(--msg-body-line-height)" as CSSProperties["lineHeight"],
-                        color: "var(--msg-body-color)",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        margin: 0,
-                        fontFamily: "var(--msg-body-font)",
-                      }}
-                    >
-                      {message.body_text}
-                    </pre>
-                  )}
-                </>
-              ) : rendered && rendered.html ? (
-                <ShadowDomEmail html={rendered.html} theme={theme} />
-              ) : (
-                <pre
-                  className="message-body-text"
-                  style={{
-                    fontSize: "var(--msg-body-size)",
-                    lineHeight: "var(--msg-body-line-height)" as CSSProperties["lineHeight"],
-                    color: "var(--msg-body-color)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    margin: 0,
-                    fontFamily: "var(--msg-body-font)",
-                  }}
-                >
-                  {message.body_text}
-                </pre>
-              )}
+          <div className="scroll-region app-reader-scroll">
+            <article className="app-reader-sheet">
+              {privacyNode}
+              {titleNode}
+              <div className="app-reader-sender">
+                {avatarNode}
+                {identityNode}
+              </div>
+              {summaryNode}
+              {bodyNode}
+              {attachmentNode}
+            </article>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Header — subject, sender identity and the action toolbar */}
+          <div className="message-detail-header">
+            <div className="message-detail-header-inner">
+              {/* `display: contents` promotes these three into the header grid, so the
+                  back button, subject and icon cluster can be placed by template. */}
+              <div className="message-detail-topbar">
+                {backButton}
+                {titleNode}
+                {headerActions}
+              </div>
+              {!inColumns && avatarNode}
+              {!inColumns && identityNode}
+              {!inColumns && !toolbarInSidebar && actionToolbar}
             </div>
           </div>
 
-          {/* Attachments — a footer bar in one column, a sidebar panel in two */}
-          {!inColumns && attachmentNode}
-        </div>
-      </div>
+          {/* Body — one column, or a details sidebar plus the reading column */}
+          <div className="message-detail-body-area">
+            {inColumns && (
+              <aside className="message-detail-aside">
+                {avatarNode}
+                {identityNode}
+                {actionToolbar}
+                {attachmentNode}
+              </aside>
+            )}
+
+            <div className="message-detail-reading">
+              {privacyNode}
+              {summaryNode}
+
+              {bodyNode}
+
+              {/* Attachments — a footer bar in one column, a sidebar panel in two */}
+              {!inColumns && attachmentNode}
+            </div>
+          </div>
+        </>
+      )}
 
       {isFeatureAvailable("translation") && showTranslate && (
         <div ref={translateRef}>

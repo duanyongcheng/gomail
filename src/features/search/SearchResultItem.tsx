@@ -10,7 +10,7 @@ function highlightTerms(text: string, query: string): React.ReactNode {
   const parts = text.split(regex);
   return parts.map((part, i) =>
     regex.test(part) ? (
-      <mark key={i} style={{ background: "var(--color-accent)", color: "#fff", borderRadius: "2px", padding: "0 1px" }}>{part}</mark>
+      <mark key={i} style={{ background: "var(--color-accent-soft)", color: "var(--color-text-primary)", borderRadius: "2px", padding: "0 1px" }}>{part}</mark>
     ) : (
       part
     ),
@@ -34,6 +34,7 @@ export default function SearchResultItem({ hit, message, isSelected, onClick, qu
   return (
     <div
       role="option"
+      className="search-result-row"
       aria-selected={isSelected}
       tabIndex={0}
       onClick={onClick}
@@ -42,13 +43,6 @@ export default function SearchResultItem({ hit, message, isSelected, onClick, qu
         padding: "10px 14px",
         cursor: "pointer",
         borderBottom: "1px solid var(--color-border)",
-        backgroundColor: isSelected ? "var(--color-bg-hover)" : "transparent",
-      }}
-      onMouseEnter={(e) => {
-        if (!isSelected) e.currentTarget.style.backgroundColor = "var(--color-bg-hover)";
-      }}
-      onMouseLeave={(e) => {
-        if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
       }}
     >
       <div

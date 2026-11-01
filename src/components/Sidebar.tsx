@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   Inbox,
   Send,
+  PenLine,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,9 +50,6 @@ import type { Account, Folder as FolderType } from "../lib/api";
 
 const EMPTY_ACCOUNTS: Account[] = [];
 const EMPTY_FOLDERS: FolderType[] = [];
-
-const EXPANDED_WIDTH = 216;
-const COLLAPSED_WIDTH = 60;
 
 /** The rail has no labels, so its icons carry a little more of the row. */
 const ICON_SIZE = 16;
@@ -101,6 +99,8 @@ export default function Sidebar() {
   const collapsedAccountGroups = useUIStore((s) => s.collapsedAccountGroups);
   const toggleAccountGroup = useUIStore((s) => s.toggleAccountGroup);
   const searchShortcut = useShortcutStore((s) => s.bindings["focus-search"]);
+  const composeShortcut = useShortcutStore((s) => s.bindings["compose-new"]);
+  const openCompose = useComposeStore((s) => s.openCompose);
   const activeFolderId = useMailStore((s) => s.activeFolderId);
   const activeAccountId = useMailStore((s) => s.activeAccountId);
   const setActiveAccountId = useMailStore((s) => s.setActiveAccountId);
@@ -636,17 +636,23 @@ export default function Sidebar() {
       aria-label={t("sidebar.navigation", "Sidebar")}
       className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}
       style={{
-        width: sidebarCollapsed ? `${COLLAPSED_WIDTH}px` : `${EXPANDED_WIDTH}px`,
         flexShrink: 0,
-        backgroundColor: "var(--color-sidebar-bg)",
-        borderRight: "1px solid var(--color-border)",
-        transition: "width 150ms ease",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
       }}
     >
+      <div className="sidebar-compose-wrap">
+        <button
+          type="button"
+          className="sidebar-compose-button"
+          aria-label={t("sidebar.compose", "Compose")}
+          title={t("sidebar.compose", "Compose")}
+          disabled={activeView === "compose"}
+          onClick={() => openCompose("new")}
+        >
+          <PenLine size={sidebarCollapsed ? COLLAPSED_ICON_SIZE : ICON_SIZE} aria-hidden="true" />
+          {!sidebarCollapsed && <span>{t("sidebar.compose", "Compose")}</span>}
+          {!sidebarCollapsed && composeShortcut && <kbd>{composeShortcut}</kbd>}
+        </button>
+      </div>
       {/* Search. It reads as a field because it opens a view rather than
           filtering the list in place, and it names the key that gets there. */}
       <nav className="sidebar-nav sidebar-nav--top" aria-label={t("sidebar.search", "Search")}>
@@ -693,6 +699,7 @@ export default function Sidebar() {
           // the welcome state in the main pane asks for an account. They are not
           // indented: there is no group above them to belong to.
           <div className="sidebar-mailboxes">
+            {!sidebarCollapsed && <div className="sidebar-section-label">{t("sidebar.mail", "Mail")}</div>}
             {pinnedMailRows}
             {DEFAULT_FOLDERS.map((folder) => (
               <SidebarButton
@@ -798,7 +805,7 @@ function SidebarButton({
       title={disabled ? unavailableReason() : collapsed ? label : undefined}
       disabled={disabled}
     >
-      <span className="sidebar-row-icon">
+      <span className="sidebar-row-icon" aria-hidden="true">
         {icon}
         {/* With the labels gone the count has nowhere to go, so a dot carries
             the one bit that still matters: this folder has mail waiting. */}

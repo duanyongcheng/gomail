@@ -24,7 +24,7 @@ vi.mock("mygo-runtime", () => ({ call: vi.fn(), on: vi.fn(() => vi.fn()), event:
 vi.mock("@tanstack/react-virtual", () => ({ useVirtualizer: ({ count }: { count: number }) => ({
   getTotalSize: () => count * 76,
   getVirtualItems: () => Array.from({ length: count }, (_, index) => ({ index, key: index, start: index * 76 })),
-  measureElement: vi.fn(), scrollToIndex: vi.fn(),
+  measureElement: vi.fn(), measure: vi.fn(), scrollToIndex: vi.fn(),
 }) }));
 const account: Account = { id: "a", email: "a@example.invalid", display_name: "A", provider: "gmail", created_at: 1, updated_at: 1 };
 const folder: Folder = { id: "a:inbox", account_id: "a", remote_id: "INBOX", name: "Inbox", folder_type: "label", role: "inbox", parent_id: null, color: null, is_system: true, sort_order: 0 };
