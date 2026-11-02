@@ -121,12 +121,12 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="account-setup-title" aria-busy={loading}
       style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div ref={dialogRef} style={{ width: "min(480px, calc(100vw - 32px))", backgroundColor: "var(--color-bg)", borderRadius: 10, maxHeight: "90vh", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--color-border)" }}>
+      <div ref={dialogRef} style={{ width: "min(480px, calc(100vw - 32px))", backgroundColor: "var(--color-bg)", borderRadius: 10, display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, padding: "16px 20px", borderBottom: "1px solid var(--color-border)" }}>
           <h2 id="account-setup-title" style={{ margin: 0, fontSize: 15 }}>{t("accountSetup.title", "Add Email Account")}</h2>
           <button type="button" disabled={loading} onClick={() => void requestClose()} aria-label={t("common.close", "Close")}><X size={18} /></button>
         </div>
-        <div className="scroll-region account-setup-scroll" style={{ overflowY: "auto", padding: 20 }}>
+        <div className="scroll-region account-setup-scroll" style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto", padding: 20 }}>
           <label htmlFor="setup-account-label" style={labelStyle}>{t("accountSetup.accountLabel", "Account label")}</label>
           <input ref={labelRef} id="setup-account-label" style={inputStyle} maxLength={120} disabled={loading}
             value={accountLabel} onChange={(event) => setAccountLabel(event.target.value)} />
