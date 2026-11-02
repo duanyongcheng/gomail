@@ -79,6 +79,13 @@ Use account settings to log in. Manual sync can always be triggered explicitly.
 Message bodies are escaped plain text only when no HTML part exists; HTML is
 sanitized by the backend privacy renderer before the WebView.
 
+Address display names support RFC 2047 encoding, including quoted encoded names
+used by some mail clients. Sender/To/Cc/Bcc names are decoded consistently for new
+mail and existing cached mail, including offline views; mailbox addresses remain
+unchanged. No re-download or profile migration is required. If a residual encoded
+name cannot be safely decoded, its original value is retained. See
+[address-name validation](docs/address-name-decoding-validation.md).
+
 Backfill processes the whole mailbox in pages of at most 100 messages and
 persists recovery checkpoints after each page. Each pass handles at most ten
 pages; unfinished work continues after one second, including an explicitly

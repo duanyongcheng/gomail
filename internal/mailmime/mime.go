@@ -54,7 +54,7 @@ func parseWithLimit(raw []byte, limit int, draft bool) (Message, error) {
 	if err != nil || len(from) != 1 {
 		return out, errors.New("one valid sender required")
 	}
-	name := from[0].Name
+	name := DecodeAddressName(from[0].Name)
 	out.From = Address{&name, from[0].Address}
 	to, err := r.Header.AddressList("To")
 	if err != nil {
@@ -62,7 +62,7 @@ func parseWithLimit(raw []byte, limit int, draft bool) (Message, error) {
 	}
 	out.To = make([]Address, 0, len(to))
 	for _, a := range to {
-		n := a.Name
+		n := DecodeAddressName(a.Name)
 		out.To = append(out.To, Address{&n, a.Address})
 	}
 	for _, field := range []struct {
@@ -75,7 +75,7 @@ func parseWithLimit(raw []byte, limit int, draft bool) (Message, error) {
 		}
 		*field.target = []Address{}
 		for _, a := range addresses {
-			name := a.Name
+			name := DecodeAddressName(a.Name)
 			*field.target = append(*field.target, Address{Name: &name, Address: a.Address})
 		}
 	}

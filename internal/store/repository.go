@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bary/pebble-go/internal/domain"
+	"github.com/bary/pebble-go/internal/mailmime"
 )
 
 const accountColumns = "id,email,display_name,color,provider,account_label,provider_display_name,oauth_subject,created_at,updated_at,sort_order"
@@ -92,6 +93,9 @@ func scanMessage(row interface{ Scan(...any) error }) (domain.Message, error) {
 	if err != nil {
 		return m, err
 	}
+	// Old cached headers may still contain quoted RFC 2047 names. Normalize the
+	// read projection so offline views recover without a refetch or DB rewrite.
+	m.FromName = mailmime.DecodeAddressName(m.FromName)
 	for _, pair := range []struct {
 		raw string
 		out *[]domain.Address
@@ -101,6 +105,13 @@ func scanMessage(row interface{ Scan(...any) error }) (domain.Message, error) {
 		}
 		if *pair.out == nil {
 			*pair.out = []domain.Address{}
+		}
+		for i := range *pair.out {
+			address := &(*pair.out)[i]
+			if address.Name != nil {
+				name := mailmime.DecodeAddressName(*address.Name)
+				address.Name = &name
+			}
 		}
 	}
 	return m, nil

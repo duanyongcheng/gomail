@@ -52,6 +52,12 @@ func prepareSelftest(runtime *app.Runtime) error {
 	if err != nil {
 		return err
 	}
+	// Real-world clients sometimes put RFC 2047 words inside quoted names.
+	// Keep synthetic mailbox addresses unchanged while exercising that form.
+	raw, err = selftestEncodedAddressNames(raw)
+	if err != nil {
+		return err
+	}
 	fixture.Set("m1", raw, []string{"INBOX", "UNREAD"})
 	fixture.Set("m2", []byte("malformed local selftest message"), []string{"INBOX", "UNREAD"})
 	// A second inbox message is the durable-write subject: archiving it must not
@@ -181,6 +187,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	for _, name := range []string{"safe external links through actual UI", "unsupported settings unavailable", "bootstrap does not undo early native close", "close and restore preserves compose", "second instance restores existing window", "quit-on-close reaches native shutdown", "opening unread message updates locally without Gmail", "opening unread conversation updates locally without Gmail", "Gmail uploaded local draft consumed after send", "Gmail remote draft pages loaded through UI", "Gmail remote draft imported through UI", "Gmail imported draft updated through UI", "Gmail linked draft send consumes matching remote copy", "Gmail remote draft deleted through UI"} {
 		checks[name] = false
 	}
+	checks["MIME address names and avatar decoded through UI"] = false
 	for _, name := range reviewSelftestChecks {
 		checks[name] = false
 	}
@@ -223,6 +230,12 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('Pebble Go selftest'));return Boolean(row)&&!row.classList.contains('message-list-row--unread'); })()`)
 	checks["opening unread message updates locally without Gmail"] = readFast
 	readLatencies["messageMilliseconds"] = readElapsed.Milliseconds()
+	checks["MIME address names and avatar decoded through UI"] = waitSelftestPage(ctx, window, `(() => {
+		const sender = document.querySelector('.message-detail-from-name');
+		const recipients = document.querySelector('.message-detail-recipients');
+		const avatar = document.querySelector('.message-detail-avatar');
+		return sender?.textContent === '协议测试' && recipients?.textContent.includes('收件测试 <demo@example.invalid>') && avatar?.textContent === '协';
+	})()`, 10*time.Second)
 	capture("message-read.png")
 	selftestUIThemes(ctx, window, checks, capture)
 	if waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(会话视图|会话模式|Thread view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
