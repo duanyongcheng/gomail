@@ -93,19 +93,18 @@ describe("SettingsView", () => {
     expect(screen.getByText("Outbox panel")).toBeTruthy();
   });
 
-  it("disables proxy settings without mounting an editable form", () => {
+  it("opens the implemented proxy settings from its enabled tab", () => {
     render(<SettingsView />);
 
     const tab = screen.getByRole("tab", { name: "Proxy" });
     fireEvent.click(tab);
 
-    expect((tab as HTMLButtonElement).disabled).toBe(true);
-    expect(tab.getAttribute("aria-selected")).toBe("false");
-    expect(tab.getAttribute("title")).toContain("not available");
-    expect(screen.queryByText("Proxy panel")).toBeNull();
+    expect((tab as HTMLButtonElement).disabled).toBe(false);
+    expect(tab.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Proxy panel")).toBeTruthy();
   });
 
-  it.each(["proxy", "rules", "translation", "ai", "cloudSync"] as const)("guards restored %s settings before mounting", (settingsTab) => {
+  it.each(["rules", "translation", "ai", "cloudSync"] as const)("guards restored %s settings before mounting", (settingsTab) => {
     useUIStore.setState({ settingsTab });
     render(<SettingsView />);
     expect(screen.getByText("Accounts panel")).toBeTruthy();
@@ -115,11 +114,18 @@ describe("SettingsView", () => {
     expect(screen.queryByText("Cloud sync panel")).toBeNull();
   });
 
+  it("restores the implemented proxy tab", () => {
+    useUIStore.setState({ settingsTab: "proxy" });
+    render(<SettingsView />);
+    expect(screen.getByText("Proxy panel")).toBeTruthy();
+    expect(useUIStore.getState().settingsTab).toBe("proxy");
+  });
+
   it("keyboard tab navigation skips disabled settings", () => {
     render(<SettingsView />);
     fireEvent.keyDown(screen.getByRole("tab", { name: "General" }), { key: "ArrowDown" });
-    expect(useUIStore.getState().settingsTab).toBe("appearance");
-    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Appearance" }));
+    expect(useUIStore.getState().settingsTab).toBe("proxy");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Proxy" }));
   });
 
   it("updates the narrow tab orientation and skips disabled settings with horizontal keys", () => {
@@ -137,8 +143,8 @@ describe("SettingsView", () => {
     act(() => { media.matches = true; changed?.(); });
     expect(tabs.getAttribute("aria-orientation")).toBe("horizontal");
     fireEvent.keyDown(screen.getByRole("tab", { name: "General" }), { key: "ArrowRight" });
-    expect(useUIStore.getState().settingsTab).toBe("appearance");
-    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Appearance" }));
+    expect(useUIStore.getState().settingsTab).toBe("proxy");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Proxy" }));
     fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
     expect(useUIStore.getState().settingsTab).toBe("general");
     fireEvent.keyDown(document.activeElement!, { key: "End" });

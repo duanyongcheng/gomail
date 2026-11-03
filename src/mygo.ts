@@ -24,8 +24,39 @@ export interface AccountConnection {
   canReconnect: boolean;
 }
 
+export interface AccountNetworkRequest {
+  accountId: string;
+  setting: ProxySetting;
+}
+
 export interface AccountRequest {
   accountId: string;
+}
+
+export interface AddAccountRequest {
+  account_label?: string;
+  email: string;
+  display_name: string;
+  provider: string;
+  imap_host: string;
+  imap_port: number;
+  smtp_host: string;
+  smtp_port: number;
+  username: string;
+  password: string;
+  imap_security: string;
+  smtp_security: string;
+  accept_invalid_certs: boolean;
+  allow_plaintext: boolean;
+  root_ca_pem?: string;
+  proxy_host?: string;
+  proxy_port?: number;
+  proxy_mode?: string;
+  proxy_scheme?: string;
+  imap_auth_mode?: string;
+  smtp_auth_mode?: string;
+  selected_folders?: string[];
+  config?: ProtocolConfig;
 }
 
 export interface Address {
@@ -70,6 +101,7 @@ export interface BatchRequest {
 }
 
 export interface Capabilities {
+  folder_management: boolean;
   read: boolean;
   modify_flags: boolean;
   send: boolean;
@@ -193,6 +225,19 @@ export interface Folder {
   sort_order: number;
 }
 
+export interface FolderManagementRequest {
+  accountId: string;
+  action: string;
+  folderId: string;
+  name: string;
+  pendingId: string;
+}
+
+export interface FolderManagementView {
+  folders: Folder[];
+  pending: GmailLabelChange | null;
+}
+
 export interface Geometry {
   width: number;
   height: number;
@@ -219,6 +264,16 @@ export interface GmailLabelRequest {
 export interface GmailLabelsView {
   folders: Folder[];
   pending: GmailLabelChange | null;
+}
+
+export interface IMAPSyncFolders {
+  folders: Folder[];
+  selected_remote_ids: string[];
+}
+
+export interface IMAPSyncFoldersRequest {
+  accountId: string;
+  selectedRemoteIds: string[];
 }
 
 export interface LocalDraft {
@@ -248,6 +303,7 @@ export interface LoginRequest {
   email: string;
   displayName: string;
   accountLabel: string | null;
+  proxy?: ProxySetting;
 }
 
 export interface Message {
@@ -303,6 +359,47 @@ export interface MessagesRequest {
   starred: boolean;
 }
 
+export interface MicrosoftAuthorizeRequest {
+  accountId?: string;
+  displayName: string;
+  clientId: string;
+  tenant: string;
+  audience: string;
+  resource: string;
+  graph: boolean;
+  imap: boolean;
+  smtp: boolean;
+  proxy: ProxySetting;
+}
+
+/** Microsoft stores independent resource grants; exchanging one never replaces another. */
+export interface MicrosoftConfig {
+  audience: string;
+  graph: boolean;
+  imap: boolean;
+  smtp: boolean;
+  generation: number;
+  client_id: string;
+  tenant: string;
+  subject: string;
+  grants: Record<string, ResourceGrant>;
+}
+
+export interface MicrosoftStatus {
+  sendState: ConnectionState;
+  writeState: ConnectionState;
+  accountId: string;
+  clientId: string;
+  tenant: string;
+  audience: string;
+  graph: boolean;
+  imap: boolean;
+  smtp: boolean;
+  graphAuthorized: boolean;
+  imapAuthorized: boolean;
+  smtpAuthorized: boolean;
+}
+
 export interface MoveRequest {
   messageId: string;
   targetFolderId: string;
@@ -310,6 +407,10 @@ export interface MoveRequest {
 
 export interface Namespace {
   value: string;
+}
+
+export interface NetworkSettings {
+  proxy: Proxy | null;
 }
 
 export interface NewMail {
@@ -372,6 +473,55 @@ export interface PendingOpsRequest {
   limit: number;
 }
 
+/** ProtocolConfig is a secret-bearing vault record. Never return it to a UI. */
+export interface ProtocolConfig {
+  version: number;
+  imap: ProtocolEndpoint;
+  smtp: ProtocolEndpoint;
+  pop3: ProtocolEndpoint;
+  selected_folders?: string[];
+  proxy: ProxySetting;
+  microsoft?: MicrosoftConfig;
+}
+
+export interface ProtocolEndpoint {
+  host: string;
+  port: number;
+  security: string;
+  root_ca_pem?: string;
+  username: string;
+  password?: string;
+  auth_mode: string;
+}
+
+export interface ProtocolSettings {
+  accountId: string;
+  revision: string;
+  imap: SafeEndpoint;
+  smtp: SafeEndpoint;
+  pop3: SafeEndpoint;
+  selected_folders: string[];
+  proxy: ProxySetting;
+  microsoft_client_id?: string;
+  microsoft_tenant?: string;
+}
+
+export interface ProtocolTestResult {
+  success: boolean;
+  message: string;
+}
+
+export interface Proxy {
+  scheme: string;
+  host: string;
+  port: number;
+}
+
+export interface ProxySetting {
+  mode: string;
+  proxy: Proxy | null;
+}
+
 export interface RealtimePreferenceRequest {
   mode: string;
 }
@@ -400,6 +550,23 @@ export interface RenderedHTML {
   images_blocked: number;
 }
 
+export interface ResourceGrant {
+  access_token: string;
+  refresh_token: string;
+  expiry: number;
+  scopes: string[];
+}
+
+export interface SafeEndpoint {
+  host: string;
+  port: number;
+  security: string;
+  root_ca_pem: string;
+  username: string;
+  auth_mode: string;
+  has_password: boolean;
+}
+
 export interface SaveDraftRequest {
   accountId: string;
   to: string[];
@@ -417,6 +584,13 @@ export interface SaveDraftRequest {
   editorMode: string;
   rawSource: string;
   renderedSource?: string;
+}
+
+export interface SaveProtocolRequest {
+  accountId: string;
+  revision: string;
+  displayName: string;
+  config: ProtocolConfig;
 }
 
 export interface SearchHit {
@@ -568,9 +742,42 @@ export interface WindowRequest {
   y: number;
 }
 
+export interface XOAuth2Status {
+  imap_uses_token: boolean;
+  smtp_uses_token: boolean;
+  has_refresh_token: boolean;
+  expires_at: number | null;
+  expires_in_secs: number | null;
+  tenant: string | null;
+  client_id: string | null;
+  has_client_secret: boolean;
+}
+
 // ---- Services ----
 
+export const MicrosoftService = {
+  /**
+   * Authorize validates the stable provider identity before creating an account or
+   * CAS-replacing its encrypted config. Browser/profile work holds no Runtime lock.
+   */
+  authorize(request: MicrosoftAuthorizeRequest): Promise<Account> {
+    return call("MicrosoftService.Authorize", request);
+  },
+  cancel(request: AccountRequest): Promise<Empty> {
+    return call("MicrosoftService.Cancel", request);
+  },
+  status(request: AccountRequest): Promise<MicrosoftStatus> {
+    return call("MicrosoftService.Status", request);
+  },
+} as const;
+
 export const AccountService = {
+  accountNetwork(request: AccountRequest): Promise<ProxySetting> {
+    return call("AccountService.AccountNetwork", request);
+  },
+  add(request: AddAccountRequest): Promise<Account> {
+    return call("AccountService.Add", request);
+  },
   cancelReconnect(request: AccountRequest): Promise<Empty> {
     return call("AccountService.CancelReconnect", request);
   },
@@ -589,17 +796,48 @@ export const AccountService = {
   migrateSignature(request: SignatureRequest): Promise<string> {
     return call("AccountService.MigrateSignature", request);
   },
+  network(arg0: Empty): Promise<NetworkSettings> {
+    return call("AccountService.Network", arg0);
+  },
+  protocolSettings(request: AccountRequest): Promise<ProtocolSettings> {
+    return call("AccountService.ProtocolSettings", request);
+  },
   reconnect(request: AccountRequest): Promise<Empty> {
     return call("AccountService.Reconnect", request);
   },
+  saveProtocol(request: SaveProtocolRequest): Promise<Account> {
+    return call("AccountService.SaveProtocol", request);
+  },
+  setAccountNetwork(request: AccountNetworkRequest): Promise<Empty> {
+    return call("AccountService.SetAccountNetwork", request);
+  },
+  setNetwork(request: NetworkSettings): Promise<Empty> {
+    return call("AccountService.SetNetwork", request);
+  },
   setSignature(request: SignatureRequest): Promise<Empty> {
     return call("AccountService.SetSignature", request);
+  },
+  setSyncFolders(request: IMAPSyncFoldersRequest): Promise<IMAPSyncFolders> {
+    return call("AccountService.SetSyncFolders", request);
   },
   signature(request: AccountRequest): Promise<string> {
     return call("AccountService.Signature", request);
   },
   status(arg0: Empty): Promise<OAuthStatus> {
     return call("AccountService.Status", arg0);
+  },
+  syncFolders(request: AccountRequest): Promise<IMAPSyncFolders> {
+    return call("AccountService.SyncFolders", request);
+  },
+  test(request: AddAccountRequest): Promise<ProtocolTestResult> {
+    return call("AccountService.Test", request);
+  },
+  /** TestProtocolSettings retains saved passwords without publishing them to the UI. */
+  testProtocolSettings(request: SaveProtocolRequest): Promise<ProtocolTestResult> {
+    return call("AccountService.TestProtocolSettings", request);
+  },
+  testStored(request: AccountRequest): Promise<ProtocolTestResult> {
+    return call("AccountService.TestStored", request);
   },
   /**
    * Update can be used offline and with expired authorization. No network or
@@ -608,11 +846,20 @@ export const AccountService = {
   update(request: UpdateAccountRequest): Promise<Empty> {
     return call("AccountService.Update", request);
   },
+  xoAuth2Status(request: AccountRequest): Promise<XOAuth2Status> {
+    return call("AccountService.XOAuth2Status", request);
+  },
 } as const;
 
 export const FolderService = {
   list(a: AccountRequest): Promise<Folder[]> {
     return call("FolderService.List", a);
+  },
+  manage(request: FolderManagementRequest): Promise<FolderManagementView> {
+    return call("FolderService.Manage", request);
+  },
+  management(request: AccountRequest): Promise<FolderManagementView> {
+    return call("FolderService.Management", request);
   },
 } as const;
 

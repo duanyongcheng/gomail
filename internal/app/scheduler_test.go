@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -69,6 +70,43 @@ func TestPollPolicyMatchesReference(t *testing.T) {
 		if got := pollDelay(test.interval, test.foreground, test.recent, test.failures); got != test.want {
 			t.Errorf("policy %+v: %s", test, got)
 		}
+	}
+}
+
+func TestSchedulerReportsActualProviderForManualFailureAndStop(t *testing.T) {
+	for _, provider := range []string{"gmail", "imap", "pop3", "outlook"} {
+		t.Run(provider, func(t *testing.T) {
+			r, _, db := pendingAppFixture(t)
+			executeProvider := "UPDATE accounts SET provider='" + provider + "' WHERE id='a'"
+			injectPendingSQL(t, db, executeProvider)
+			r.InstallProvider("a", &scheduledProvider{err: errors.New("synthetic failure")})
+			defer r.Scheduler.Close()
+			statuses := make(chan RealtimeStatus, 8)
+			r.OnRealtime = func(s RealtimeStatus) { statuses <- s }
+			if err := r.Scheduler.Preference("manual"); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := r.Scheduler.Trigger(t.Context(), "a", "manual"); err == nil {
+				t.Fatal("failure not exercised")
+			}
+			r.Scheduler.Stop("a")
+			close(statuses)
+			sawFailure := false
+			for status := range statuses {
+				if status.AccountID != "a" {
+					continue
+				}
+				if status.Provider != provider || strings.Contains(status.Message, "Gmail") {
+					t.Fatalf("provider mislabeled: %+v", status)
+				}
+				if status.Mode == "error" {
+					sawFailure = true
+				}
+			}
+			if !sawFailure {
+				t.Fatal("no failure status")
+			}
+		})
 	}
 }
 

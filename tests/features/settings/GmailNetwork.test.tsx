@@ -1,0 +1,43 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it, vi } from "vitest";
+import GmailNetwork from "@/features/settings/GmailNetwork";
+import { AccountService } from "@/mygo";
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, fallback?: string) => fallback ?? key }) }));
+vi.mock("@/mygo", () => ({ AccountService: { accountNetwork: vi.fn(), setAccountNetwork: vi.fn() } }));
+const account = { id: "gmail-a", email: "a@example.com", display_name: "A", provider: "gmail" as const, created_at: 1, updated_at: 1 };
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(AccountService.accountNetwork).mockResolvedValue({ mode: "inherit", proxy: null }); vi.mocked(AccountService.setAccountNetwork).mockResolvedValue({}); });
+it("loads only when opened and saves an account-scoped custom HTTP route", async () => {
+  render(<GmailNetwork accounts={[account]} />);
+  expect(AccountService.accountNetwork).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Gmail account connection routes" }));
+  await waitFor(() => expect((screen.getByRole("button", { name: "Save Gmail account route" }) as HTMLButtonElement).disabled).toBe(false));
+  expect(AccountService.accountNetwork).toHaveBeenCalledWith({ accountId: "gmail-a" });
+  fireEvent.change(screen.getByLabelText("Proxy mode"), { target: { value: "custom" } });
+  fireEvent.change(screen.getByLabelText("Proxy protocol"), { target: { value: "http" } });
+  fireEvent.change(screen.getByLabelText("Proxy host"), { target: { value: "proxy.example.com" } });
+  fireEvent.change(screen.getByLabelText("Proxy port"), { target: { value: "8080" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save Gmail account route" }));
+  await screen.findByText(/Account route saved/);
+  expect(AccountService.setAccountNetwork).toHaveBeenCalledExactlyOnceWith({ accountId: "gmail-a", setting: { mode: "custom", proxy: { scheme: "http", host: "proxy.example.com", port: 8080 } } });
+});
+it("failed initial read preserves prior policy and reports a static error", async () => {
+  vi.mocked(AccountService.accountNetwork).mockRejectedValueOnce(new Error("sensitive server diagnostics"));
+  render(<GmailNetwork accounts={[account]} />);
+  fireEvent.click(screen.getByRole("button", { name: "Gmail account connection routes" }));
+  await screen.findByRole("alert");
+  fireEvent.click(screen.getByRole("button", { name: "Save Gmail account route" }));
+  expect(AccountService.setAccountNetwork).not.toHaveBeenCalled();
+  expect(screen.queryByText("sensitive server diagnostics")).toBeNull();
+});
+it("an old account load cannot overwrite a replacement panel", async () => {
+  let finish!: (value: { mode: string; proxy: null }) => void;
+  vi.mocked(AccountService.accountNetwork).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+  const { rerender } = render(<GmailNetwork accounts={[account]} />);
+  fireEvent.click(screen.getByRole("button", { name: "Gmail account connection routes" }));
+  rerender(<GmailNetwork accounts={[{ ...account, id: "gmail-b", email: "b@example.com" }]} />);
+  await waitFor(() => expect((screen.getByRole("button", { name: "Save Gmail account route" }) as HTMLButtonElement).disabled).toBe(false));
+  finish({ mode: "disabled", proxy: null });
+  await waitFor(() => expect((screen.getByLabelText("Proxy mode") as HTMLSelectElement).value).toBe("inherit"));
+  fireEvent.click(screen.getByRole("button", { name: "Save Gmail account route" }));
+  await waitFor(() => expect(AccountService.setAccountNetwork).toHaveBeenCalledWith({ accountId: "gmail-b", setting: { mode: "inherit", proxy: null } }));
+});

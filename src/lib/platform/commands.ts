@@ -1,20 +1,36 @@
 import { AccountService, AppService, AttachmentService, ComposeService, FolderService, MessageService, OutboxService, PendingOpsService, SearchService, SyncService, ThreadService, TrustService } from "@/mygo";
-import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest, SendRequest, UpdateAccountRequest, SignatureRequest } from "@/mygo";
+import type { AccountRequest, FlagsRequest, LoginRequest, MessageRequest, MessagesRequest, SearchRequest, SaveDraftRequest, SendRequest, UpdateAccountRequest, SignatureRequest, AddAccountRequest, ProxySetting } from "@/mygo";
 
 type Entry<A, R> = { status: "implemented" | "startup-stub" | "not-implemented"; milestone: string; run: (args: A) => Promise<R> };
 function implemented<A, R>(run: (args: A) => Promise<R>, milestone = "M0"): Entry<A, R> { return { status: "implemented", milestone, run }; }
 export function startup<R>(value: R, milestone: string): Entry<Record<string, unknown>, R> {
   return { status: "startup-stub", milestone, run: async () => structuredClone(value) };
 }
-export function pending(name: string, milestone: string): Entry<Record<string, unknown>, never> {
-  return { status: "not-implemented", milestone, run: async () => { throw new Error(`NotImplemented: ${name} (${milestone})`); } };
+export function pending(name: string, milestone: string, message?: string): Entry<Record<string, unknown>, never> {
+  return { status: "not-implemented", milestone, run: async () => { throw new Error(message ?? `NotImplemented: ${name} (${milestone})`); } };
 }
 
 export const implementedCommands = {
+  get_global_proxy: implemented(async () => (await AccountService.network({})).proxy, "M2"),
+  update_global_proxy: implemented(async (a: LegacyProxyRequest) => { await AccountService.setNetwork({ proxy: legacyRoute(a, "disabled").proxy }); }, "M2"),
+  get_account_proxy_setting: implemented((a: AccountRequest) => AccountService.accountNetwork(a), "M2"),
+  get_oauth_account_proxy_setting: implemented((a: AccountRequest) => AccountService.accountNetwork(a), "M2"),
+  get_account_proxy: implemented(effectiveProxy, "M2"),
+  get_oauth_account_proxy: implemented(effectiveProxy, "M2"),
+  update_account_proxy: implemented(saveLegacyRoute, "M2"),
+  update_oauth_account_proxy: implemented(saveLegacyRoute, "M2"),
+  update_account_proxy_setting: implemented(saveLegacyRoute, "M2"),
+  update_oauth_account_proxy_setting: implemented(saveLegacyRoute, "M2"),
+  get_imap_sync_folders: implemented((a: AccountRequest) => AccountService.syncFolders(a), "M2"),
+  update_imap_sync_folders: implemented((a: { accountId: string; selectedRemoteIds: string[] }) => AccountService.setSyncFolders(a), "M2"),
+  get_xoauth2_status: implemented((a: AccountRequest) => AccountService.xoAuth2Status(a), "M2"),
+  add_account: implemented((a: { request: AddAccountRequest }) => AccountService.add(a.request), "M2"),
+  test_account_connection: implemented(async (a: AccountRequest) => (await AccountService.testStored(a)).message, "M2"),
+  test_imap_connection: implemented(async (a: { request: Partial<AddAccountRequest> }) => (await AccountService.test(protocolTestRequest(a.request, "imap"))).message, "M2"),
+  test_pop3_connection: implemented(async (a: { request: Partial<AddAccountRequest> & { pop3_host?: string; pop3_port?: number; pop3_security?: string } }) => (await AccountService.test(protocolTestRequest({ ...a.request, imap_host: a.request.pop3_host, imap_port: a.request.pop3_port, imap_security: a.request.pop3_security }, "pop3"))).message, "M2"),
   list_accounts: implemented(() => AccountService.list({})),
-  complete_oauth_flow: implemented((a: LoginRequest & { proxyHost?: string }) => {
-    if (a.proxyHost) return Promise.reject(new Error("NotImplemented: OAuth proxy (M2)"));
-    return AccountService.login({ ...a, accountLabel: a.accountLabel ?? null });
+  complete_oauth_flow: implemented((a: LoginRequest & LegacyProxyRequest) => {
+    return AccountService.login({ provider: a.provider, email: a.email, displayName: a.displayName, accountLabel: a.accountLabel ?? null, ...(a.proxyHost ? { proxy: legacyRoute(a, "inherit") } : {}) });
   }),
   delete_account: implemented((a: AccountRequest) => AccountService.delete(a)),
   update_account: implemented(async (a: UpdateAccountRequest) => { await AccountService.update(a); }, "M1"),
@@ -85,3 +101,21 @@ export const implementedCommands = {
     await SyncService.trigger({ accountId: a.accountId, reason: a.reason ?? "manual" });
   }, "M1"),
 };
+
+type LegacyProxyRequest = { mode?: string | null; proxyHost?: string | null; proxyPort?: number | null; proxyScheme?: string | null };
+function legacyRoute(a: LegacyProxyRequest, fallback = "inherit"): ProxySetting {
+  const mode = a.mode ?? (a.proxyHost ? "custom" : fallback);
+  if (!["inherit", "disabled", "custom"].includes(mode)) throw new Error("Invalid proxy mode");
+  return { mode, proxy: mode === "custom" ? { scheme: a.proxyScheme ?? "http", host: a.proxyHost ?? "", port: a.proxyPort ?? 0 } : null };
+}
+async function saveLegacyRoute(a: AccountRequest & LegacyProxyRequest): Promise<void> {
+  await AccountService.setAccountNetwork({ accountId: a.accountId, setting: legacyRoute(a) });
+}
+async function effectiveProxy(a: AccountRequest) {
+  const setting = await AccountService.accountNetwork(a);
+  return setting.mode === "custom" ? setting.proxy : setting.mode === "disabled" ? null : (await AccountService.network({})).proxy;
+}
+
+function protocolTestRequest(request: Partial<AddAccountRequest>, provider: string): AddAccountRequest {
+  return { email: request.email ?? request.username ?? "", display_name: "", provider, imap_host: "", imap_port: 0, smtp_host: "", smtp_port: 0, username: "", password: "", imap_security: "tls", smtp_security: "tls", accept_invalid_certs: false, allow_plaintext: false, ...request };
+}

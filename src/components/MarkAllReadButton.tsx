@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader, MailOpen } from "lucide-react";
 import { executeMarkAllRead } from "@/hooks/mutations/mailActionsMutation";
 import { useToastStore } from "@/stores/toast.store";
+import type { Account } from "@/lib/api";
 
 interface Props {
   accountId: string;
@@ -43,7 +44,7 @@ export default function MarkAllReadButton({
   const label = t("messageActions.markAllRead", "Mark all as read in {{account}}", {
     account: accountLabel,
   });
-  const disabled = marking || unread === 0;
+  const disabled = marking || unread === 0 || queryClient.getQueryData<Account[]>(["accounts"])?.find((account) => account.id === accountId)?.capabilities?.modify_flags === false;
 
   async function handleClick() {
     if (disabled || busy.current) return;

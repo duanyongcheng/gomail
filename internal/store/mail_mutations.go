@@ -14,9 +14,12 @@ import (
 // MailOpPayload is the persisted, provider-neutral label intent. The same
 // payload drives the immediate cache effect, sync overlay and remote replay.
 type MailOpPayload struct {
-	RemoteID     string   `json:"remote_id"`
-	AddLabels    []string `json:"add_labels,omitempty"`
-	RemoveLabels []string `json:"remove_labels,omitempty"`
+	RemoteID       string   `json:"remote_id"`
+	AddLabels      []string `json:"add_labels,omitempty"`
+	RemoveLabels   []string `json:"remove_labels,omitempty"`
+	IsRead         *bool    `json:"is_read,omitempty"`
+	IsStarred      *bool    `json:"is_starred,omitempty"`
+	TargetRemoteID string   `json:"target_remote_id,omitempty"`
 }
 
 type MailMutation struct {
@@ -98,10 +101,18 @@ func (db *DB) QueueMailMutation(ctx context.Context, request MailMutation) (Mail
 			if request.AccountID != "" && request.AccountID != m.AccountID {
 				return errors.New("message belongs to another account")
 			}
+			var provider string
+			if err := tx.QueryRowContext(ctx, "SELECT provider FROM accounts WHERE id=?", m.AccountID).Scan(&provider); err != nil {
+				return err
+			}
+			if provider == "pop3" {
+				return errors.New("POP3 does not support remote flags or folder changes")
+			}
 			payload := MailOpPayload{RemoteID: m.RemoteID}
 			opType := request.OpType
 			switch opType {
 			case "update_flags":
+				payload.IsRead, payload.IsStarred = request.IsRead, request.IsStarred
 				if request.IsRead == nil && request.IsStarred == nil {
 					continue
 				}
@@ -122,7 +133,7 @@ func (db *DB) QueueMailMutation(ctx context.Context, request MailMutation) (Mail
 			case "archive":
 				inInbox := true
 				if request.ToggleArchive {
-					if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM message_folders mf JOIN folders f ON f.id=mf.folder_id WHERE mf.message_id=? AND f.account_id=? AND f.remote_id='INBOX')`, id, m.AccountID).Scan(&inInbox); err != nil {
+					if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM message_folders mf JOIN folders f ON f.id=mf.folder_id WHERE mf.message_id=? AND f.account_id=? AND (f.remote_id='INBOX' OR f.role='inbox'))`, id, m.AccountID).Scan(&inInbox); err != nil {
 						return err
 					}
 				}
@@ -162,6 +173,11 @@ func (db *DB) QueueMailMutation(ctx context.Context, request MailMutation) (Mail
 			default:
 				return errors.New("unsupported mail mutation")
 			}
+			if provider != "gmail" && opType != "update_flags" {
+				if err := protocolFolderIntent(ctx, tx, m, opType, request.TargetFolderID, &payload); err != nil {
+					return err
+				}
+			}
 			op := PendingMailOpInput{AccountID: m.AccountID, MessageID: id, OpType: opType, Payload: payload}
 			if err := insertPendingOp(ctx, tx, op); err != nil {
 				return err
@@ -182,6 +198,41 @@ func (db *DB) QueueMailMutation(ctx context.Context, request MailMutation) (Mail
 	return result, nil
 }
 
+// Protocol mailboxes move messages between real remote folders. Gmail's virtual
+// label names must never be sent to an unrelated server or synthesized locally.
+func protocolFolderIntent(ctx context.Context, tx *sql.Tx, m domain.Message, operation, targetID string, payload *MailOpPayload) error {
+	var target string
+	if operation == "move_to_folder" {
+		if err := tx.QueryRowContext(ctx, "SELECT remote_id FROM folders WHERE id=? AND account_id=?", targetID, m.AccountID).Scan(&target); err != nil {
+			return err
+		}
+	} else {
+		role := map[string]string{"archive": "archive", "delete": "trash", "restore": "inbox"}[operation]
+		if role == "" {
+			return errors.New("unsupported protocol folder operation")
+		}
+		if err := tx.QueryRowContext(ctx, "SELECT remote_id FROM folders WHERE account_id=? AND role=? ORDER BY id LIMIT 1", m.AccountID, role).Scan(&target); err != nil {
+			return errors.New("required destination folder is unavailable; refresh folders first")
+		}
+	}
+	payload.TargetRemoteID = target
+	payload.AddLabels = []string{target}
+	payload.RemoveLabels = nil
+	rows, err := tx.QueryContext(ctx, "SELECT f.remote_id FROM folders f JOIN message_folders mf ON mf.folder_id=f.id WHERE mf.message_id=? AND f.account_id=? AND f.remote_id!=?", m.ID, m.AccountID, target)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var remote string
+		if err := rows.Scan(&remote); err != nil {
+			return err
+		}
+		payload.RemoveLabels = append(payload.RemoveLabels, remote)
+	}
+	return rows.Err()
+}
+
 func labelMutation(opType string) bool {
 	switch opType {
 	case "update_flags", "archive", "unarchive", "restore", "delete", "move_to_folder":
@@ -191,6 +242,10 @@ func labelMutation(opType string) bool {
 }
 
 func applyLabelIntent(ctx context.Context, tx *sql.Tx, account, message string, p MailOpPayload) error {
+	var provider string
+	if err := tx.QueryRowContext(ctx, "SELECT provider FROM accounts WHERE id=?", account).Scan(&provider); err != nil {
+		return err
+	}
 	for _, change := range []struct {
 		labels []string
 		add    bool
@@ -213,7 +268,7 @@ func applyLabelIntent(ctx context.Context, tx *sql.Tx, account, message string, 
 			}
 			// Older/incomplete label snapshots may omit system folders. Materialize
 			// those only; arbitrary custom folder ownership is never synthesized.
-			if remote == "INBOX" || remote == "TRASH" || remote == "SPAM" || remote == "UNREAD" || remote == "STARRED" {
+			if provider == "gmail" && (remote == "INBOX" || remote == "TRASH" || remote == "SPAM" || remote == "UNREAD" || remote == "STARRED") {
 				var role *string
 				if remote != "UNREAD" && remote != "STARRED" {
 					value := strings.ToLower(remote)

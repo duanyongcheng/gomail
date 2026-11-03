@@ -194,6 +194,12 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	for _, name := range offlineSelftestChecks {
 		checks[name] = false
 	}
+	for _, name := range m2SelftestChecks {
+		checks[name] = false
+	}
+	for _, name := range m2UISelftestChecks {
+		checks[name] = false
+	}
 	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
@@ -428,5 +434,6 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	selftestCloudLifecycle(ctx, runtime, window, checks, capture)
 	selftestReviewFixes(ctx, runtime, window, checks, capture)
 	selftestOffline(ctx, runtime, window, checks, capture)
+	selftestM2(ctx, runtime, window, checks)
 	checks["quit-on-close reaches native shutdown"] = selftestQuitOnClose(ctx, window)
 }

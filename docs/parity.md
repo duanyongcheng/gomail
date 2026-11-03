@@ -4,13 +4,13 @@
 
 Implemented entries call generated MyGO bindings. Startup stubs return explicit safe empty values for optional UI startup reads/preferences; they do not claim those features are implemented. Action stubs throw `NotImplemented` including the command name. Unknown commands always throw.
 
-Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue. Account access/reconnection uses generated AccountService methods and mail:account-changed directly; confirmed access failures pause the account without resending unknown sends. Gmail account edits save local preferences and encrypted signatures atomically; connection/proxy changes and mailbox rebinding remain unavailable.
+Sync commands use the M1 account scheduler. Profile-local realtime preferences are applied before automatic requests start; manual mode permits only explicit manual triggers. Full scans and History pagination resume from committed checkpoints. Mail mutations and remote-write settings commands use the durable pending-op queue. Account access/reconnection uses generated AccountService methods and mail:account-changed directly; confirmed access failures pause the account without resending unknown sends. Gmail account edits save local preferences and encrypted signatures atomically. M2 protocol account add/test commands call typed AccountService methods; safe protocol configuration, revision-checked edits, selected folders, explicit endpoint CA trust, global/per-account HTTP CONNECT or SOCKS5 routes, Microsoft public-client consent/status/cancel and provider folder management use generated bindings directly. Their legacy invoke names remain pending unless an actual adapter exists. Microsoft Graph remains experimental; account capabilities gate actions, including POP3 limitations. No fixture result establishes real consent, keyring behavior or recipient delivery.
 
 | Command | Status | Milestone |
 |---|---|---|
-| `add_account` | not-implemented | M2 |
+| `add_account` | implemented | M2 |
 | `add_message_label` | not-implemented | M3 |
-| `advanced_search` | not-implemented | M1 |
+| `advanced_search` | not-implemented | M3 |
 | `ai_delete_config` | not-implemented | M5 |
 | `ai_get_config` | startup-stub | M5 |
 | `ai_help_write` | not-implemented | M5 |
@@ -45,29 +45,29 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `empty_trash` | implemented | M1 |
 | `export_backup_file` | not-implemented | M5 |
 | `export_contacts_vcard` | not-implemented | M3 |
-| `get_account_proxy` | startup-stub | M2 |
-| `get_account_proxy_setting` | startup-stub | M2 |
+| `get_account_proxy` | implemented | M2 |
+| `get_account_proxy_setting` | implemented | M2 |
 | `get_account_unread_counts` | implemented | M0 |
 | `get_attachment_path` | implemented | M1 |
 | `get_autostart_enabled` | startup-stub | M4 |
 | `get_contact_by_email` | startup-stub | M3 |
 | `get_email_signature` | implemented | M1 |
 | `get_folder_unread_counts` | implemented | M0 |
-| `get_global_proxy` | startup-stub | M2 |
-| `get_imap_sync_folders` | not-implemented | M2 |
+| `get_global_proxy` | implemented | M2 |
+| `get_imap_sync_folders` | implemented | M2 |
 | `get_message` | implemented | M0 |
 | `get_message_labels` | startup-stub | M3 |
 | `get_message_labels_batch` | startup-stub | M3 |
 | `get_message_with_html` | implemented | M0 |
 | `get_messages_batch` | implemented | M1 |
 | `get_notification_status` | startup-stub | M4 |
-| `get_oauth_account_proxy` | startup-stub | M2 |
-| `get_oauth_account_proxy_setting` | startup-stub | M2 |
+| `get_oauth_account_proxy` | implemented | M2 |
+| `get_oauth_account_proxy_setting` | implemented | M2 |
 | `get_pending_mail_ops_summary` | implemented | M1 |
 | `get_profile_storage_namespace` | implemented | M0 |
 | `get_rendered_html` | implemented | M0 |
 | `get_translate_config` | startup-stub | M5 |
-| `get_xoauth2_status` | startup-stub | M2 |
+| `get_xoauth2_status` | implemented | M2 |
 | `health_check` | implemented | M0 |
 | `import_background_image` | not-implemented | M3 |
 | `import_backup_file` | not-implemented | M5 |
@@ -135,9 +135,9 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `suppress_contact_suggestion` | not-implemented | M3 |
 | `sync_titlebar_theme` | startup-stub | M4 |
 | `take_pending_mailto_urls` | startup-stub | M4 |
-| `test_account_connection` | not-implemented | M2 |
-| `test_imap_connection` | not-implemented | M2 |
-| `test_pop3_connection` | not-implemented | M2 |
+| `test_account_connection` | implemented | M2 |
+| `test_imap_connection` | implemented | M2 |
+| `test_pop3_connection` | implemented | M2 |
 | `test_translate_connection` | not-implemented | M5 |
 | `test_webdav_connection` | not-implemented | M5 |
 | `translate_text` | not-implemented | M5 |
@@ -145,11 +145,11 @@ Sync commands use the M1 account scheduler. Profile-local realtime preferences a
 | `trust_sender` | implemented | M1 |
 | `unsnooze_message` | not-implemented | M3 |
 | `update_account` | implemented | M1 |
-| `update_account_proxy` | not-implemented | M2 |
-| `update_account_proxy_setting` | not-implemented | M2 |
-| `update_global_proxy` | not-implemented | M2 |
-| `update_imap_sync_folders` | not-implemented | M2 |
+| `update_account_proxy` | implemented | M2 |
+| `update_account_proxy_setting` | implemented | M2 |
+| `update_global_proxy` | implemented | M2 |
+| `update_imap_sync_folders` | implemented | M2 |
 | `update_message_flags` | implemented | M0 |
-| `update_oauth_account_proxy` | not-implemented | M2 |
-| `update_oauth_account_proxy_setting` | not-implemented | M2 |
+| `update_oauth_account_proxy` | implemented | M2 |
+| `update_oauth_account_proxy_setting` | implemented | M2 |
 | `update_rule` | not-implemented | M3 |

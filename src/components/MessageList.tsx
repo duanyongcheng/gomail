@@ -17,6 +17,7 @@ import MessageItem from "./MessageItem";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { MessageListSkeleton } from "./Skeleton";
 import { getAppTheme } from "@/lib/appThemes";
+import { canModifyMessage } from "@/lib/mailCapabilities";
 
 interface Props {
   messages: MessageSummary[];
@@ -173,7 +174,8 @@ export default function MessageList({
   }
 
   const allSelected = messages.length > 0 && selectedMessageIds.size === messages.length;
-  const deleteUnavailable = cannotDeleteMessages(selectedMessageIds);
+  const modificationUnavailable = messages.some((message) => selectedMessageIds.has(message.id) && !canModifyMessage(message, accounts));
+  const deleteUnavailable = cannotDeleteMessages(selectedMessageIds) || modificationUnavailable;
 
   return (
     <div className="mail-list-content" style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
@@ -198,12 +200,12 @@ export default function MessageList({
           </label>
           {selectedMessageIds.size > 0 && (
             <>
-              <BatchBtn icon={Archive} label={t("messageActions.archive")} onClick={() => handleBatchAction("archive")} disabled={batchLoading} />
+              <BatchBtn icon={Archive} label={t("messageActions.archive")} onClick={() => handleBatchAction("archive")} disabled={batchLoading || modificationUnavailable} />
               <BatchBtn icon={Trash2} label={t("common.delete")} onClick={() => handleBatchAction("delete")} disabled={batchLoading || deleteUnavailable} title={deleteUnavailable ? unavailableReason() : undefined} />
-              <BatchBtn icon={MailOpen} label={t("batch.markRead")} onClick={() => handleBatchAction("markRead")} disabled={batchLoading} />
-              <BatchBtn icon={MailCheck} label={t("batch.markUnread")} onClick={() => handleBatchAction("markUnread")} disabled={batchLoading} />
-              <BatchBtn icon={Star} label={t("batch.star", "Star")} onClick={() => handleBatchAction("star")} disabled={batchLoading} />
-              <BatchBtn icon={Star} label={t("batch.unstar", "Unstar")} onClick={() => handleBatchAction("unstar")} disabled={batchLoading} />
+              <BatchBtn icon={MailOpen} label={t("batch.markRead")} onClick={() => handleBatchAction("markRead")} disabled={batchLoading || modificationUnavailable} />
+              <BatchBtn icon={MailCheck} label={t("batch.markUnread")} onClick={() => handleBatchAction("markUnread")} disabled={batchLoading || modificationUnavailable} />
+              <BatchBtn icon={Star} label={t("batch.star", "Star")} onClick={() => handleBatchAction("star")} disabled={batchLoading || modificationUnavailable} />
+              <BatchBtn icon={Star} label={t("batch.unstar", "Unstar")} onClick={() => handleBatchAction("unstar")} disabled={batchLoading || modificationUnavailable} />
             </>
           )}
           <BatchBtn icon={X} label={t("common.close")} onClick={toggleBatchMode} disabled={false} />

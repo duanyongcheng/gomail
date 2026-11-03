@@ -42,6 +42,7 @@ type outboxPayload struct {
 	Raw                                    []byte
 	ThreadID                               string
 	CloudDraft                             *outboxCloudDraft `json:",omitempty"`
+	EnvelopeRecipients                     []string
 }
 type OutboxItem struct {
 	ID          string `json:"id"`
@@ -76,8 +77,14 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	r.composeMu.Lock()
 	defer r.composeMu.Unlock()
 	account, err := r.DB.Account(ctx, request.AccountID)
-	if err != nil || account.Provider != "gmail" {
-		return Empty{}, errors.New("Gmail account required")
+	if err != nil {
+		return Empty{}, errors.New("account required")
+	}
+	if account.Provider != "gmail" {
+		p, providerErr := r.provider(account.ID)
+		if providerErr != nil || !p.Capabilities().Send {
+			return Empty{}, errors.New("account does not support sending")
+		}
 	}
 	key := request.ClientKey
 	if key == "" {
@@ -146,6 +153,14 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 		return Empty{}, err
 	}
 	outgoing := mailmime.Outgoing{From: mail.Address{Name: account.DisplayName, Address: account.Email}, To: to, CC: cc, BCC: bcc, IncludeBcc: true, Subject: request.Subject, Text: request.BodyText, HTML: request.BodyHTML, MessageID: messageID, InReplyTo: request.InReplyTo, Date: time.Now()}
+	// Graph and Gmail submit raw recipient headers; SMTP freezes its envelope separately.
+	outgoing.IncludeBcc = account.Provider == "gmail" || account.Provider == "outlook" || account.Provider == "graph"
+	envelope := []string{}
+	for _, group := range [][]mail.Address{to, cc, bcc} {
+		for _, address := range group {
+			envelope = append(envelope, address.Address)
+		}
+	}
 	if request.InReplyTo != "" {
 		outgoing.References = mailmime.ReplyReferences("", "", request.InReplyTo)
 	}
@@ -206,7 +221,7 @@ func (s *OutboxService) Queue(ctx context.Context, request SendRequest) (Empty, 
 	if err != nil {
 		return Empty{}, errors.New("invalid outgoing message or size limit exceeded")
 	}
-	plain, err := json.Marshal(outboxPayload{Email: account.Email, Subject: request.Subject, MessageID: messageID, Fingerprint: fingerprint, Raw: raw, ThreadID: threadID, CloudDraft: cloud})
+	plain, err := json.Marshal(outboxPayload{Email: account.Email, Subject: request.Subject, MessageID: messageID, Fingerprint: fingerprint, Raw: raw, ThreadID: threadID, CloudDraft: cloud, EnvelopeRecipients: envelope})
 	if err != nil {
 		return Empty{}, err
 	}
@@ -322,11 +337,15 @@ func (r *Runtime) settleOutbox(ctx context.Context) error {
 	status := "failed"
 	if pending.Result.Unknown {
 		status = "outcome_unknown"
-	} else if pending.Result.RemoteID != "" {
+		pending.Result.Retryable = false
+	} else if pending.Result.Accepted || pending.Result.RemoteID != "" {
 		status = "sent"
+		pending.Result.Retryable = false
 	}
 	var err error
-	if pending.Paused {
+	if pending.Result.AccessState != "" && pending.Result.AccessState.Blocked() && !pending.Result.Unknown && !pending.Result.Accepted && pending.Result.RemoteID == "" {
+		err = r.DB.PauseOutboxResource(ctx, pending.ID, pending.Result.AccessState)
+	} else if pending.Paused {
 		err = r.DB.ReleaseOutboxAccessClaim(ctx, pending.ID)
 	} else {
 		err = r.DB.SettleOutbox(ctx, pending.ID, status, pending.Result.Message, pending.Result.RemoteID, pending.Result.Retryable)
@@ -358,7 +377,7 @@ func (r *Runtime) processOutbox(ctx context.Context) (bool, error) {
 			return false, err
 		}
 		result := r.sendOutbox(ctx, record)
-		r.outboxSettlement = &outboxSettlement{ID: record.ID, Result: result, Paused: !result.Unknown && result.RemoteID == "" && r.accountBlocked(record.AccountID)}
+		r.outboxSettlement = &outboxSettlement{ID: record.ID, Result: result, Paused: !result.Unknown && !result.Accepted && result.RemoteID == "" && r.accountBlocked(record.AccountID)}
 		if err := r.settleOutbox(ctx); err != nil {
 			return false, err
 		}
@@ -381,7 +400,7 @@ func (r *Runtime) sendOutbox(ctx context.Context, record store.OutboxRecord) dom
 	if !ok {
 		return domain.SendResult{Message: "Provider does not support sending."}
 	}
-	return sender.Send(ctx, domain.OutgoingMail{Email: payload.Email, Raw: payload.Raw, ThreadID: payload.ThreadID}, func() error { return r.DB.BeginOutboxSend(ctx, record.ID) })
+	return sender.Send(ctx, domain.OutgoingMail{Email: payload.Email, Raw: payload.Raw, ThreadID: payload.ThreadID, EnvelopeRecipients: append([]string(nil), payload.EnvelopeRecipients...)}, func() error { return r.DB.BeginOutboxSend(ctx, record.ID) })
 }
 func (r *Runtime) RunOutboxWorker(ctx context.Context) {
 	r.outboxWorkerMu.Lock()

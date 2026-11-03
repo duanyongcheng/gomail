@@ -3,10 +3,11 @@ package domain
 import "context"
 
 type Capabilities struct {
-	Read        bool `json:"read"`
-	ModifyFlags bool `json:"modify_flags"`
-	Send        bool `json:"send"`
-	HTML        bool `json:"html"`
+	FolderManagement bool `json:"folder_management"`
+	Read             bool `json:"read"`
+	ModifyFlags      bool `json:"modify_flags"`
+	Send             bool `json:"send"`
+	HTML             bool `json:"html"`
 }
 
 type Account struct {

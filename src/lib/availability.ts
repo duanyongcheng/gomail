@@ -42,15 +42,16 @@ const requirements: Partial<Record<Feature, readonly string[]>> = {
 export function isFeatureAvailable(feature: Feature): boolean {
   switch (feature) {
     // These production services use generated bindings, not legacy invoke names:
-    // GmailLabelService.{list,change}, AccountService.{reconnect,cancelReconnect}, ComposeService.cloud.
+    // GmailLabelService, AccountService reconnect/network, ComposeService.cloud and MicrosoftService.
     case "gmailLabels":
     case "gmailReconnect":
     case "cloudDraftCopies":
+    case "proxy":
+    case "outlook":
       return true;
     // Gmail modify access deliberately cannot permanently delete messages.
-    // Outlook OAuth and startup-hidden/tray lifecycle are not implemented.
+    // Startup-hidden/tray lifecycle is not implemented.
     case "permanentDelete":
-    case "outlook":
     case "startHidden":
       return false;
     default: {

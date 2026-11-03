@@ -103,7 +103,7 @@ func (db *DB) ClaimOutbox(ctx context.Context, now int64, excludedAccounts ...st
 	var record OutboxRecord
 	err := db.withTx(ctx, func(tx *sql.Tx) error {
 		var err error
-		query := "SELECT " + outboxColumns + " FROM outbox WHERE (status='queued' OR (status='failed' AND retryable=1 AND attempts<? AND next_retry_at<=?))"
+		query := "SELECT " + outboxColumns + " FROM outbox WHERE (status='queued' OR (status='failed' AND retryable=1 AND attempts<? AND next_retry_at<=?)) AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id=outbox.account_id AND COALESCE(json_extract(COALESCE(NULLIF(a.sync_state,''),'{}'),'$.provider_send_auth_status'),'available')!='available')"
 		args := []any{MaxOutboxAttempts, now}
 		if len(excludedAccounts) > 0 {
 			query += " AND account_id NOT IN (" + strings.TrimSuffix(strings.Repeat("?,", len(excludedAccounts)), ",") + ")"

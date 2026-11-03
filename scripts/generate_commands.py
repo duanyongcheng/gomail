@@ -9,7 +9,12 @@ parser.add_argument('--manifest-only', action='store_true', help='Leave parent-o
 args = parser.parse_args()
 
 root = Path(__file__).resolve().parents[1]
-implemented = set(re.findall(r'^  ([a-z_]+): implemented', (root / 'src/lib/platform/commands.ts').read_text(), re.M))
+implemented = set(re.findall(r'^  ([a-z_][a-z_0-9]*): implemented', (root / 'src/lib/platform/commands.ts').read_text(), re.M))
+m2_commands = {'add_account', 'test_account_connection', 'test_imap_connection', 'test_pop3_connection',
+    'get_global_proxy', 'update_global_proxy', 'get_account_proxy', 'get_account_proxy_setting',
+    'update_account_proxy', 'update_account_proxy_setting', 'get_oauth_account_proxy',
+    'get_oauth_account_proxy_setting', 'update_oauth_account_proxy', 'update_oauth_account_proxy_setting',
+    'get_imap_sync_folders', 'update_imap_sync_folders', 'get_xoauth2_status'}
 m1_commands = {'start_sync', 'stop_sync', 'set_realtime_preference', 'trigger_sync',
     'archive_message', 'delete_message', 'restore_message', 'move_to_folder',
     'batch_archive', 'batch_delete', 'batch_mark_read', 'batch_star',
@@ -38,6 +43,8 @@ special = {
 }
 
 def milestone(name):
+    if name == 'advanced_search':
+        return 'M3'
     if any(w in name for w in ('proxy', 'imap', 'pop3', 'xoauth2', 'test_account', 'add_account')):
         return 'M2'
     if any(w in name for w in ('webdav', 'backup', 'translate', 'ai_')):
@@ -56,7 +63,7 @@ for name in sorted(names):
     target = milestone(name)
     status = 'implemented' if name in implemented else 'not-implemented'
     if name in implemented:
-        target = 'M1' if name in m1_commands else 'M0'
+        target = 'M2' if name in m2_commands else 'M1' if name in m1_commands else 'M0'
     else:
         value = None
         if name in arrays: value = '[]'
@@ -65,7 +72,10 @@ for name in sorted(names):
         elif name in strings: value = '\'\''
         elif name in special: value = special[name]
         if value is None:
-            source.append(f'  {name}: pending("{name}", "{target}"),')
+            if name == 'set_xoauth2_refresh':
+                source.append('  set_xoauth2_refresh: pending("set_xoauth2_refresh", "M2", "Raw refresh-token import is unsupported. Use Microsoft sign-in in account settings to verify the mailbox and authorize IMAP and SMTP separately."),')
+            else:
+                source.append(f'  {name}: pending("{name}", "{target}"),')
         else:
             status = 'startup-stub'
             source.append(f'  {name}: startup({value}, "{target}"),')
@@ -89,7 +99,13 @@ if args.manifest_only:
     'Mail mutations and remote-write settings commands use the durable pending-op queue. '
     'Account access/reconnection uses generated AccountService methods and mail:account-changed directly; '
     'confirmed access failures pause the account without resending unknown sends. '
-    'Gmail account edits save local preferences and encrypted signatures atomically; '
-    'connection/proxy changes and mailbox rebinding remain unavailable.\n\n'
+    'Gmail account edits save local preferences and encrypted signatures atomically. '
+    'M2 protocol account add/test commands call typed AccountService methods; '
+    'safe protocol configuration, revision-checked edits, selected folders, explicit endpoint CA trust, '
+    'global/per-account HTTP CONNECT or SOCKS5 routes, Microsoft public-client consent/status/cancel '
+    'and provider folder management use generated bindings directly. '
+    'Their legacy invoke names remain pending unless an actual adapter exists. '
+    'Microsoft Graph remains experimental; account capabilities gate actions, including POP3 limitations. '
+    'No fixture result establishes real consent, keyring behavior or recipient delivery.\n\n'
     '| Command | Status | Milestone |\n|---|---|---|\n' + '\n'.join(rows) + '\n')
 print(f'{len(names)} commands, {len(implemented)} implemented; parity and manifest refreshed')

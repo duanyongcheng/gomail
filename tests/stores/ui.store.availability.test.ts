@@ -20,11 +20,17 @@ describe("UI store availability", () => {
     expect(useUIStore.getState().activeView).toBe("inbox");
     expect(useUIStore.getState().pendingContactId).toBeNull();
   });
-  it.each(["rules", "proxy", "translation", "ai", "cloudSync", "unknown"])("does not restore unsupported settings tab %s", async (tab) => {
+  it.each(["rules", "translation", "ai", "cloudSync", "unknown"])("does not restore unsupported settings tab %s", async (tab) => {
     sessionStorage.setItem("pebble-settings-tab", tab);
     vi.resetModules();
     const { useUIStore: restored } = await import("../../src/stores/ui.store");
     expect(restored.getState().settingsTab).toBe("accounts");
+  });
+  it("restores the implemented proxy settings tab", async () => {
+    sessionStorage.setItem("pebble-settings-tab", "proxy");
+    vi.resetModules();
+    const { useUIStore: restored } = await import("../../src/stores/ui.store");
+    expect(restored.getState().settingsTab).toBe("proxy");
   });
   it("retains supported restored settings and disables unsupported startup preferences", async () => {
     sessionStorage.setItem("pebble-settings-tab", "privacy");

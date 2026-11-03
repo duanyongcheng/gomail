@@ -6,10 +6,11 @@ import { useTranslation } from "react-i18next";
 import { useUpdateFlagsMutation } from "@/hooks/mutations/useUpdateFlagsMutation";
 import { useComposeStore } from "@/stores/compose.store";
 import { executeMembershipAction } from "@/hooks/mutations/mailActionsMutation";
-import type { Message } from "@/lib/api";
+import type { Account, Message } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
+import { canModifyMessage } from "@/lib/mailCapabilities";
 
 interface Props {
   message: Message;
@@ -32,6 +33,7 @@ export default function MessageActionToolbar({
   const openCompose = useComposeStore((s) => s.openCompose);
   const queryClient = useQueryClient();
   const flagsMutation = useUpdateFlagsMutation();
+  const canModify = canModifyMessage(message, queryClient.getQueryData<Account[]>(["accounts"]) ?? []);
   const inKanban = useKanbanStore((s) => s.cardIdSet.has(message.id));
   const [showKanbanPicker, setShowKanbanPicker] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -99,13 +101,14 @@ export default function MessageActionToolbar({
         );
       },
       active: message.is_starred,
+      disabled: !canModify,
     },
     {
       icon: folderRole === "archive" ? RotateCcw : Archive,
       label: folderRole === "archive"
         ? t("messageActions.unarchive", "Unarchive")
         : t("messageActions.archive"),
-      disabled: membershipPending,
+      disabled: membershipPending || !canModify,
       action: async () => {
         if (membershipBusy.current) return;
         membershipBusy.current = true;
@@ -142,7 +145,7 @@ export default function MessageActionToolbar({
     ...(inTrash ? [{
       icon: RotateCcw,
       label: t("messageActions.restore", "Restore"),
-      disabled: membershipPending,
+      disabled: membershipPending || !canModify,
       action: async () => {
         if (membershipBusy.current) return;
         membershipBusy.current = true;
@@ -173,7 +176,7 @@ export default function MessageActionToolbar({
         if (deleteUnavailable) return;
         setDeleteTargetId(message.id);
       },
-      disabled: deleteUnavailable || membershipPending,
+      disabled: deleteUnavailable || membershipPending || !canModify,
     },
   ];
 

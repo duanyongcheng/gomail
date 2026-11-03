@@ -9,6 +9,8 @@ import {
 } from "../../../src/lib/api";
 
 import { clearLegacySignature, getSignature } from "../../../src/lib/signatures";
+vi.mock("../../../src/features/settings/ProtocolAccountForm", () => ({ default: () => <p>Protocol settings</p> }));
+vi.mock("../../../src/features/settings/MicrosoftAccountForm", () => ({ default: () => <p>Microsoft consent</p> }));
 
 const fixture = vi.hoisted(() => ({ provider: "outlook" }));
 
@@ -122,14 +124,15 @@ describe("AccountsTab supported local settings", () => {
     vi.mocked(updateOAuthAccountProxySetting).mockResolvedValue(undefined);
   });
 
-  it("does not expose Outlook editing or request proxy settings", () => {
+  it("opens Outlook typed protocol settings without legacy proxy reads", () => {
     fixture.provider = "outlook";
     render(<AccountsTab />);
     const edit = screen.getByRole("button", { name: "Edit account" });
-    expect(edit).toBeDisabled();
+    expect(edit).toBeEnabled();
     expect(edit).toHaveAttribute("title", expect.any(String));
     fireEvent.click(edit);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Protocol settings")).toBeInTheDocument();
     expect(getOAuthAccountProxySetting).not.toHaveBeenCalled();
     expect(getSignature).not.toHaveBeenCalled();
     expect(updateAccount).not.toHaveBeenCalled();

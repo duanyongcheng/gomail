@@ -39,6 +39,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	runtime := app.New(ctx, nil, desktop.Keyring{}, mygo.Shell.OpenExternal)
+	runtime.RegisterStandardProviders()
+	runtime.RegisterMicrosoftProviders()
 	runtime.OnSync = func(event app.SyncComplete) { _ = syncComplete.Broadcast(event) }
 	runtime.OnProgress = func(event domain.SyncProgress) { _ = syncProgress.Broadcast(event) }
 	runtime.OnNewMail = func(event domain.NewMail) { _ = newMail.Broadcast(event) }
@@ -55,7 +57,7 @@ func main() {
 	mygo.App.OnActivate(func(bool) { lifecycle.Restore() })
 	mygo.App.OnSecondInstance(func([]string, string) { lifecycle.Restore() })
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
-	mygo.Bind(&app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
+	mygo.Bind(&app.MicrosoftService{Runtime: runtime}, &app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog

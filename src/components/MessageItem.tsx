@@ -11,6 +11,8 @@ import { useToastStore } from "@/stores/toast.store";
 import AccountBadge from "./AccountBadge";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { deriveAccountColor } from "@/lib/accountColors";
+import { canModifyMessage } from "@/lib/mailCapabilities";
+import type { Account } from "@/lib/api";
 
 interface Props {
   message: MessageSummary;
@@ -53,6 +55,7 @@ function recipientLabel(addresses: EmailAddress[]): string {
 function MessageItem({ message, labels = [], isSelected, onClick, batchMode, batchSelected, onToggleBatchSelect, spamFolderId, folderRole, accountBadge, rowIndex }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const canModify = canModifyMessage(message, queryClient.getQueryData<Account[]>(["accounts"]) ?? []);
   const [showActions, setShowActions] = useState(false);
   const inKanban = useKanbanStore((s) => s.cardIdSet.has(message.id));
   const archiveActionLabel = folderRole === "archive"
@@ -207,6 +210,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
                   useToastStore.getState().addToast({ message: msg, type: "error" });
                 });
             }}
+            disabled={!canModify}
             aria-label={archiveActionLabel}
             title={archiveActionLabel}
             className="mail-row-action"
@@ -225,6 +229,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
                     useToastStore.getState().addToast({ message: t("messageActions.spamFailed", "Failed to mark as spam"), type: "error" });
                   });
               }}
+              disabled={!canModify}
               aria-label={t("messageActions.reportSpam", "Report spam")}
               title={t("messageActions.reportSpam", "Report spam")}
               className="mail-row-action"
@@ -257,6 +262,7 @@ function MessageItem({ message, labels = [], isSelected, onClick, batchMode, bat
               void executeMessageFlags(queryClient, { messageId: message.id, toggleStarred: true }, t).catch(() => {});
             }}
             aria-label={message.is_starred ? t("messageActions.unstar") : t("messageActions.star")}
+            disabled={!canModify}
             aria-pressed={message.is_starred}
             title={message.is_starred ? t("messageActions.unstar") : t("messageActions.star")}
             className="mail-row-action"

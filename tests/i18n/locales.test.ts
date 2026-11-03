@@ -8,6 +8,21 @@ function readLocale(locale: string) {
 }
 
 describe("locale files", () => {
+  it("keeps protocol, authorization, folder and proxy translations and interpolation fields aligned", () => {
+    const en = readLocale("en");
+    const zh = readLocale("zh");
+    for (const namespace of ["protocolAccount", "microsoftAccount", "protocolFolders", "connectionRoute"]) {
+      expect(Object.keys(zh[namespace]).sort()).toEqual(Object.keys(en[namespace]).sort());
+      for (const key of Object.keys(en[namespace])) {
+        const english = en[namespace][key];
+        const chinese = zh[namespace][key];
+        expect(typeof chinese).toBe("string");
+        expect(chinese.trim()).not.toBe("");
+        expect(chinese.match(/\{\{[^}]+\}\}/g) ?? []).toEqual(english.match(/\{\{[^}]+\}\}/g) ?? []);
+      }
+    }
+  });
+
   it("translates tray menu labels in English and Chinese", () => {
     const en = readLocale("en");
     const zh = readLocale("zh");

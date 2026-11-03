@@ -198,18 +198,23 @@ type CachedMessage struct {
 	Attachments []domain.Attachment
 }
 type Snapshot struct {
-	AccountID          string
-	Email              string
-	Folders            []domain.Folder
-	Messages           []CachedMessage
-	Removed            []string
-	Cursor             *string
-	Checkpoint         *GmailCheckpoint
-	ResetBackfill      bool
-	ProcessedRemoteIDs []string
-	RecoveredRemoteIDs []string
-	Failures           []MessageFailure
-	PendingOpWatermark *int64
+	ProviderMappingScopesCleared []ProviderMappingScope
+	RemovedFolderIDs             []string
+	RemovedMemberships           []RemovedMembership
+	ProviderCheckpoints          []ProviderCheckpoint
+	ProviderMappings             []ProviderMapping
+	AccountID                    string
+	Email                        string
+	Folders                      []domain.Folder
+	Messages                     []CachedMessage
+	Removed                      []string
+	Cursor                       *string
+	Checkpoint                   *GmailCheckpoint
+	ResetBackfill                bool
+	ProcessedRemoteIDs           []string
+	RecoveredRemoteIDs           []string
+	Failures                     []MessageFailure
+	PendingOpWatermark           *int64
 }
 
 // CommitSnapshot atomically updates the cache, FTS triggers, memberships, and
@@ -262,7 +267,32 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 			if f.AccountID != s.AccountID {
 				return errors.New("folder account mismatch")
 			}
-			_, err := tx.ExecContext(ctx, `INSERT INTO folders(id,account_id,remote_id,name,folder_type,role,is_system) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,role=excluded.role,is_system=excluded.is_system`, f.ID, f.AccountID, f.RemoteID, f.Name, f.FolderType, f.Role, f.IsSystem)
+			var owner string
+			err := tx.QueryRowContext(ctx, `SELECT account_id FROM folders WHERE id=?`, f.ID).Scan(&owner)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			if owner != "" && owner != s.AccountID {
+				return errors.New("folder identity belongs to another account")
+			}
+			if f.ParentID != nil {
+				var parentOwner string
+				err := tx.QueryRowContext(ctx, `SELECT account_id FROM folders WHERE id=?`, *f.ParentID).Scan(&parentOwner)
+				if errors.Is(err, sql.ErrNoRows) {
+					for _, candidate := range s.Folders {
+						if candidate.ID == *f.ParentID && candidate.AccountID == s.AccountID {
+							parentOwner = s.AccountID
+							break
+						}
+					}
+				} else if err != nil {
+					return err
+				}
+				if parentOwner != s.AccountID {
+					return errors.New("folder parent account mismatch")
+				}
+			}
+			_, err = tx.ExecContext(ctx, `INSERT INTO folders(id,account_id,remote_id,name,folder_type,role,is_system,parent_id,sort_order,color) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET remote_id=excluded.remote_id,name=excluded.name,role=excluded.role,is_system=excluded.is_system,parent_id=excluded.parent_id,sort_order=excluded.sort_order,color=COALESCE(excluded.color,folders.color)`, f.ID, f.AccountID, f.RemoteID, f.Name, f.FolderType, f.Role, f.IsSystem, f.ParentID, f.SortOrder, f.Color)
 			if err != nil {
 				return err
 			}
@@ -338,6 +368,9 @@ func (db *DB) CommitSnapshot(ctx context.Context, s Snapshot) error {
 					return err
 				}
 			}
+		}
+		if err := saveProviderState(ctx, tx, s); err != nil {
+			return err
 		}
 		if rebuildThreads {
 			if err := rebuildHeaderThreads(ctx, tx, s.AccountID); err != nil {

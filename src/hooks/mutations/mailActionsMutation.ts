@@ -5,6 +5,7 @@ import {
 } from "@/lib/api";
 import { captureMessageFlagReceipt, recordManualUnread } from "@/hooks/queries/messageFlagsCache";
 import { cancelMessageFlagViews, messageFlagsMutationKey, settleMessageFlagViews } from "./messageFlagsMutation";
+import { assertCachedMailMutation } from "@/lib/mailCapabilities";
 
 export type BatchMailAction = "archive" | "delete" | "markRead" | "markUnread" | "star" | "unstar";
 export type MembershipAction =
@@ -36,6 +37,7 @@ function receiptOptions<T, V>(client: QueryClient, mutationFn: (variables: V) =>
 }
 
 export function executeMembershipAction(client: QueryClient, params: MembershipAction) {
+  try { assertCachedMailMutation(client, [params.messageId]); } catch (error) { return Promise.reject(error); }
   const options = receiptOptions<string | void, MembershipAction>(client, (variables) => {
     switch (variables.action) {
       case "archive": return archiveMessage(variables.messageId);
@@ -48,6 +50,7 @@ export function executeMembershipAction(client: QueryClient, params: MembershipA
 }
 
 export function executeBatchMailAction(client: QueryClient, action: BatchMailAction, messageIds: string[]) {
+  try { assertCachedMailMutation(client, messageIds); } catch (error) { return Promise.reject(error); }
   const options = receiptOptions(client, (ids: string[]) => {
     switch (action) {
       case "archive": return batchArchive(ids);
@@ -68,6 +71,7 @@ export function executeBatchMailAction(client: QueryClient, action: BatchMailAct
 }
 
 export function executeMarkAllRead(client: QueryClient, scope: MarkAllReadScope) {
+  try { assertCachedMailMutation(client, [], scope.accountId); } catch (error) { return Promise.reject(error); }
   const options = receiptOptions(client, (variables: MarkAllReadScope) => variables.folderIds === undefined
     ? markAccountAllRead(variables.accountId)
     : markFolderAllRead(variables.accountId, variables.folderIds), true, undefined,

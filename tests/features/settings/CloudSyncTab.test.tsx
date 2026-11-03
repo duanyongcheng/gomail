@@ -65,6 +65,8 @@ describe("CloudSyncTab automatic backup configuration", () => {
   it("saves edited credentials and secret settings only after explicit confirmation", async () => {
     render(<CloudSyncTab />);
 
+    await screen.findByRole("button", { name: "Save Auto-Backup Configuration" });
+
     const url = await screen.findByLabelText("WebDAV URL");
     fireEvent.change(url, { target: { value: "https://dav.example.com/new" } });
     fireEvent.change(screen.getByLabelText("Username"), {
@@ -132,6 +134,9 @@ describe("CloudSyncTab automatic backup configuration", () => {
     async (fieldLabel) => {
       render(<CloudSyncTab />);
 
+      // Inputs exist before saved configuration finishes loading.
+      await screen.findByRole("button", { name: "Save Auto-Backup Configuration" });
+
       fireEvent.change(await screen.findByLabelText(fieldLabel), {
         target: { value: "" },
       });
@@ -150,6 +155,8 @@ describe("CloudSyncTab automatic backup configuration", () => {
 
   it("rejects secret backup without an encryption password", async () => {
     render(<CloudSyncTab />);
+
+    await screen.findByRole("button", { name: "Save Auto-Backup Configuration" });
 
     fireEvent.click(
       await screen.findByRole("checkbox", {

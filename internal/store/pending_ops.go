@@ -200,6 +200,7 @@ func (db *DB) ClaimPendingOps(ctx context.Context, limit int, now int64, exclude
 			JOIN mail_op_sequence q ON q.op_id=p.id AND q.kind='queued'
 			WHERE (p.status='pending' OR (p.status='failed' AND p.attempts < ? AND (p.next_retry_at IS NULL OR p.next_retry_at <= ?)))
 			AND CASE WHEN json_valid(p.payload_json) THEN COALESCE(json_extract(p.payload_json,'$._result'),'pending') ELSE 'pending' END NOT IN ('outcome_unknown','remote_succeeded')
+			AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id=p.account_id AND COALESCE(json_extract(COALESCE(NULLIF(a.sync_state,''),'{}'),'$.provider_write_auth_status'),'available')!='available')
 			AND NOT EXISTS (SELECT 1 FROM pending_mail_ops earlier
 				JOIN mail_op_sequence eq ON eq.op_id=earlier.id AND eq.kind='queued'
 				WHERE earlier.account_id=p.account_id AND earlier.message_id=p.message_id AND earlier.status!='done' AND eq.sequence<q.sequence))`
@@ -298,18 +299,18 @@ func (db *DB) FailPendingOp(ctx context.Context, id string, errText string, outc
 func (db *DB) ResetInterruptedPendingOps(ctx context.Context) error {
 	return db.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now().Unix()
-		rows, err := tx.QueryContext(ctx, "SELECT id,op_type,status,payload_json FROM pending_mail_ops WHERE status!='done'")
+		rows, err := tx.QueryContext(ctx, "SELECT p.id,p.op_type,p.status,p.payload_json,a.provider FROM pending_mail_ops p JOIN accounts a ON a.id=p.account_id WHERE p.status!='done'")
 		if err != nil {
 			return err
 		}
 		type interruptedOp struct {
-			id, kind, status string
-			payload          []byte
+			id, kind, status, provider string
+			payload                    []byte
 		}
 		var interrupted []interruptedOp
 		for rows.Next() {
 			var op interruptedOp
-			if err := rows.Scan(&op.id, &op.kind, &op.status, &op.payload); err != nil {
+			if err := rows.Scan(&op.id, &op.kind, &op.status, &op.payload, &op.provider); err != nil {
 				rows.Close()
 				return err
 			}
@@ -331,7 +332,8 @@ func (db *DB) ResetInterruptedPendingOps(ctx context.Context) error {
 				}
 				continue
 			}
-			if result == "outcome_unknown" || op.kind == "send" && op.status == "in_progress" {
+			nonIdempotent := op.kind == "send" || (op.provider != "gmail" && op.kind != "update_flags")
+			if result == "outcome_unknown" || nonIdempotent && op.status == "in_progress" {
 				payload := op.payload
 				if result != "outcome_unknown" {
 					payload, err = withResult(payload, "outcome_unknown")

@@ -185,7 +185,9 @@ func selftestQuitOnClose(ctx context.Context, window *mygo.Window) bool {
 func selftestUnavailableSettings(ctx context.Context, window *mygo.Window) bool {
 	return waitSelftestPage(ctx, window, `(() => {
 		if (!document.getElementById('settings-tab-accounts')) return false;
-		const unsupported = ['proxy','rules','translation','ai','cloudSync'];
+		const proxy = document.getElementById('settings-tab-proxy');
+		if (!proxy || proxy.disabled || proxy.getAttribute('aria-disabled') === 'true') return false;
+		const unsupported = ['rules','translation','ai','cloudSync'];
 		return unsupported.every(id => {
 			const b = document.getElementById('settings-tab-' + id);
 			return !b || b.disabled || b.getAttribute('aria-disabled') === 'true';

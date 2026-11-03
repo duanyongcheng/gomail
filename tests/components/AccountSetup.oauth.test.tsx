@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.mocked(SyncService.start).mockResolvedValue({ value: "started" });
 });
 
-describe("Gmail-only account setup", () => {
+describe("Gmail account setup regression", () => {
   it("waits for configuration then signs in through the real adapter and refreshes folders", async () => {
     const { invalidate, onClose } = setup();
     const button = screen.getByRole("button", { name: "Sign in with Google" });
@@ -44,13 +44,14 @@ describe("Gmail-only account setup", () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["folders", "account-1"] });
   });
 
-  it("does not expose Outlook, IMAP/POP3, passwords or proxy forms", async () => {
+  it("keeps Gmail selected and protocol passwords unmounted until explicitly selected", async () => {
     setup();
     await waitFor(() => expect(screen.getByRole("button", { name: "Sign in with Google" })).toBeEnabled());
     expect(screen.queryByRole("button", { name: "Sign in with Microsoft" })).toBeNull();
     expect(screen.queryByLabelText(/Incoming protocol|Password|SOCKS5 Proxy|SMTP|IMAP/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Add Account & Sync" })).toBeNull();
-    expect(screen.getByText(/Outlook \/ IMAP \/ POP3/)).toHaveTextContent(/not available/);
+    expect(screen.getByRole("option", { name: "IMAP / SMTP" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Microsoft" })).toBeInTheDocument();
     expect(AccountService.login).not.toHaveBeenCalled();
   });
 

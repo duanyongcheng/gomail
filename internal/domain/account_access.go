@@ -24,16 +24,16 @@ type AccessError struct{ State ConnectionState }
 func (e *AccessError) Error() string {
 	switch e.State {
 	case ConnectionReauthRequired:
-		return "Gmail authorization expired or was revoked; reconnect this account."
+		return "Mail authorization expired or was revoked; reconnect this account."
 	case ConnectionPermissionRequired:
-		return "Gmail modify permission is required; reconnect and grant mail access."
+		return "Mail permission is required; reconnect and grant access to this resource."
 	case ConnectionCredentialsUnavailable:
 		return "Saved credentials are unavailable; unlock the profile keyring and reconnect."
 	case ConnectionConfigurationRequired:
-		return "Google OAuth configuration requires attention."
+		return "Account authorization configuration requires attention."
 	case ConnectionReconnecting:
-		return "Gmail reconnection is in progress; queued work is retained."
+		return "Account reconnection is in progress; queued work is retained."
 	default:
-		return "Gmail connection failed temporarily; retry is scheduled."
+		return "Mail connection failed temporarily; retry is scheduled."
 	}
 }

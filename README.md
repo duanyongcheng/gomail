@@ -22,13 +22,24 @@ settings. Sender trust is persisted per account and enforced by the backend
 privacy policy. Account-level access states and same-mailbox Google reconnection
 preserve cached mail and queued work when authorization needs attention. Gmail sender name,
 local account label, color and encrypted signature are editable offline; these values
-save atomically without changing mailbox identity. Gmail proxy settings and mailbox
-reassignment remain unavailable. Saved local drafts can be explicitly uploaded to
+save atomically without changing mailbox identity. Gmail account network settings
+support inherit/direct/custom routes; mailbox reassignment remains unavailable.
+Saved local drafts can be explicitly uploaded to
 Gmail, browsed/imported, checked, updated and safely deleted with durable
 unknown-outcome protection. Cloud-linked sends use Gmail's draft send operation so
 the matching remote draft is consumed only after Gmail accepts the send; conflicts
 and unknown outcomes remain visible. See [Gmail completion](docs/m1-gmail-completion.md).
-IMAP/SMTP are tested as an isolated protocol prototype and join the app in M2.
+M2 adds production IMAP/SMTP and POP3 accounts, encrypted account configuration,
+lazy local restore, verified TLS/STARTTLS/STLS, explicit CA trust and HTTP/SOCKS5
+proxy routing. Selected IMAP folders use durable UIDVALIDITY-aware checkpoints,
+queued flags/moves/trash, folder management and scheduler-owned IDLE. SMTP uses
+the encrypted Outbox with frozen Bcc envelope recipients and Bcc-free MIME;
+server acceptance can have no remote ID and does not prove recipient delivery.
+POP3 uses UIDL checkpoints and deliberately disables remote flag/folder changes.
+Microsoft public-client OAuth provides separate Graph/Exchange resource grants
+and independent IMAP/SMTP XOAUTH2. Experimental Graph supports folder discovery,
+resumable delta/raw MIME, durable writes and sendMail 202 acceptance. See
+[M2 integration evidence and limits](docs/m2-integration-validation.md).
 Daily-use hardening adds WAL/FULL write durability, native close/restore behavior,
 safe user-clicked web links, and shared unavailable-feature guards. See
 [the hardening contract](docs/m1-daily-use-hardening.md).
@@ -176,15 +187,15 @@ validated Go service; failures show a generic error without exposing private URL
 
 Unsupported features are disabled or hidden across settings, navigation, command
 palette, keyboard shortcuts and mail/compose actions. These include advanced
-search filters, non-Gmail setup, proxies, local labels, contacts, Kanban, snooze,
+search filters, local labels, contacts, Kanban, snooze,
 rules, templates, AI, translation and backup. Basic search, local appearance and
 supported Gmail workflows remain available; empty-trash/permanent delete is still
 unavailable with Gmail modify access.
 
 Settings → Accounts → **Edit account** saves the Gmail sender name, account label,
 color and encrypted signature together. Signature reads require the profile key
-and must complete before settings can be saved. Gmail proxy changes and mailbox
-address reassignment are unavailable; use same-mailbox Reconnect for authorization
+and must complete before settings can be saved. Gmail's separate network panel
+changes its account route. Mailbox address reassignment is unavailable; use same-mailbox Reconnect for authorization
 repair. Queued messages retain their original sender and content snapshot. See
 [account editing and signatures](docs/m1-account-settings.md).
 
@@ -197,8 +208,9 @@ GOOGLE_CLIENT_SECRET=your-desktop-client-secret
 
 Bun loads `.env` during development. `bun run build` injects these local values
 using `MYGO_LDFLAGS -X`. Process environment values override packaged defaults;
-an explicitly empty process value disables a packaged value. Microsoft client
-variables are reserved for M2. Without a Google client ID, the login button says
+an explicitly empty process value disables a packaged value. Microsoft setup
+accepts a native public-client ID, validated tenant/audience and separate resource
+consent in the account form; no Microsoft client secret is used. Without a Google client ID, the login button says
 “未配置” and no authorization request is made.
 
 Gmail requests `gmail.modify` plus `openid email profile`. Google authorization
@@ -247,7 +259,10 @@ Version 27 adds an account-scoped conversation index without modifying legacy ta
 Version 28 records unresolved Gmail label-management writes for safe reconciliation.
 Version 29 adds encrypted account-scoped Gmail signatures. Version 30 records
 Gmail cloud-copy identities and durable write intents. Version 31 adds cloud
-copy deletion/send lifecycle states and outbox association. These additions do
+copy deletion/send lifecycle states and outbox association. Version 32 adds
+provider/account/scope checkpoints, remote identity mappings and explicit global
+network configuration. Protocol credentials and resource grants remain encrypted
+in account-bound vault envelopes. These additions do
 not change the Rust v20 schema. An unversioned PoC database is rejected instead of being silently
 rewritten.
 Old live-profile import remains M6 work: use a separate Pebble-Go profile.
@@ -280,7 +295,14 @@ checks exercise real message-link routing to an in-memory opener, unavailable
 settings, close/restore with edited compose state, a real second instance, and
 native quit-on-close. The selftest uses a separate application name/instance lock. It
 writes a JSON report and screenshots, then exits. It does not
-contact Google or the system keyring; draft checks use an in-memory test keyring:
+contact Google or the system keyring; draft checks use an in-memory test keyring.
+Seven M2 backend checks exercise protocol account test/save/sync, encrypted
+reopen with zero network, POP3 UIDL deduplication and SMTP Outbox/Bcc using
+isolated local TLS servers in a separate runtime. Seven separately named
+WebView checks operate the real IMAP setup/settings/read and SMTP/Bcc compose
+controls through native typed bindings. Their evidence and remaining limits are
+recorded in [the independent review](docs/m2-review-validation.md). None of these
+checks establishes live account acceptance:
 
 ```sh
 CGO_ENABLED=0 go build -o /tmp/pebble-go-selftest .

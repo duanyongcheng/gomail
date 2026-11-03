@@ -10,6 +10,8 @@ import { extractErrorMessage } from "@/lib/extractErrorMessage";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
 import { realtimePreferenceToPollInterval, useUIStore } from "@/stores/ui.store";
 import { inputStyle, labelStyle } from "../styles/form";
+import ProtocolAccountForm from "@/features/settings/ProtocolAccountForm";
+import MicrosoftAccountForm from "@/features/settings/MicrosoftAccountForm";
 
 const FOLDER_REFRESH_ATTEMPTS = 5;
 const FOLDER_REFRESH_INTERVAL_MS = 2000;
@@ -28,12 +30,12 @@ function refreshFoldersAfterSyncStart(queryClient: QueryClient, accountId: strin
   pollFolders(FOLDER_REFRESH_ATTEMPTS);
 }
 
-/** Only Gmail OAuth is implemented. Never collect credentials for pending providers. */
 export default function AccountSetup({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const realtimeMode = useUIStore((state) => state.realtimeMode);
   const [accountLabel, setAccountLabel] = useState("");
+  const [provider, setProvider] = useState("gmail");
   const [loading, setLoading] = useState(false);
   const busy = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
 
   async function requestClose() {
     if (busy.current) return;
-    if (accountLabel && !await useConfirmStore.getState().confirm({
+    if ((accountLabel || provider !== "gmail") && !await useConfirmStore.getState().confirm({
       title: t("accountSetup.discardTitle", "Discard form"),
       message: t("accountSetup.discardConfirm", "Discard this form?"),
       destructive: true,
@@ -82,7 +84,7 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
       }
       if (event.key === "Tab" && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
         );
         if (!focusable.length) { event.preventDefault(); return; }
         const first = focusable[0];
@@ -127,6 +129,13 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
           <button type="button" disabled={loading} onClick={() => void requestClose()} aria-label={t("common.close", "Close")}><X size={18} /></button>
         </div>
         <div className="scroll-region account-setup-scroll" style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto", padding: 20 }}>
+          <label style={labelStyle}>{t("accountSetup.provider", "Provider")} <select name="account-provider" aria-label={t("accountSetup.provider", "Provider")} value={provider} disabled={loading} onChange={(e) => setProvider(e.target.value)}>
+            <option value="gmail">Gmail</option>
+            {isFeatureAvailable("imap") && <option value="imap">IMAP / SMTP</option>}
+            {isFeatureAvailable("pop3") && <option value="pop3">POP3 / SMTP</option>}
+            {isFeatureAvailable("outlook") && <option value="outlook">Microsoft</option>}
+          </select></label>
+          {provider === "outlook" ? <MicrosoftAccountForm onBusy={(value) => { busy.current = value; setLoading(value); }} onSaved={async () => { await queryClient.invalidateQueries({ queryKey: accountsQueryKey }); if (alive.current) onClose(); }} /> : provider !== "gmail" ? <ProtocolAccountForm key={provider} provider={provider === "pop3" ? "pop3" : "imap"} onBusy={(value) => { busy.current = value; setLoading(value); }} onSaved={async () => { await queryClient.invalidateQueries({ queryKey: accountsQueryKey }); if (alive.current) onClose(); }} /> : <>
           <label htmlFor="setup-account-label" style={labelStyle}>{t("accountSetup.accountLabel", "Account label")}</label>
           <input ref={labelRef} id="setup-account-label" style={inputStyle} maxLength={120} disabled={loading}
             value={accountLabel} onChange={(event) => setAccountLabel(event.target.value)} />
@@ -141,8 +150,8 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
           {statusLoaded && !configured && <p role="status">{t("accountConnection.notConfigured", "Configure Google OAuth before reconnecting.")}</p>}
           {statusError && <p role="alert">{t("accountConnection.loadFailed", "Could not load account connection status.")} <button onClick={() => setRetry((value) => value + 1)}>{t("common.retry", "Retry")}</button></p>}
           {error && <p role="alert">{error}</p>}
-          {/* Explain absent provider/forms without exposing editable nonworking setup. */}
-          {!isFeatureAvailable("outlook") && <p>Outlook / IMAP / POP3 — {unavailableReason()}</p>}
+          </>}
+          {!isFeatureAvailable("outlook") && <p>Outlook — {unavailableReason()}</p>}
           {!isFeatureAvailable("proxy") && <p>{t("accountSetup.proxyHost", "SOCKS5 Proxy")} — {unavailableReason()}</p>}
         </div>
       </div>

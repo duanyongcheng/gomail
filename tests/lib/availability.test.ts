@@ -10,8 +10,8 @@ import i18n from "../../src/lib/i18n";
 // Mock only native transport: real API -> command manifest -> generated binding remains in use.
 vi.mock("mygo-runtime", () => ({ call: vi.fn(), event: vi.fn() }));
 
-const unavailable: Feature[] = ["contacts", "kanban", "snooze", "localLabels", "templates", "ai", "translation", "advancedSearch", "proxy", "rules", "backup", "notifications", "autostart", "startHidden", "accountReorder", "imap", "pop3", "outlook", "permanentDelete", "backgroundImage"];
-const available: Feature[] = ["gmailLabels", "gmailReconnect", "localCompose", "cloudDraftCopies", "outbox", "signatures"];
+const unavailable: Feature[] = ["contacts", "kanban", "snooze", "localLabels", "templates", "ai", "translation", "advancedSearch", "rules", "backup", "notifications", "autostart", "startHidden", "accountReorder", "permanentDelete", "backgroundImage"];
+const available: Feature[] = ["gmailLabels", "gmailReconnect", "localCompose", "cloudDraftCopies", "outbox", "signatures", "imap", "pop3", "outlook", "proxy"];
 
 describe("production adapter availability", () => {
   beforeEach(() => {

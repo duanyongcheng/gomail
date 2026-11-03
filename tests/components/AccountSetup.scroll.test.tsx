@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountSetup from "@/components/AccountSetup";
 import { AccountService } from "@/mygo";
@@ -36,5 +36,23 @@ describe("account setup scrolling layout", () => {
     expect(body).toHaveStyle({ flex: "1 1 auto", minHeight: "0", overflowY: "auto" });
     expect(body).toHaveClass("scroll-region");
     expect(body).not.toContainElement(screen.getByRole("button", { name: "Close" }));
+  });
+
+  it.each([
+    ["imap", "Add protocol account"],
+    ["pop3", "Add protocol account"],
+    ["outlook", "Authorize selected resources"],
+  ])("keeps the lower %s form controls inside the scroll body as fields expand", async (provider, action) => {
+    const body = await setup();
+    fireEvent.change(screen.getByLabelText("Provider"), { target: { value: provider } });
+    fireEvent.change(screen.getByLabelText("Proxy mode"), { target: { value: "custom" } });
+    expect(within(body).getByLabelText("Proxy host")).toBeInTheDocument();
+    expect(within(body).getByRole("button", { name: action })).toBeInTheDocument();
+    if (provider !== "outlook") {
+      fireEvent.change(screen.getByLabelText("SMTP authentication"), { target: { value: "password" } });
+      expect(within(body).getByLabelText("SMTP password")).toBeInTheDocument();
+      expect(within(body).getByRole("button", { name: "Test entered settings" })).toBeInTheDocument();
+    }
+    expect(body).toHaveStyle({ flex: "1 1 auto", minHeight: "0", overflowY: "auto" });
   });
 });

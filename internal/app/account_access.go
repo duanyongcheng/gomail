@@ -5,14 +5,18 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/bary/pebble-go/internal/crypto"
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/googleapi"
+	"github.com/bary/pebble-go/internal/mailnet"
 	"github.com/bary/pebble-go/internal/oauth"
 	"github.com/bary/pebble-go/internal/provider/gmail"
 	"golang.org/x/oauth2"
@@ -43,12 +47,44 @@ func (r *Runtime) restoreAccounts() error {
 	}
 	var keyErr error
 	if has {
-		r.crypto, keyErr = crypto.Load(r.Keyring, true)
+		if r.Keyring == nil {
+			keyErr = errors.New("Account keyring unavailable")
+		} else {
+			r.crypto, keyErr = crypto.Load(r.Keyring, true)
+		}
+	}
+	if data, err := r.DB.NetworkSettings(r.Context); err != nil {
+		return err
+	} else if len(data) > 0 {
+		var settings NetworkSettings
+		if json.Unmarshal(data, &settings) != nil {
+			return errors.New("Invalid network settings")
+		}
+		r.globalProxy = settings.Proxy
 	}
 	cfg := oauth.Google()
 	var failures []error
 	for _, a := range accounts {
 		if a.Provider != "gmail" {
+			c := &accountConnection{state: domain.ConnectionAvailable}
+			r.connections[a.ID] = c
+			if keyErr != nil || r.crypto == nil {
+				c.state = domain.ConnectionCredentialsUnavailable
+			} else if config, encrypted, err := r.loadProtocol(r.Context, a.ID); err != nil {
+				c.state = domain.ConnectionCredentialsUnavailable
+			} else if p, err := r.makeProtocolLocked(a, config, encrypted, c); err != nil {
+				c.state = domain.ConnectionConfigurationRequired
+			} else {
+				r.providers[a.ID] = p
+				if state, err := r.DB.AccountAuthState(r.Context, a.ID); err != nil {
+					c.state = domain.ConnectionCredentialsUnavailable
+				} else {
+					c.state = state
+				}
+			}
+			if c.state.Blocked() {
+				failures = append(failures, &domain.AccessError{State: c.state})
+			}
 			continue
 		}
 		c := &accountConnection{state: domain.ConnectionAvailable}
@@ -87,7 +123,11 @@ func (r *Runtime) installGmailLocked(account string, cfg *oauth2.Config, c *acco
 	if _, err := vault.Load(); err != nil {
 		return err
 	}
-	api := &googleapi.API{Base: r.GmailAPIBase, HTTP: httpClient(), Tokens: oauth.NewTokens(cfg, httpClient(), vault)}
+	client, err := r.accountNetworkClientLocked(r.Context, account)
+	if err != nil {
+		return err
+	}
+	api := &googleapi.API{Base: r.GmailAPIBase, HTTP: client, Tokens: oauth.NewTokens(cfg, client, vault)}
 	api.BeforeRequest = func() error {
 		r.mu.RLock()
 		defer r.mu.RUnlock()
@@ -174,16 +214,13 @@ func (s *AccountService) Connections(ctx context.Context, _ Empty) ([]AccountCon
 	defer r.mu.RUnlock()
 	configured := oauth.Google().ClientID != ""
 	for _, account := range accounts {
-		if account.Provider != "gmail" {
-			continue
-		}
 		state := domain.ConnectionReauthRequired
 		if c := r.connections[account.ID]; c != nil {
 			state = c.state
 		} else if r.providers[account.ID] != nil {
 			state = domain.ConnectionAvailable
 		}
-		out = append(out, AccountConnection{AccountID: account.ID, State: state, CanReconnect: configured})
+		out = append(out, AccountConnection{AccountID: account.ID, State: state, CanReconnect: account.Provider == "gmail" && configured})
 	}
 	return out, nil
 }
@@ -296,7 +333,11 @@ func (s *AccountService) Reconnect(ctx context.Context, request AccountRequest) 
 		}
 	}()
 
-	token, err := r.Authorize(ctx, cfg, httpClient(), r.OpenBrowser)
+	client, err := r.accountNetworkClient(ctx, account.ID)
+	if err != nil {
+		return Empty{}, err
+	}
+	token, err := r.Authorize(ctx, cfg, client, r.OpenBrowser)
 	if err != nil {
 		if ctx.Err() != nil {
 			return Empty{}, errors.New("Google reconnection cancelled; saved credentials are unchanged.")
@@ -306,7 +347,7 @@ func (s *AccountService) Reconnect(ctx context.Context, request AccountRequest) 
 	if err := oauth.ValidateGmailGrant(token); err != nil {
 		return Empty{}, err
 	}
-	api := &googleapi.API{Base: r.GmailAPIBase, HTTP: httpClient(), Tokens: staticToken{token.AccessToken}}
+	api := &googleapi.API{Base: r.GmailAPIBase, HTTP: client, Tokens: staticToken{token.AccessToken}}
 	profile, err := api.Profile(ctx)
 	if err != nil {
 		return Empty{}, errors.New("Cannot verify the Gmail mailbox; saved credentials are unchanged.")
@@ -372,20 +413,68 @@ func (s *AccountService) login(ctx context.Context, request LoginRequest) (domai
 	defer cancel()
 	stop := context.AfterFunc(r.Context, cancel)
 	defer stop()
-	token, err := r.Authorize(ctx, cfg, httpClient(), r.OpenBrowser)
+	client := r.networkClient()
+	loginRoute := mailnet.ProxySetting{Mode: "inherit"}
+	if request.Proxy != nil {
+		loginRoute = *request.Proxy
+		if loginRoute.Mode == "" {
+			loginRoute.Mode = "inherit"
+		}
+		r.mu.RLock()
+		route, routeErr := mailnet.ResolveProxy(r.globalProxy, loginRoute)
+		r.mu.RUnlock()
+		if routeErr != nil {
+			return domain.Account{}, routeErr
+		}
+		client = &http.Client{Transport: (mailnet.Dialer{Proxy: route}).HTTPTransport(), Timeout: 20 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	}
+	routedAccount := ""
+	// Repeated sign-in for a known mailbox pins its account-specific route.
+	if request.Email != "" {
+		digest := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(request.Email))))
+		knownID := "gmail:" + hex.EncodeToString(digest[:16])
+		if known, lookupErr := r.DB.Account(ctx, knownID); lookupErr == nil && known.Provider == "gmail" {
+			if request.Proxy != nil {
+				stored, routeErr := r.DB.AccountNetwork(ctx, knownID)
+				if routeErr != nil || !reflect.DeepEqual(stored, loginRoute) {
+					return domain.Account{}, errors.New("Use account network settings before reconnecting with a different route")
+				}
+			}
+			client, err = r.accountNetworkClient(ctx, knownID)
+			if err != nil {
+				return domain.Account{}, err
+			}
+			routedAccount = knownID
+		}
+	}
+	token, err := r.Authorize(ctx, cfg, client, r.OpenBrowser)
 	if err != nil {
 		return domain.Account{}, err
 	}
 	if err := oauth.ValidateGmailGrant(token); err != nil {
 		return domain.Account{}, err
 	}
-	api := &googleapi.API{Base: r.GmailAPIBase, HTTP: httpClient(), Tokens: staticToken{token.AccessToken}}
+	api := &googleapi.API{Base: r.GmailAPIBase, HTTP: client, Tokens: staticToken{token.AccessToken}}
 	profile, err := api.Profile(ctx)
 	if err != nil {
 		return domain.Account{}, err
 	}
 	digest := sha256.Sum256([]byte(strings.ToLower(profile.Email)))
 	id := "gmail:" + hex.EncodeToString(digest[:16])
+	if routedAccount != "" && routedAccount != id {
+		return domain.Account{}, errors.New("Selected mailbox does not match the account network settings; reconnect the correct account")
+	}
+	if routedAccount == "" {
+		if existing, lookupErr := r.DB.Account(ctx, id); lookupErr == nil && existing.Provider == "gmail" {
+			setting, settingErr := r.DB.AccountNetwork(ctx, id)
+			if settingErr != nil {
+				return domain.Account{}, settingErr
+			}
+			if !reflect.DeepEqual(setting, loginRoute) {
+				return domain.Account{}, errors.New("Use account reconnect to preserve this mailbox's network route")
+			}
+		}
+	}
 	encrypted, err := oauth.EncodeToken(cipher, id, cfg.ClientID, token)
 	if err != nil {
 		return domain.Account{}, err
@@ -396,7 +485,7 @@ func (s *AccountService) login(ctx context.Context, request LoginRequest) (domai
 	if errors.Is(err, sql.ErrNoRows) {
 		now, color := time.Now().Unix(), "#0ea5e9"
 		account = domain.Account{ID: id, Email: profile.Email, DisplayName: profile.Email, Provider: "gmail", Color: &color, AccountLabel: request.AccountLabel, CreatedAt: now, UpdatedAt: now}
-		err = r.DB.SaveAccount(ctx, account, encrypted)
+		err = r.DB.CreateGmailAccount(ctx, account, encrypted, loginRoute)
 	} else if err == nil {
 		var old []byte
 		old, err = r.DB.AuthData(ctx, id)

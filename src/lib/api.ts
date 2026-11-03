@@ -1013,13 +1013,9 @@ export interface XOAuth2RefreshInput {
 }
 
 /**
- * Store OAuth2 refresh material for an account and immediately exchange it for
- * an access token, which is written into the IMAP password. Resolves only once
- * the token endpoint has accepted the refresh token, so a successful call means
- * the whole chain works.
- *
- * Fields left blank keep their stored value, so an account can have its tenant
- * corrected without re-pasting an unexpired refresh token.
+ * Legacy raw-token import is unsupported in Go. Use Microsoft sign-in in account
+ * settings, which verifies the mailbox and authorizes resource-specific scopes.
+ * This compatibility entry rejects explicitly and never changes credentials.
  */
 export async function setXOAuth2Refresh(input: XOAuth2RefreshInput): Promise<void> {
   return invoke<void>("set_xoauth2_refresh", {

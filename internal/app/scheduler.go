@@ -156,7 +156,7 @@ func (s *Scheduler) stop(account string) {
 		w.cancel()
 		<-w.done
 	}
-	s.status(RealtimeStatus{AccountID: account, Mode: "manual", Provider: "gmail"})
+	s.status(RealtimeStatus{AccountID: account, Mode: "manual"})
 }
 
 func (s *Scheduler) Close() {
@@ -210,7 +210,7 @@ func (s *Scheduler) Preference(mode string) error {
 	s.runtime.mu.RUnlock()
 	for _, id := range accounts {
 		if mode == "manual" {
-			s.status(RealtimeStatus{AccountID: id, Provider: "gmail", Mode: "manual"})
+			s.status(RealtimeStatus{AccountID: id, Mode: "manual"})
 			continue
 		}
 		if _, err := s.ensure(id, modeInterval(mode)); err != nil && !s.runtime.accountBlocked(id) {
@@ -295,6 +295,10 @@ func (s *Scheduler) Trigger(ctx context.Context, account, reason string) (domain
 
 func (s *Scheduler) run(w *syncWorker) {
 	defer close(w.done)
+	watchContext, stopWatch := context.WithCancel(w.ctx)
+	watchDone := make(chan struct{})
+	go func() { defer close(watchDone); s.watch(watchContext, w) }()
+	defer func() { stopWatch(); <-watchDone }()
 	defer func() {
 		s.mu.Lock()
 		if w.flight != nil {
@@ -360,7 +364,7 @@ func (s *Scheduler) run(w *syncWorker) {
 		if w.continuing {
 			w.nextAt = w.lastFinished.Add(time.Second)
 		}
-		status := RealtimeStatus{AccountID: w.account, Provider: "gmail", Mode: "polling", DeferredCount: result.DeferredCount}
+		status := RealtimeStatus{AccountID: w.account, Mode: "polling", DeferredCount: result.DeferredCount}
 		if !w.lastSuccess.IsZero() {
 			value := w.lastSuccess.Unix()
 			status.LastSuccessAt = &value
@@ -372,10 +376,10 @@ func (s *Scheduler) run(w *syncWorker) {
 			status.NextRetryAt = &value
 		}
 		if err != nil && w.ctx.Err() == nil {
-			status.Message = "Gmail sync failed; retry scheduled"
+			status.Message = "Mail sync failed; retry scheduled"
 			if s.mode == "manual" || !s.configured {
 				status.Mode = "error"
-				status.Message = "Gmail sync failed; synchronize to retry"
+				status.Message = "Mail sync failed; synchronize to retry"
 			} else {
 				status.Mode = "backoff"
 			}
@@ -396,6 +400,57 @@ func (s *Scheduler) run(w *syncWorker) {
 	}
 }
 
+// IDLE uses a separate provider connection, but shares the scheduler's lifetime,
+// coalescing and failure backoff. Manual sync never starts a watcher.
+func (s *Scheduler) watch(ctx context.Context, w *syncWorker) {
+	s.mu.Lock()
+	enabled := s.configured && s.mode == "realtime"
+	s.mu.Unlock()
+	if !enabled {
+		return
+	}
+	p, err := s.runtime.provider(w.account)
+	if err != nil {
+		return
+	}
+	watcher, ok := p.(interface {
+		Watch(context.Context, func()) error
+	})
+	if !ok {
+		return
+	}
+	failures := 0
+	for ctx.Err() == nil {
+		if !s.runtime.accountBlocked(w.account) {
+			err = watcher.Watch(ctx, func() {
+				s.mu.Lock()
+				if w.failures == 0 && w.flight == nil && ctx.Err() == nil {
+					w.nextAt = time.Now()
+					w.pending = true
+					wake(w)
+				}
+				s.mu.Unlock()
+			})
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		if err != nil {
+			failures++
+		} else {
+			failures = 0
+		}
+		delay := pollDelay(30*time.Second, false, false, max(failures, 1))
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+	}
+}
+
 func (s *Scheduler) accessChanged(account string) {
 	s.mu.Lock()
 	if w := s.jobs[account]; w != nil {
@@ -406,6 +461,11 @@ func (s *Scheduler) accessChanged(account string) {
 
 func (s *Scheduler) status(status RealtimeStatus) {
 	if s.runtime.OnRealtime != nil {
+		if s.runtime.DB != nil {
+			if account, err := s.runtime.DB.Account(s.runtime.Context, status.AccountID); err == nil {
+				status.Provider = account.Provider
+			}
+		}
 		s.runtime.OnRealtime(status)
 	}
 }

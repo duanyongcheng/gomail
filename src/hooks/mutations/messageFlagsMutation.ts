@@ -7,6 +7,7 @@ import {
   recordManualUnread,
 } from "@/hooks/queries/messageFlagsCache";
 import { useToastStore } from "@/stores/toast.store";
+import { assertCachedMailMutation } from "@/lib/mailCapabilities";
 
 export interface UpdateFlagsParams {
   messageId: string;
@@ -66,6 +67,7 @@ export function messageFlagsMutationOptions(
     networkMode: "always",
     mutationFn: (params) => updateMessageFlags(params.messageId, params.isRead, params.isStarred),
     onMutate: async (params) => {
+      assertCachedMailMutation(client, [params.messageId]);
       if (params.isRead === false) recordManualUnread(client, params.messageId);
       await cancelMessageFlagViews(client, params.messageId);
       // Resolve the intent only after cancellation, immediately before patching.

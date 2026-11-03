@@ -13,6 +13,7 @@ import (
 	"github.com/bary/pebble-go/internal/crypto"
 	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/googleapi"
+	"github.com/bary/pebble-go/internal/mailnet"
 	"github.com/bary/pebble-go/internal/oauth"
 	"github.com/bary/pebble-go/internal/privacy"
 	"github.com/bary/pebble-go/internal/store"
@@ -55,6 +56,8 @@ type Runtime struct {
 	providers         map[string]domain.Transport
 	crypto            *crypto.Service
 	composeMu         sync.Mutex
+	providerFactories map[string]ProviderFactory
+	globalProxy       *mailnet.Proxy
 }
 
 type SyncComplete struct {
@@ -102,10 +105,11 @@ type AccountRequest struct {
 	AccountID string `json:"accountId"`
 }
 type LoginRequest struct {
-	Provider     string  `json:"provider"`
-	Email        string  `json:"email"`
-	DisplayName  string  `json:"displayName"`
-	AccountLabel *string `json:"accountLabel"`
+	Provider     string                `json:"provider"`
+	Email        string                `json:"email"`
+	DisplayName  string                `json:"displayName"`
+	AccountLabel *string               `json:"accountLabel"`
+	Proxy        *mailnet.ProxySetting `json:"proxy,omitempty"`
 }
 type OAuthStatus struct {
 	Configured bool   `json:"configured"`
@@ -151,6 +155,7 @@ func (s *AccountService) Delete(ctx context.Context, request AccountRequest) (Em
 	}
 	err := r.DB.DeleteAccount(ctx, request.AccountID)
 	if err == nil {
+		closeProtocol(r.providers[request.AccountID])
 		delete(r.providers, request.AccountID)
 		delete(r.connections, request.AccountID)
 	}
@@ -200,6 +205,9 @@ func (s *MessageService) List(ctx context.Context, a MessagesRequest) ([]domain.
 		return nil, err
 	}
 	for i := range messages {
+		if provider, err := s.Runtime.provider(messages[i].AccountID); err == nil {
+			messages[i].Capabilities = provider.Capabilities()
+		}
 		if thread, e := s.Runtime.DB.PublicThreadID(ctx, messages[i].ID); e == nil {
 			messages[i].ThreadID = &thread
 		}
@@ -306,7 +314,7 @@ func (r *Runtime) performSync(ctx context.Context, account string) (domain.SyncR
 	if r.OnProgress != nil {
 		status, message := "completed", ""
 		if err != nil && ctx.Err() == nil {
-			status, message = "error", "Gmail sync failed; cached mail is available"
+			status, message = "error", "Mail sync failed; cached mail is available"
 		}
 		r.OnProgress(domain.SyncProgress{AccountID: account, Status: status, Phase: "sync", Count: result.Count, Message: message})
 	}

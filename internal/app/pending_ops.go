@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/bary/pebble-go/internal/domain"
 	"github.com/bary/pebble-go/internal/store"
 )
 
@@ -141,6 +142,7 @@ type pendingSettlement struct {
 	unknown bool
 	paused  bool
 	message string
+	access  domain.ConnectionState
 }
 
 func (r *Runtime) settlePendingOp(ctx context.Context) error {
@@ -149,7 +151,9 @@ func (r *Runtime) settlePendingOp(ctx context.Context) error {
 		return nil
 	}
 	var err error
-	if result.paused {
+	if result.access != "" && result.access.Blocked() && !result.unknown {
+		err = r.DB.PausePendingResource(ctx, result.id, result.access)
+	} else if result.paused {
 		err = r.DB.ReleasePendingAccessClaim(ctx, result.id)
 	} else if result.message == "" && !result.unknown {
 		err = r.DB.CompletePendingOp(ctx, result.id)
@@ -236,6 +240,10 @@ func (r *Runtime) processPendingOps(ctx context.Context) (bool, error) {
 			return false, ctx.Err()
 		}
 		result := &pendingSettlement{id: op.ID, unknown: unknown, paused: replayErr != nil && !unknown && r.accountBlocked(op.AccountID)}
+		var access *domain.AccessError
+		if !unknown && errors.As(replayErr, &access) {
+			result.access = access.State
+		}
 		if unknown {
 			result.message = "Remote write outcome is unknown; it will not be retried automatically."
 		} else if replayErr != nil {

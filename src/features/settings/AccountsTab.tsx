@@ -38,6 +38,10 @@ import { extractErrorMessage } from "@/lib/extractErrorMessage";
 import { clearLegacySignature, getSignature, setSignature } from "@/lib/signatures";
 import { ACCOUNT_COLOR_PRESETS, assignAccountColors, getAccountColor } from "@/lib/accountColors";
 import { inputStyle, labelStyle } from "../../styles/form";
+import ProtocolAccountForm from "./ProtocolAccountForm";
+import MicrosoftAccountForm from "./MicrosoftAccountForm";
+import ProtocolFolders from "./ProtocolFolders";
+import GmailNetwork from "./GmailNetwork";
 
 /**
  * One of the two arrows that move an account up or down the list.
@@ -107,22 +111,28 @@ export default function AccountsTab() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; email: string } | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; ok: boolean; message: string } | null>(null);
+  const testFlight = useRef(0);
+  const currentAccounts = useRef(accounts);
+  currentAccounts.current = accounts;
+  useEffect(() => () => { testFlight.current++; }, []);
   // The arrows lock while an order change is being written.
   const { reorder, isReordering } = useReorderAccounts();
 
   async function doTestConnection(accountId: string) {
     const account = accounts.find((item) => item.id === accountId);
     if (!account || account.provider === "gmail" || !isFeatureAvailable(account.provider === "pop3" ? "pop3" : "imap")) return;
+    if (testingId) return;
+    const flight = ++testFlight.current;
     setTestingId(accountId);
     setTestResult(null);
     try {
       const report = await testAccountConnection(accountId);
-      setTestResult({ id: accountId, ok: true, message: report });
+      if (testFlight.current === flight && currentAccounts.current.some((item) => item.id === accountId)) setTestResult({ id: accountId, ok: true, message: report });
     } catch (err) {
       const msg = extractErrorMessage(err);
-      setTestResult({ id: accountId, ok: false, message: msg });
+      if (testFlight.current === flight && currentAccounts.current.some((item) => item.id === accountId)) setTestResult({ id: accountId, ok: false, message: msg });
     } finally {
-      setTestingId(null);
+      if (testFlight.current === flight) setTestingId(null);
     }
   }
 
@@ -278,6 +288,7 @@ export default function AccountsTab() {
             return (
               <div
                 key={account.id}
+                data-account-settings-id={account.id}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -381,7 +392,7 @@ export default function AccountsTab() {
                   <button
                     onClick={() => doTestConnection(account.id)}
                     disabled={account.provider === "gmail" || !isFeatureAvailable(account.provider === "pop3" ? "pop3" : "imap") || testingId === account.id}
-                    title={account.provider === "gmail" ? t("settings.gmailConnectionHelp", "Use Gmail connection below to reconnect this mailbox.") : unavailableReason()}
+                    title={account.provider === "gmail" ? t("settings.gmailConnectionHelp", "Use Gmail connection below to reconnect this mailbox.") : t("accountSetup.testConnection", "Test Connection")}
                     aria-label={t("accountSetup.testConnection", "Test Connection")}
                     style={{
                       display: "flex",
@@ -410,9 +421,9 @@ export default function AccountsTab() {
                     <Plug size={15} />
                   </button>
                   <button
-                    disabled={account.provider !== "gmail"}
-                    onClick={() => { if (account.provider === "gmail") setEditingAccount(account); }}
-                    title={account.provider === "gmail" ? t("settings.editAccount", "Edit account") : unavailableReason()}
+                    disabled={account.provider !== "gmail" && !isFeatureAvailable(account.provider === "pop3" ? "pop3" : "imap")}
+                    onClick={() => setEditingAccount(account)}
+                    title={t("settings.editAccount", "Edit account")}
                     aria-label={t("settings.editAccount", "Edit account")}
                     style={{
                       display: "flex",
@@ -470,6 +481,7 @@ export default function AccountsTab() {
       {accounts.some((account) => account.provider === "gmail") && (
         <>
           <AccountConnections accounts={accounts.filter((account) => account.provider === "gmail")} />
+          <GmailNetwork accounts={accounts.filter((account) => account.provider === "gmail")} />
           <MailDownloadFailures accounts={accounts.filter((account) => account.provider === "gmail")} />
           <GmailLabels accounts={accounts.filter((account) => account.provider === "gmail")} />
         </>
@@ -524,8 +536,43 @@ export default function AccountsTab() {
           }}
         />
       )}
+      {editingAccount && editingAccount.provider !== "gmail" && <ProtocolEditDialog account={editingAccount} onClose={() => setEditingAccount(null)} onSaved={async () => { setEditingAccount(null); await queryClient.invalidateQueries({ queryKey: accountsQueryKey }); }} />}
     </div>
   );
+}
+
+function ProtocolEditDialog({ account, onClose, onSaved }: { account: Account; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [section, setSection] = useState("connection");
+  const dialog = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  const inFlight = useRef(false);
+  inFlight.current = busy;
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.current?.querySelector<HTMLElement>("button")?.focus();
+    function keydown(event: KeyboardEvent) {
+      if (event.key === "Escape") { event.preventDefault(); if (!inFlight.current) close.current(); }
+      if (event.key !== "Tab") return;
+      const elements = dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])');
+      if (!elements?.length) return;
+      if (event.shiftKey && document.activeElement === elements[0]) { event.preventDefault(); elements[elements.length - 1].focus(); }
+      if (!event.shiftKey && document.activeElement === elements[elements.length - 1]) { event.preventDefault(); elements[0].focus(); }
+    }
+    document.addEventListener("keydown", keydown);
+    return () => { document.removeEventListener("keydown", keydown); previous?.focus(); };
+  }, []);
+  return <div role="dialog" aria-modal="true" aria-label={t("protocolAccount.editTitle", "Edit protocol account")} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1000, display: "grid", placeItems: "center" }}>
+    <div ref={dialog} style={{ padding: 20, background: "var(--color-bg)", width: "min(560px, calc(100vw - 32px))", maxHeight: "90vh", overflowY: "auto", borderRadius: 10 }}>
+      <button disabled={busy} onClick={onClose}>{t("common.close", "Close")}</button><h2>{t("protocolAccount.editAccount", `Edit ${account.email}`, { email: account.email })}</h2>
+      <label>{t("protocolAccount.section", "Settings section")} <select disabled={busy} value={section} onChange={(e) => setSection(e.target.value)}><option value="connection">{t("protocolAccount.connection", "Connection settings")}</option>{account.provider === "outlook" && <option value="oauth">{t("microsoftAccount.title", "Microsoft authorization")}</option>}{account.capabilities?.folder_management && <option value="folders">{t("protocolFolders.section", "Server folders")}</option>}</select></label>
+      {section === "connection" && <ProtocolAccountForm key={account.id} account={account} onSaved={onSaved} onBusy={setBusy} />}
+      {section === "oauth" && <MicrosoftAccountForm key={`oauth-${account.id}`} account={account} onSaved={onSaved} onBusy={setBusy} />}
+      {section === "folders" && <ProtocolFolders key={`folders-${account.id}`} accountId={account.id} onBusy={setBusy} />}
+    </div>
+  </div>;
 }
 
 function getAccountRealtimeStatusText(
@@ -1035,7 +1082,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
             )}
 
             {isGmail ? <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
-              {t("settings.gmailProxyUnavailable", "Gmail proxy settings are not available yet.")}
+              {t("settings.gmailProxySettingsLocation", "Configure this account's route in Gmail connection routes on the Accounts page.")}
             </p> : proxyFields}
 
             {isImap && (

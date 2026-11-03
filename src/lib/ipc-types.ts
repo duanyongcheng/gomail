@@ -11,7 +11,7 @@
 
 /** @rust pebble-core/src/types.rs → Account */
 export interface Account {
-  capabilities?: { send: boolean; read: boolean; modify_flags: boolean; html: boolean };
+  capabilities?: { send: boolean; read: boolean; modify_flags: boolean; html: boolean; folder_management?: boolean };
   account_label?: string | null;
   provider_display_name?: string | null;
   id: string;
