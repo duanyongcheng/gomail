@@ -3,6 +3,7 @@ package gmail
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -204,6 +205,9 @@ func (p *Provider) SyncWithProgress(ctx context.Context, progress func(domain.Sy
 		if progress != nil {
 			progress(domain.SyncProgress{AccountID: p.AccountID, Status: "progress", Phase: checkpoint.Phase, Count: result.Count})
 		}
+		// A committed page is the only durable progress signal a long backfill
+		// emits. Without it a slow or stalled run leaves no trace in the log.
+		slog.Info("Gmail page committed", "operation", "sync", "phase", checkpoint.Phase, "cached", result.Count, "page", page+1)
 		checkpoint = &next
 		if checkpoint.Phase == "complete" {
 			return result, nil

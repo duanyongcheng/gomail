@@ -25,6 +25,53 @@ to M3 and remains unavailable; its manifest/parity milestone is corrected only.
 The validation counts and commit-state descriptions below are historical
 snapshots, not checks rerun or current worktree assertions.
 
+The November 3 live-acceptance continuation is tracked in
+[M1/M2 live acceptance](m1-m2-live-acceptance.md), including a new full quality
+gate, 89/89 packaged synthetic checks, a dedicated Gmail profile and the M2 live
+matrix. The dedicated-profile G1 Gmail login/sync/normal-restart substep now
+passes; actual expiry/refresh, offline, recipient, revocation, keyring-fault and
+non-macOS runtime tests remain open.
+
+The November 4 continuation records a separate real-account profile's bounded
+local-draft recovery under account-only connection blocking. Chinese edits,
+attachment names and manual mode survived normal quit/restart; M1-05 remains
+pending for browser offline, read-state, queued delivery and attachment-byte
+evidence. After unlocking, three restored-route sync attempts advanced the cache
+to 1,000 unique messages but all ended in temporary connection failures; full
+sync success is not accepted for this run. Cancelling reconnection without a
+revoked grant preserved the account and local draft. See the same live-acceptance
+report for evidence, pending diagnosis and startup/diagnostic deviations.
+
+A further requested retest at 19:55–20:02 reproduced three more history-sync
+failures, including after normal quit/restart: 1,300 unique cached messages,
+13 saved pages, phase still messages. Targeted sync/network regressions passed;
+the live failure was reproducible and its root cause remained unconfirmed then.
+
+The November 5 investigation confirmed `403 rateLimitExceeded` on Gmail message
+GETs. The repair replaces subsecond retries with bounded, cancellable exponential
+backoff and honors Retry-After. Focused API/provider tests, the full quality gate
+and 89/89 packaged selftest checks pass. With one manual trigger, the original
+Gmail account/profile advanced from 1,500 to 7,200 unique messages, recovering
+the intervening 403 errors automatically. A new message GET HTTP 400 stopped
+backfill at page 72, so full history sync still fails acceptance. A diagnostic
+package is ready; Mac unlock is needed to reproduce this error and continue
+completion/restart retesting. See the live-acceptance record for evidence.
+Other M1/M2 live rows remain separate.
+
+The November 20 acceptance run then completed a full backfill on a dedicated
+test account (83 messages, checkpoint `complete`) — the first `complete` observed
+since the November 3 G1 substep. Large-mailbox backfill remains `deferred` by user
+decision and is tracked as G9: the November 5 HTTP 400 at 7,200 messages is still
+unexplained, so completeness for mailboxes of that size is unproven.
+
+The earlier November 20 pass hardened the long-backfill path without closing any
+acceptance row. A request that was rate-limited first could
+never refresh an expired token, a 2xx body cut mid-JSON was quarantined as an
+undecodable message, and an account access block was indistinguishable from bad
+mail. All three now fail the pass at the committed prefix and resume, and the
+existing retry list is reserved for genuinely undecodable content. The original
+HTTP 400 remains unexplained; see the live-acceptance record for the exact scope.
+
 ## M2 localization continuation (2026-11-03)
 
 The new protocol account, Microsoft authorization, server folder and network

@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bary/pebble-go/internal/domain"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
-
 	"time"
+
+	"github.com/bary/pebble-go/internal/domain"
 )
 
 const APIBase = "https://gmail.googleapis.com/gmail/v1/users/me"
@@ -37,8 +38,10 @@ type API struct {
 	OnResult      func(error)
 }
 type HTTPError struct {
-	Status  int
-	Reasons []string
+	Status       int
+	Reasons      []string
+	googleStatus string
+	responseKind string
 }
 
 func (e *HTTPError) Error() string { return fmt.Sprintf("Gmail API returned HTTP %d", e.Status) }
@@ -50,37 +53,28 @@ func (e *HTTPError) hasQuotaReason() bool {
 	}
 	return false
 }
-func googleQuotaReason(body []byte) bool {
+
+// Gmail answers with two shapes: the legacy errors[].reason list and the newer
+// error.status code. Neither is guaranteed, so both are decoded and classified.
+func decodeHTTPError(status int, body []byte) *HTTPError {
 	var value struct {
 		Error struct {
-			Errors []struct {
-				Reason string `json:"reason"`
-			} `json:"errors"`
-		} `json:"error"`
-	}
-	if json.Unmarshal(body, &value) != nil {
-		return false
-	}
-	for _, e := range value.Error.Errors {
-		if e.Reason == "rateLimitExceeded" || e.Reason == "userRateLimitExceeded" || e.Reason == "backendError" {
-			return true
-		}
-	}
-	return false
-}
-func decodeHTTPError(status int, body []byte) error {
-	var value struct {
-		Error struct {
-			Errors []struct {
-				Reason string `json:"reason"`
-			} `json:"errors"`
+			Status  string `json:"status"`
 			Details []struct {
 				Reason string `json:"reason"`
 			} `json:"details"`
+			Errors []struct {
+				Reason string `json:"reason"`
+			} `json:"errors"`
 		} `json:"error"`
 	}
-	_ = json.Unmarshal(body, &value)
-	out := &HTTPError{Status: status}
+	out := &HTTPError{Status: status, responseKind: "json"}
+	if len(bytes.TrimSpace(body)) == 0 {
+		out.responseKind = "empty"
+	} else if json.Unmarshal(body, &value) != nil {
+		out.responseKind = "non_json"
+	}
+	out.googleStatus = value.Error.Status
 	for _, e := range value.Error.Errors {
 		out.Reasons = append(out.Reasons, e.Reason)
 	}
@@ -141,6 +135,7 @@ func (a *API) request(ctx context.Context, method, path string, query url.Values
 
 func (a *API) requestWithLimit(ctx context.Context, method, path string, query url.Values, body any, out any, limit int64) (result error) {
 	defer func() { a.report(result) }()
+	started := time.Now()
 	endpoint, err := url.Parse(a.Base + path)
 	if err != nil {
 		return err
@@ -153,7 +148,11 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 			return err
 		}
 	}
-	for attempt := 0; attempt < 3; attempt++ {
+	retries, authRetries := 0, 0
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := a.checkAccess(); err != nil {
 			return err
 		}
@@ -174,6 +173,7 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 		}
 		resp, err := a.HTTP.Do(req)
 		if err != nil {
+			slog.Warn("Gmail request failed", "operation", requestOperation(path), "stage", "request", "kind", requestErrorKind(err), "elapsed_ms", time.Since(started).Milliseconds())
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -190,6 +190,7 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 		payload, readErr := io.ReadAll(io.LimitReader(resp.Body, responseLimit+1))
 		_ = resp.Body.Close()
 		if readErr != nil {
+			slog.Warn("Gmail request failed", "operation", requestOperation(path), "stage", "response_body", "kind", requestErrorKind(readErr), "status", resp.StatusCode, "elapsed_ms", time.Since(started).Milliseconds())
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -200,36 +201,56 @@ func (a *API) requestWithLimit(ctx context.Context, method, path string, query u
 		if int64(len(payload)) > responseLimit && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return &ContentError{Kind: "too_large"}
 		}
-		if method == http.MethodGet && resp.StatusCode == 401 && attempt == 0 {
+		// Refresh once per request. Counting retries rather than loop iterations
+		// keeps the refresh actionable even when a read was retried first.
+		if method == http.MethodGet && resp.StatusCode == 401 && authRetries == 0 {
+			authRetries++
 			if tokens, ok := a.Tokens.(interface{ Invalidate(string) }); ok {
 				tokens.Invalidate(token)
 				continue
 			}
 		}
-		if method == http.MethodGet && (resp.StatusCode == 429 || resp.StatusCode >= 500 || (resp.StatusCode == 403 && googleQuotaReason(payload))) && attempt < 2 {
-			delay := time.Duration(attempt+1) * 100 * time.Millisecond
-			if n, e := strconv.Atoi(resp.Header.Get("Retry-After")); e == nil && n > 0 && n <= 5 {
-				delay = time.Duration(n) * time.Second
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(delay):
-			}
-			continue
-		}
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return decodeHTTPError(resp.StatusCode, payload)
+			remote := decodeHTTPError(resp.StatusCode, payload)
+			if method == http.MethodGet && retryableHTTP(remote) && retries < maxReadRetries {
+				now := time.Now()
+				delay := readRetryDelay(retries, resp.Header.Get("Retry-After"), now)
+				// A longer server cooldown must not be shortened to fit our budget.
+				if delay <= maxReadRetryElapsed-now.Sub(started) {
+					retries++
+					slog.Info("Gmail request retry scheduled", "operation", requestOperation(path), "status", remote.Status, "reason", requestReason(remote), "retry", retries, "delay_ms", delay.Milliseconds())
+					timer := time.NewTimer(delay)
+					select {
+					case <-ctx.Done():
+						timer.Stop()
+						return ctx.Err()
+					case <-timer.C:
+					}
+					continue
+				}
+			}
+			retryAfter, _ := strconv.Atoi(resp.Header.Get("Retry-After"))
+			slog.Warn("Gmail request failed", "operation", requestOperation(path), "stage", "http_status", "status", resp.StatusCode, "reason", requestReason(remote), "google_status", requestGoogleStatus(remote), "response_kind", remote.responseKind, "retry_after_seconds", retryAfter, "elapsed_ms", time.Since(started).Milliseconds())
+			return remote
 		}
 		if out == nil {
 			return nil
 		}
 		if json.Unmarshal(payload, out) != nil {
+			// A 2xx body that stops mid-object is a cut stream, not bad mail.
+			// It is reported as transport-shaped so callers retry the request
+			// instead of quarantining the message as undecodable content.
+			// Only a body that started as an object but stopped early qualifies;
+			// prose or HTML from an intermediary stays a content failure.
+			cut := len(bytes.TrimSpace(payload)) > 0 && bytes.TrimSpace(payload)[0] == '{' && !json.Valid(payload)
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 && cut && readErr == nil {
+				slog.Warn("Gmail response body was incomplete", "operation", requestOperation(path), "stage", "decode", "elapsed_ms", time.Since(started).Milliseconds())
+				return &domain.AccessError{State: domain.ConnectionTemporaryError}
+			}
 			return &ContentError{Kind: "invalid_content"}
 		}
 		return nil
 	}
-	return errors.New("Gmail retry budget exhausted")
 }
 func (a *API) Profile(ctx context.Context) (Profile, error) {
 	var p Profile

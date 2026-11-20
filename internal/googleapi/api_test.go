@@ -63,14 +63,30 @@ func TestResponseLimitsCloseBodyAndPreserveHTTPStatus(t *testing.T) {
 }
 
 func TestMessageIdentityAndJSONFailuresAreTypedAndDoNotIncludePayload(t *testing.T) {
-	for _, payload := range []string{`{"id":"another","raw":"abc"}`, `private invalid payload`} {
+	for _, test := range []struct {
+		payload string
+		// Incomplete JSON is a cut stream and must stay transport-shaped; a
+		// complete but unusable body is the message's own content failure.
+		content bool
+	}{
+		{`{"id":"another","raw":"abc"}`, true},
+		// Non-JSON prose is not a recognisable cut stream, so it stays a
+		// content failure and remains bounded by the response limit.
+		{`private invalid payload`, true},
+		{`{"id":"m","raw":`, false},
+		{`{"id":"m","raw":"abc"`, false},
+	} {
 		api := &API{Base: "http://local.invalid", Tokens: testToken{}, HTTP: &http.Client{Transport: testTransport(func(*http.Request) (*http.Response, error) {
-			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(payload))}, nil
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(test.payload))}, nil
 		})}}
 		_, err := api.Message(t.Context(), "m")
 		var content *ContentError
-		if !errors.As(err, &content) || content.Kind != "invalid_content" || strings.Contains(err.Error(), "private") {
-			t.Fatal("unsafe/untyped content error", err)
+		isContent := errors.As(err, &content)
+		if strings.Contains(err.Error(), "private") {
+			t.Fatal("content error leaked response payload", err)
+		}
+		if isContent != test.content || isContent && content.Kind != "invalid_content" {
+			t.Fatal("unsafe/untyped content error", test.payload, err)
 		}
 	}
 }

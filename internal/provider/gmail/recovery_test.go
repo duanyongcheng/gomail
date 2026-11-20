@@ -181,7 +181,7 @@ func TestMessageErrorsKeepTransientFailuresOutOfRecoveryQueue(t *testing.T) {
 			api := mock.API(source)
 			api.HTTP = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 				if strings.HasSuffix(r.URL.Path, "/messages/m1") {
-					return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("private remote error"))}, nil
+					return &http.Response{StatusCode: status, Header: http.Header{"Retry-After": {"180"}}, Body: io.NopCloser(strings.NewReader("private remote error"))}, nil
 				}
 				return http.DefaultTransport.RoundTrip(r)
 			})}

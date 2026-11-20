@@ -1,10 +1,51 @@
 # M1 dedicated-account live acceptance
 
-Status reconciled on November 2, 2026. The user reports basic Gmail send/reply
+The November 3–5 runs, M2 live matrix and closure criteria are tracked in
+[M1/M2 live acceptance](m1-m2-live-acceptance.md). The selected first batch uses
+the current Mac and a separate profile for Gmail; system-keyring fault tests
+remain deferred to an isolated OS user or recoverable VM. A separate profile
+alone does not isolate the system keyring. The historical statuses below are
+unchanged until their individual live evidence is recorded.
+
+Status reconciled on November 3, 2026. The user reports basic Gmail send/reply
 and corrected address-name display verified. The address-name fix is independent
-commit `d4fce6e`. This is bounded user confirmation, not a rerun by this task.
-All other live rows below are pending. M1 live acceptance remains open; M2
-implementation and manual acceptance are not completed by this document.
+commit `d4fce6e`. The dedicated-profile G1 substep (Gmail login, sync, normal
+quit/restart and explicit sync) also passed on November 3; actual token expiry,
+expanded recipient delivery and fault scenarios remain pending. This is bounded
+user confirmation, not a rerun of every live row.
+
+On November 4, a separate real-account profile passed bounded local-draft
+recovery checks under an account-only blocking proxy: Chinese text edits,
+attachment filename retention, normal quit/restart and the manual preference.
+M1-05 remains pending as a whole: browser offline state, read-state changes,
+queued delivery and received attachment bytes were not verified. An initial
+transient sync failure was observed; sync after restoring the original route
+was initially left inconclusive when the Mac locked. After unlocking, three
+explicit sync attempts each persisted further backfill but ended in temporary
+connection failures: the cache reached 1,000 unique messages and the checkpoint
+remained in the messages phase. Full sync success failed for this run; the cause
+is unconfirmed. A read-only Gmail label refresh completed successfully in the UI.
+Cancelling reconnection without first revoking the grant also passed a bounded
+substep: account identity and the saved Chinese draft/attachment name survived.
+The revoked-grant M1-03b scenario remains pending. The linked run record also
+documents an early unintended normal-profile launch and overbroad diagnostic output.
+
+A requested history-sync retest at 19:55–20:02 reproduced three more failures,
+including after normal quit/restart. Each pass saved one additional page; the
+cache reached 1,300 unique messages / 13 pages while the phase remained messages.
+Targeted API/provider/network/scheduler tests passed, but the live failure cause
+was still unconfirmed and full sync acceptance failed at that point.
+
+On November 5, sanitized live diagnostics identified message GET failures as
+`403 rateLimitExceeded`. The read-only retry policy now uses bounded exponential
+backoff with jitter and honors Retry-After seconds/HTTP dates. API/provider
+regressions, the full quality gate and 89/89 packaged selftest checks pass. With
+one manual trigger, the same Gmail account/profile advanced from 1,500 to 7,200
+unique messages and recovered the intervening 403 errors automatically. A new
+message GET HTTP 400 then stopped backfill at page 72; full sync remains failed.
+Safer 400 classification is tested and packaged, but a locked Mac currently
+blocks its live reproduction. Completion and normal-restart evidence remain
+open in the linked run record.
 
 The [daily-use plan](gmail-daily-use-plan.md) tracks scope. Prior automated
 evidence is recorded in [address-name validation](address-name-decoding-validation.md),
@@ -63,13 +104,13 @@ submission crashes and lost-response faults belong in fixtures.
 | ID | Procedure | Required observations / evidence | Status |
 | --- | --- | --- | --- |
 | M1-01 | Review the already supplied basic Gmail send/reply and corrected address-name result. | User-reported confirmation only; display-name fix `d4fce6e`. No broader recipient/platform inference. | User-reported verified; not rerun here |
-| M1-02 | In A, complete consent, sync approved samples, quit, wait beyond the actual access-token expiry, relaunch and explicitly sync. If separately approved, send one synthetic message. Do not inspect/edit token files or substitute a shortened fake expiry. | Actual elapsed expiry evidence and successful refresh without repeated consent; same mailbox/cache retained across another restart. If expiry cannot be established safely, keep pending. Queue acknowledgement is not proof of send/delivery. | Pending live |
+| M1-02 | In A, complete consent, sync approved samples, quit, wait beyond the actual access-token expiry, relaunch and explicitly sync. If separately approved, send one synthetic message. Do not inspect/edit token files or substitute a shortened fake expiry. | Actual elapsed expiry evidence and successful refresh without repeated consent; same mailbox/cache retained across another restart. If expiry cannot be established safely, keep pending. Queue acknowledgement is not proof of send/delivery. | Login, sync, normal quit/restart and explicit-sync substep passed in G1 on 2026-11-03; actual access-token expiry and refresh remain pending |
 | M1-03a | Record A's local drafts/queue and manual-sync preference. Revoke only A's disposable grant in Google's account UI; explicitly sync to observe an access error. Choose Reconnect and consent as the same primary A mailbox, then restart. | Actionable access state; same account identity, cached mail, drafts and queued intent retained; eligible work can resume, manual sync stays manual. No account duplication or credential output. | Pending live |
 | M1-03b | Repeat the revoked-grant setup in A; choose Reconnect, then cancel in the app. Separately deny consent in the browser. | Each cancellation/denial leaves A and its cache/drafts/queue intact, ends reconnecting state and allows a later explicit reconnect. | Pending live |
 | M1-03c | With A requiring reconnect, select dedicated B in the browser instead. | Mailbox mismatch is visibly rejected; A is not rebound to B or duplicated; original local state is preserved. Complete a later explicit reconnect as A to recover. | Pending live |
 | M1-04a | In the disposable OS environment only, quit, lock its test keyring using platform UI, relaunch the populated test profile and inspect account status. Unlock through OS UI and relaunch. | Actionable credentials-unavailable behavior, no unsolicited login or replacement key; encrypted profile bytes retained and account/draft content recovers after unlock. Record any OS auto-unlock behavior; if the lock cannot be held, this row is inconclusive. | Pending live |
 | M1-04b | In a recoverable disposable VM snapshot only, make its test credentials store unavailable through supported platform controls, then launch the populated profile. Restore the store/snapshot afterward. Do not delete a DEK to simulate unavailability. | Existing encrypted data preserved, bounded local error, no replacement key or automatic consent; restored original store opens the same data. If safe isolation/recovery is unavailable, leave pending. | Pending live |
-| M1-05 | Cache approved samples, go offline, open cached mail, mark read/unread, compose and save a local draft with attachment; queue one approved synthetic message offline. Fully quit/relaunch while still offline, inspect and edit local work, then reconnect. | Local metadata/read state, exact draft text/attachment and durable queue survive restart. Eligible queued work submits once; controlled recipient and Outbox evidence agree. Manual mailbox sync preference does not stop explicitly queued sends. Never manufacture an unknown live send. | Pending live |
+| M1-05 | Cache approved samples, go offline, open cached mail, mark read/unread, compose and save a local draft with attachment; queue one approved synthetic message offline. Fully quit/relaunch while still offline, inspect and edit local work, then reconnect. | Local metadata/read state, exact draft text/attachment and durable queue survive restart. Eligible queued work submits once; controlled recipient and Outbox evidence agree. Manual mailbox sync preference does not stop explicitly queued sends. Never manufacture an unknown live send. | Whole row pending; November 4 account-only connection-blocked draft edit/normal restart and attachment-name substeps passed; browser offline, read-state, send queue and received bytes remain unverified |
 | M1-06a | Send approved synthetic mail separately to To, To+Cc and To+Cc+Bcc controlled recipients. Include Unicode display names and a small attachment with a Unicode filename. | Each intended recipient independently confirms receipt, accurate decoded addresses/names, filename and attachment byte/hash match. To/Cc recipients cannot see Bcc in received headers; Bcc recipient receives the mail. Record sanitized evidence, not raw MIME. | Pending expanded matrix |
 | M1-06b | Reply and Reply All to controlled samples with To/Cc and Unicode names; forward one attachment sample. Exercise locally saved and explicitly imported Gmail drafts separately, preserving Bcc/reply context. | Correct recipient set, subject, reply threading/References/In-Reply-To and attachment bytes/names in controlled recipients' UI/header inspection. No accidental reply to self or exposure of a hidden recipient. Record each variant separately; basic reply confirmation does not close this row. | Pending expanded matrix |
 | M1-07 | Add A/B, set manual mailbox sync, cache samples and local drafts separately, quit/relaunch. Observe without clicking sync, then explicitly sync A followed by B. Optionally revoke A's dedicated grant and repeat B sync. | Saved manual preference applied before automatic polling; restore performs no mailbox requests, browser consent or unsolicited refresh. Explicit sync updates only its account; drafts/queue/state remain isolated and B works while A is blocked. Use sanitized request-count instrumentation if available; UI silence alone cannot prove no network. | Pending live |
@@ -103,6 +144,6 @@ Remaining limitation and recovery performed:
 
 Only mark a row passed after recording its own evidence or explicit user
 confirmation for that exact behavior. Keep unexecuted/inconclusive variants
-pending. This task performs documentation and targeted synthetic regression
-checks only; all rows except M1-01 remain open. M2 has its own implementation and
-acceptance gates and cannot be closed by this checklist.
+pending. The November 3 and 4 runs add bounded live substep evidence; all full
+rows except the user-reported M1-01 remain open. M2 has its own implementation
+and acceptance gates and cannot be closed by this checklist.

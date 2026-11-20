@@ -1,10 +1,14 @@
 package gmail_test
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -35,6 +39,45 @@ func countCached(t *testing.T, db *store.DB) int {
 		t.Fatal(err)
 	}
 	return len(ids)
+}
+
+func TestRateLimitedBackfillResumesSamePageAndCompletes(t *testing.T) {
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "profile.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	_, mock, source := fixture(t, db, "a")
+	mock.Delete("m1")
+	mock.Delete("m2")
+	addMessages(t, mock, 250)
+	mock.PageSize = 100
+	api := mock.API(source)
+	calls := 0
+	api.HTTP = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "/messages/bulk0100") {
+			calls++
+			if calls <= 2 {
+				state, err := db.GmailState(t.Context(), "a")
+				if err != nil || state.Checkpoint.PageToken != "100" || state.Cursor != "" || countCached(t, db) != 100 {
+					t.Fatal("rate limit advanced the incomplete page", state, err)
+				}
+			}
+			if calls == 1 {
+				return &http.Response{StatusCode: 403, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}`))}, nil
+			}
+		}
+		return http.DefaultTransport.RoundTrip(r)
+	})}
+	p := gmail.New(db, api, "a")
+	result, err := p.Sync(t.Context())
+	state, stateErr := db.GmailState(t.Context(), "a")
+	if err != nil || stateErr != nil || result.Limited || result.DeferredCount != 0 || state.Checkpoint.Phase != "complete" || state.Cursor == "" || countCached(t, db) != 250 || calls != 2 {
+		t.Fatal("rate-limited backfill did not complete without another manual trigger", result, state, calls, err, stateErr)
+	}
+	if _, err := p.Sync(t.Context()); err != nil || countCached(t, db) != 250 {
+		t.Fatal("incremental replay duplicated or lost messages", err)
+	}
 }
 
 func TestFullBackfillResumesFailedPageAfterDatabaseReopen(t *testing.T) {
@@ -312,5 +355,33 @@ func TestOldM0CursorStillRequiresFullBackfillAndLoopPreservesCache(t *testing.T)
 	}
 	if countCached(t, db) != 2 {
 		t.Fatal("M0 cache was not fully backfilled")
+	}
+}
+
+// A long backfill is otherwise silent: the profile log only shows committed
+// pages, so someone diagnosing a slow or stalled sync has something to read.
+func TestCommittedPagesAreLogged(t *testing.T) {
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "profile.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	p, mock, _ := fixture(t, db, "a")
+	mock.PageSize = 1
+	var log bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&log, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	if _, err := p.Sync(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	got := log.String()
+	// One record per committed page, plus the reconcile and history phases.
+	if strings.Count(got, `"phase":"messages"`) != 2 || !strings.Contains(got, `"phase":"history"`) {
+		t.Fatal("committed pages were not logged", got)
+	}
+	if strings.Contains(got, "example.invalid") || strings.Contains(got, "中文") {
+		t.Fatal("page logging leaked addresses or content", got)
 	}
 }

@@ -266,6 +266,9 @@ func (m *Mock) serve(w http.ResponseWriter, r *http.Request) {
 		modify := strings.HasSuffix(id, "/modify")
 		id = strings.TrimSuffix(id, "/modify")
 		if m.FailMessage == id {
+			// Persistent fixture failure: exceed the client's local retry budget.
+			// Timing and recovery are exercised with virtual time in googleapi.
+			w.Header().Set("Retry-After", "180")
 			w.WriteHeader(500)
 			return
 		}

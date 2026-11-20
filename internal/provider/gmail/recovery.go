@@ -13,6 +13,12 @@ import (
 const batchContentBytes = 8 << 20
 const retriesPerPass = 10
 
+// A response that cannot be cached is retried inside the page, because the
+// bytes were already received: only decoding, size or MIME parsing can fail
+// here. Remote status and transport failures returned by API.Message are not
+// retried by this provider: bounded read retries belong to googleapi.
+const attemptsPerMessage = 3
+
 // A page can contain many large messages. Commit bounded prefixes without
 // advancing its checkpoint; a replay safely refreshes those committed prefixes.
 type pageBatch struct {
@@ -95,14 +101,22 @@ func (b *pageBatch) fetch(id string, notify, forceRetry bool) error {
 		}
 		notify = previous.NotifyOnRecovery
 	}
-	cached, err := p.fetch(b.ctx, id)
+	cached, err := p.fetchOnce(b.ctx, id)
+	// Each errors.As below uses its own fresh target: reusing a target across
+	// calls lets a later match overwrite what an earlier case already inspected.
 	var content *googleapi.ContentError
+	var access *domain.AccessError
+	isContent := errors.As(err, &content)
+	isAccess := errors.As(err, &access)
 	switch {
 	case isHTTP(err, 404):
 		b.snapshot.Removed = append(b.snapshot.Removed, store.ScopedID(p.AccountID, id))
 		b.snapshot.RecoveredRemoteIDs = append(b.snapshot.RecoveredRemoteIDs, id)
-	case errors.As(err, &content):
+	case isContent:
 		b.snapshot.Failures = append(b.snapshot.Failures, store.MessageFailure{RemoteID: id, Kind: content.Kind, NotifyOnRecovery: notify})
+	case isAccess:
+		// Another account's block must not quarantine this message either.
+		return err
 	case err != nil:
 		return err
 	default:
@@ -130,4 +144,27 @@ func (b *pageBatch) fetch(id string, notify, forceRetry bool) error {
 		return b.flush(nil, nil)
 	}
 	return nil
+}
+
+// fetchOnce bounds contact-local content failures to one quarantine instead of
+// failing the whole pass. The message is still listed, but only a successful
+// fetch records a recovered ID and only a successful fetch clears the failure.
+// Only ContentError is quarantined: incomplete bodies and access failures are
+// transport-shaped and fail the pass, so the committed prefix and checkpoint
+// resume them instead of recording a failure no retry could repair.
+func (p *Provider) fetchOnce(ctx context.Context, id string) (store.CachedMessage, error) {
+	var last error
+	for attempt := 0; attempt < attemptsPerMessage; attempt++ {
+		cached, err := p.fetch(ctx, id)
+		if err == nil {
+			return cached, nil
+		}
+		last = err
+		var content *googleapi.ContentError
+		isContent := errors.As(err, &content)
+		if !isContent || ctx.Err() != nil {
+			return store.CachedMessage{}, last
+		}
+	}
+	return store.CachedMessage{}, last
 }
