@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/oauth"
-	"github.com/bary/pebble-go/internal/provider/graph"
-	"github.com/bary/pebble-go/internal/provider/imap"
-	"github.com/bary/pebble-go/internal/provider/smtp"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/oauth"
+	"github.com/duanyongcheng/pebble-go/internal/provider/graph"
+	"github.com/duanyongcheng/pebble-go/internal/provider/imap"
+	"github.com/duanyongcheng/pebble-go/internal/provider/smtp"
 )
 
 // RegisterMicrosoftProviders is called after standard providers. Restoring an

@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 func TestThreadHeadersAndRecipientsSurviveRepeatedGmailSync(t *testing.T) {

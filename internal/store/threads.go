@@ -8,8 +8,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
 )
 
 func threadHandle(account, kind, key string) string {

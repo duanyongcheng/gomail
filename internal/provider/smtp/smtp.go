@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
 )
 
 type Config struct {

@@ -38,11 +38,19 @@ describe("AboutTab real platform adapter", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       render(<><AboutTab /><ToastContainer /></>);
+      expect(screen.getByRole("link", { name: "GitHub Releases" }).getAttribute("href")).toBe(
+        "https://github.com/duanyongcheng/pebble-go/releases",
+      );
+      expect(screen.getByRole("link", { name: "Report an Issue" }).getAttribute("href")).toBe(
+        "https://github.com/duanyongcheng/pebble-go/issues",
+      );
       fireEvent.click(screen.getByRole("link", { name: "Source Code" }));
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toContain("Could not open this link");
       expect(alert.textContent).not.toContain("private");
-      expect(mocks.call).toHaveBeenCalledExactlyOnceWith("AppService.OpenExternal", { url: "https://github.com/QingJ01/Pebble" });
+      expect(mocks.call).toHaveBeenCalledExactlyOnceWith("AppService.OpenExternal", {
+        url: "https://github.com/duanyongcheng/pebble-go",
+      });
       expect(warn).not.toHaveBeenCalled();
     } finally { warn.mockRestore(); }
   });

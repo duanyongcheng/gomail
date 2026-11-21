@@ -3,8 +3,8 @@
 package testgmail
 
 import (
-	"github.com/bary/pebble-go/internal/googleapi"
-	"github.com/bary/pebble-go/internal/oauth"
+	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/pebble-go/internal/oauth"
 )
 
 const ModifyScope = oauth.ModifyScope

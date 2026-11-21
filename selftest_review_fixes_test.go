@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/app"
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/provider/gmail"
-	"github.com/bary/pebble-go/internal/store"
-	"github.com/bary/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/testgmail"
 )
 
 func TestReviewSelftestImportedEncryptedOracles(t *testing.T) {

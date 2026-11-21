@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/bary/pebble-go/internal/app"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 	"github.com/egoist/mygo"
 )
 

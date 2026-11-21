@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bary/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
 	"io"
 	"net/http"
 	"net/mail"
@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bary/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
 )
 
 const (

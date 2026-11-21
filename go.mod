@@ -1,4 +1,4 @@
-module github.com/bary/pebble-go
+module github.com/duanyongcheng/pebble-go
 
 go 1.27.3
 

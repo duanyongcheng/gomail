@@ -7,7 +7,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 const signaturePurpose = "email_signatures.data"

@@ -2,9 +2,9 @@ package app
 
 import (
 	"bytes"
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailnet"
-	"github.com/bary/pebble-go/internal/oauth"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/oauth"
 	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httptest"

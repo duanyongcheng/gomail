@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bary/pebble-go/internal/desktop"
+	"github.com/duanyongcheng/pebble-go/internal/desktop"
 	"github.com/egoist/mygo"
 )
 

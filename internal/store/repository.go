@@ -14,8 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
 )
 
 const accountColumns = "id,email,display_name,color,provider,account_label,provider_display_name,oauth_subject,created_at,updated_at,sort_order"

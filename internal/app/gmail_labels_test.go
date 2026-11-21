@@ -3,9 +3,9 @@ package app
 import (
 	"testing"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/provider/gmail"
-	"github.com/bary/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/pebble-go/internal/testgmail"
 )
 
 func TestGmailLabelServiceIsLocalUntilExplicitAction(t *testing.T) {

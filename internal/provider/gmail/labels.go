@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/googleapi"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 func labelFolders(account string, labels []googleapi.Label) []domain.Folder {

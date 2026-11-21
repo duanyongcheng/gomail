@@ -10,13 +10,13 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/bary/pebble-go/internal/crypto"
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/googleapi"
-	"github.com/bary/pebble-go/internal/mailnet"
-	"github.com/bary/pebble-go/internal/oauth"
-	"github.com/bary/pebble-go/internal/privacy"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/crypto"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/oauth"
+	"github.com/duanyongcheng/pebble-go/internal/privacy"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 type Runtime struct {

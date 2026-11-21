@@ -9,7 +9,7 @@ for (const provider of providers) {
     const value = process.env[env];
     if (value === undefined) continue;
     if (!/^[A-Za-z0-9._~:/+\-=]*$/.test(value)) throw new Error(`Unsupported characters in ${env}`);
-    flags.push("-X", `github.com/bary/pebble-go/internal/oauth.${provider}Client${field}=${value}`);
+    flags.push("-X", `github.com/duanyongcheng/pebble-go/internal/oauth.${provider}Client${field}=${value}`);
   }
 }
 const child = Bun.spawn(["mygo", "build", ...process.argv.slice(2)], {

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bary/pebble-go/internal/app"
+	"github.com/duanyongcheng/pebble-go/internal/app"
 	"github.com/egoist/mygo"
 )
 

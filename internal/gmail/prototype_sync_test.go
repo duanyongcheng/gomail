@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/bary/pebble-go/internal/mailcore"
+	"github.com/duanyongcheng/pebble-go/internal/mailcore"
 	"github.com/egoist/mygo/plugins/sqlite"
 )
 

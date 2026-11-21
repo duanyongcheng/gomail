@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/bary/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
 	"testing"
 )
 

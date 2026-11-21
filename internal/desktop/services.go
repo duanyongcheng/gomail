@@ -7,8 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/bary/pebble-go/internal/app"
-	"github.com/bary/pebble-go/internal/crypto"
+	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/pebble-go/internal/crypto"
 	"github.com/egoist/mygo"
 )
 

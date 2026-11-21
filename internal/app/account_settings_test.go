@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 func TestAccountSettingsEncryptedRestartAndOutgoingName(t *testing.T) {

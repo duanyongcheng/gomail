@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 func TestOfflineSelftestDistinctExplicitChecks(t *testing.T) {

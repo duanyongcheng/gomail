@@ -1,273 +1,164 @@
 # Pebble Go
 
-Pebble Go is the independent Go + MyGO WebView implementation of Pebble, using
-the existing React UI. The Rust/Tauri reference at `../Pebble` is kept separate.
+[![Go](https://img.shields.io/badge/Go-1.27.3-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![MyGO](https://img.shields.io/badge/MyGO-v0.6.4-4B5563)](https://github.com/egoist/mygo)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 
-M0 establishes versioned storage, encrypted account restoration, typed services,
-and explicit frontend command coverage. The first M1 slice adds resumable Gmail
-mailbox backfill, paginated History sync and preference-controlled scheduling.
-The next slices support larger messages and persistent recovery of failed
-Gmail downloads, with a retry list in account settings, plus backend privacy
-HTML/CID rendering. Gmail supports multiple accounts, local search, unread counts
-and read/star changes. Mail mutations now use a durable remote-write queue, so
-offline changes survive restart and retry with backoff. Same-message writes
-replay in durable order; pending local changes survive concurrent sync, and unknown
-outcomes are not auto-retried. Cached attachments can be downloaded or saved
-through the native Save As dialog. Compose supports local encrypted drafts and
-attachment staging. Gmail sending uses an encrypted durable outbox with primary
-mailbox verification and unknown-outcome protection. Conversation view groups
-cached mail by account-scoped Gmail threads and carries reply context through
-sending. Gmail custom labels can be created, renamed and deleted from account
-settings. Sender trust is persisted per account and enforced by the backend
-privacy policy. Account-level access states and same-mailbox Google reconnection
-preserve cached mail and queued work when authorization needs attention. Gmail sender name,
-local account label, color and encrypted signature are editable offline; these values
-save atomically without changing mailbox identity. Gmail account network settings
-support inherit/direct/custom routes; mailbox reassignment remains unavailable.
-Saved local drafts can be explicitly uploaded to
-Gmail, browsed/imported, checked, updated and safely deleted with durable
-unknown-outcome protection. Cloud-linked sends use Gmail's draft send operation so
-the matching remote draft is consumed only after Gmail accepts the send; conflicts
-and unknown outcomes remain visible. See [Gmail completion](docs/m1-gmail-completion.md).
-M2 adds production IMAP/SMTP and POP3 accounts, encrypted account configuration,
-lazy local restore, verified TLS/STARTTLS/STLS, explicit CA trust and HTTP/SOCKS5
-proxy routing. Selected IMAP folders use durable UIDVALIDITY-aware checkpoints,
-queued flags/moves/trash, folder management and scheduler-owned IDLE. SMTP uses
-the encrypted Outbox with frozen Bcc envelope recipients and Bcc-free MIME;
-server acceptance can have no remote ID and does not prove recipient delivery.
-POP3 uses UIDL checkpoints and deliberately disables remote flag/folder changes.
-Microsoft public-client OAuth provides separate Graph/Exchange resource grants
-and independent IMAP/SMTP XOAUTH2. Experimental Graph supports folder discovery,
-resumable delta/raw MIME, durable writes and sendMail 202 acceptance. See
-[M2 integration evidence and limits](docs/m2-integration-validation.md).
-Daily-use hardening adds WAL/FULL write durability, native close/restore behavior,
-safe user-clicked web links, and shared unavailable-feature guards. See
-[the hardening contract](docs/m1-daily-use-hardening.md).
-Supported local mail views and durable acknowledgement-first actions also remain
-usable when the browser reports offline; provider refresh, advanced search and
-other remote actions keep their explicit network boundaries. See
-[offline local workflow validation](docs/m1-offline-local-workflows-validation.md).
+A local-first desktop email client built with **Go**, **MyGO WebView**, and **React**.
 
-## Development
+Pebble Go is an independent Go + MyGO implementation of [Pebble](https://github.com/QingJ01/Pebble), reusing the Pebble React UI while keeping the backend, storage, cryptography, and packaging completely separate from the upstream Rust/Tauri implementation.
 
-Requirements: Go 1.27.3, Bun, Node for Vite/Vitest, and platform WebView support.
+- **Repository:** <https://github.com/duanyongcheng/pebble-go>
+- **Issues:** <https://github.com/duanyongcheng/pebble-go/issues>
+- **Releases:** <https://github.com/duanyongcheng/pebble-go/releases>
+
+---
+
+## Features & Current Status
+
+### Supported Mail Providers (M0–M2)
+
+- **Gmail (Google OAuth PKCE):** Multi-account support with `gmail.modify` + `openid email profile`, resumable full-mailbox backfill and paginated History sync, large-message download failure persistence and retry queue (up to 50 MiB), durable FIFO remote-write queue, encrypted local drafts with explicit Gmail cloud-copy upload/check/update/import/delete and cloud-linked sending, encrypted durable Outbox with unknown-outcome protection, account-scoped conversations and reply threading, custom server label CRUD, per-account sender trust, offline account editing with encrypted signatures, per-account proxy/network routing, and account access states with same-mailbox reconnection. Permanent delete / empty-trash remains unavailable under `gmail.modify`. See [docs/m1-gmail-completion.md](docs/m1-gmail-completion.md).
+- **IMAP & SMTP:** Production account setup and editing with verified TLS/STARTTLS, explicit endpoint CA trust, and global/direct/custom HTTP CONNECT or SOCKS5 proxy routing. Selected IMAP folders use durable `UIDVALIDITY`-aware checkpoints, queued flags/moves/trash, server folder management (create/rename/delete), and scheduler-owned IDLE (first selected folder; other selected folders poll). SMTP uses the encrypted Outbox with frozen `Bcc` envelope recipients and `Bcc`-free MIME; server acceptance may omit a remote ID and does not prove recipient delivery.
+- **POP3:** Verified TLS/STLS, bounded `UIDL`/`RETR` parsing, `UIDL` checkpoints and deduplication, and deliberately disabled remote flag/folder changes. Optional configured SMTP enables sending.
+- **Microsoft / Outlook & Experimental Graph:** Native public-client OAuth PKCE with validated tenant/audience policy, separate Graph/Exchange resource grants, and independent IMAP/SMTP XOAUTH2. Experimental Microsoft Graph supports recursive folder discovery, resumable delta/raw MIME sync, durable writes, and `sendMail` 202 acceptance. See [docs/m2-integration-validation.md](docs/m2-integration-validation.md).
+
+### Local-First Workflows, Privacy & Hardening
+
+- **Local-First & Offline Use:** Pure-Go SQLite (`modernc.org/sqlite`, `CGO_ENABLED=0`) with WAL and `synchronous=FULL` writer durability, FTS5 local search, unread counts, and RFC 2047 address display-name decoding (including quoted encoded names across new and cached mail; see [docs/address-name-decoding-validation.md](docs/address-name-decoding-validation.md)). Supported local views and durable acknowledgement-first actions remain usable offline while remote actions keep explicit network boundaries (see [docs/m1-offline-local-workflows-validation.md](docs/m1-offline-local-workflows-validation.md)).
+- **Privacy Renderer & Attachments:** Message HTML is sanitized in the Go core before reaching the WebView (`Strict`, `LoadOnce`, `Off`, `TrustedSender` modes) with tracker reporting and backend-enforced per-account sender trust ([docs/m1-privacy.md](docs/m1-privacy.md), [docs/m1-trusted-senders.md](docs/m1-trusted-senders.md)). Inline CID images use the narrow `pebble-attachment://` protocol. Attachments support **Download** (system Downloads directory) and **Save As** (native file chooser) with numbered collision avoidance and symlink-contained cache reads ([docs/m1-attachment-export.md](docs/m1-attachment-export.md)).
+- **Desktop Hardening:** Native close-to-background vs. quit-on-close (`Settings → General → Quit app when window is closed`) with single-instance window/compose state restoration, validated external HTTP(S) link opening, and shared unavailable-feature guards ([docs/m1-daily-use-hardening.md](docs/m1-daily-use-hardening.md)).
+
+### Not Yet Available & Known Limits
+
+- **Guarded / Unimplemented UI Features:** Advanced search filters, local labels, contacts, Kanban board, snooze, rules, templates, AI assistant, translation, WebDAV/file backup, desktop notifications/tray/autostart, hidden startup, diagnostic log viewer, and in-app update checks are disabled or hidden until implemented.
+- **Legacy Profile Import:** Importing live profiles from the Rust/Tauri Pebble app remains planned M6 work; use a separate Pebble Go profile.
+- **Acceptance Scope:** Automated gates and packaged macOS `arm64` synthetic selftests pass, and cross-compilation covers macOS, Linux, and Windows targets, which does not substitute for Windows/Linux runtime validation or live-account acceptance. Ongoing live-account acceptance records and deferred items are tracked in [docs/m1-m2-live-acceptance.md](docs/m1-m2-live-acceptance.md).
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Go** `1.27.3`
+- **Bun**
+- **Node.js** (for Vite / Vitest)
+- Platform WebView runtime support (macOS WebKit / Linux WebKitGTK / Windows WebView2)
+
+### Clone & Run in Development
 
 ```sh
+git clone https://github.com/duanyongcheng/pebble-go.git
+cd pebble-go
 bun install
 bun run generate
 bun run dev
 ```
 
-### Local macOS build
+An empty profile opens normally and stays running. Token restoration never contacts the network. Once the UI loads the profile's realtime preference, configured accounts start syncing unless the preference is `manual`. Use **Settings → Accounts** to sign in or add accounts; manual sync can always be triggered explicitly.
+
+---
+
+## Building
+
+### Local macOS Build
 
 ```sh
 bun run build:local
-# Or run the script directly, from any working directory:
+# Or run the script directly from any working directory:
 ./scripts/build-local.sh
 ```
 
-The script checks Go/Bun/Node/codesign, installs dependencies with the frozen
-Bun lockfile, regenerates bindings, type-checks/builds the frontend, and packages
-an ad-hoc signed app for the current Mac's architecture. It reuses the existing
-`.env` OAuth build configuration without sourcing it as shell code. DMG creation
-and notarization are skipped; the bundle signature is verified before success.
-The native app is written to `build/darwin-<arch>/Pebble Go.app`, and the script
-prints its path and an `open` command. It does not launch/install the app or
-modify your profile. For Apple Silicon:
+The script verifies `go`, `bun`, `node`, and `codesign`, installs dependencies with the frozen Bun lockfile, regenerates MyGO bindings, type-checks and builds the frontend, and packages an ad-hoc signed app for the current Mac architecture. It reuses local `.env` OAuth build variables without sourcing `.env` as shell code. DMG creation and notarization are skipped, and the bundle signature is verified with `codesign --verify --deep --strict`.
+
+The output bundle is written to `build/darwin-<arch>/Pebble Go.app` (replacing the target directory after a successful build so stale DMGs are removed). For Apple Silicon:
 
 ```sh
 open "build/darwin-arm64/Pebble Go.app"
 ```
 
-For a DMG or other platform targets, keep using `bun run build` with MyGO flags.
-The local script replaces the target directory after a successful build, so a
-previous DMG in that directory is removed rather than left as a stale package.
+### Other Targets & Packaging
 
-An empty profile opens a normal app and stays running. Token restoration does
-not contact the network. Once the UI loads the profile's realtime preference,
-configured Gmail accounts start syncing unless the preference is `manual`.
-Use account settings to log in. Manual sync can always be triggered explicitly.
-Message bodies are escaped plain text only when no HTML part exists; HTML is
-sanitized by the backend privacy renderer before the WebView.
+For a DMG or other platform targets, run `bun run build` with MyGO flags, for example:
 
-Address display names support RFC 2047 encoding, including quoted encoded names
-used by some mail clients. Sender/To/Cc/Bcc names are decoded consistently for new
-mail and existing cached mail, including offline views; mailbox addresses remain
-unchanged. No re-download or profile migration is required. If a residual encoded
-name cannot be safely decoded, its original value is retained. See
-[address-name validation](docs/address-name-decoding-validation.md).
+```sh
+bun run build -skip-dmg -skip-notarize
+```
 
-Backfill processes the whole mailbox in pages of at most 100 messages and
-persists recovery checkpoints after each page. Each pass handles at most ten
-pages; unfinished work continues after one second, including an explicitly
-requested manual backfill. Stop cancels the current request. Realtime polling
-uses 10 seconds while recently active, 30 seconds while idle and 120 seconds in
-the background, with failure backoff up to five minutes. Balanced and battery
-preferences use 30- and 60-second foreground intervals. Manual mode stops
-scheduled polling and ignores focus/reconnect triggers. See
-[the sync contracts and limitations](docs/m1-sync.md).
+---
 
-Gmail accepts raw messages and total decoded MIME content up to 50 MiB. A
-malformed or oversized message is saved for retry while other mail continues
-syncing; existing cached content stays available. Open Settings → Accounts →
-Mail downloads to inspect failures and explicitly retry one account or all
-accounts. Automatic modes retry eligible failures with backoff; manual mode
-only processes retries as part of an explicit sync or retry action. See
-[download recovery](docs/m1-recovery.md).
+## OAuth Configuration
 
-Message HTML is sanitized in the Go core before it reaches the WebView. Strict,
-LoadOnce, Off and TrustedSender modes control external images and stylesheets;
-trackers are reported in the privacy banner. CID inline images use the narrow
-`pebble-attachment://` protocol and cannot address arbitrary profile files. See
-[privacy rendering](docs/m1-privacy.md).
-
-The privacy banner can remember images-only or full sender trust per account.
-Images-only trust keeps trackers blocked; full trust requires confirmation.
-Settings → Privacy manages exact-address trust and revocation. The backend
-verifies persisted permission instead of trusting a frontend mode flag. See
-[sender trust](docs/m1-trusted-senders.md).
-
-The message attachment footer offers Download (system Downloads directory) and
-Save As (native file chooser). Existing files are preserved using numbered
-filenames, with progress and the actual saved path shown in the UI. Export and
-CID reads share a symlink-contained cache opener; failed copies are cleaned up.
-See [attachment export](docs/m1-attachment-export.md).
-
-Flags, archive/restore, trash, moves, batch actions and mark-all-read commit
-locally and enqueue a remote write in one transaction. A background worker
-replays the queue with backoff; Settings → Remote Writes shows the queue, next
-retry and failures, and can dismiss them. Permanent delete is unavailable with
-`gmail.modify`. See [remote operations](docs/m1-remote-ops.md) and the
-[reliability follow-up](docs/m1-remote-ops-reliability.md).
-
-Compose auto-saves locally after three seconds. Use **Save and close**, then
-open a blank compose → **Local drafts** to continue editing. Content and staged
-attachment bytes are encrypted with the profile key; autosave does not contact
-Gmail. The list offers explicit **Upload to Gmail**, **Update Gmail copy** and
-read-only **Check Gmail copy**, plus Gmail draft browsing/import and explicit
-conflict recovery/deletion. Deleting locally does not delete Gmail content.
-Linked sending consumes the matching remote draft only after Gmail accepts it;
-its latest local snapshot is retained until cancellation or acceptance. Unsafe
-HTML-to-rich/Markdown conversions are refused without changing the source. See
-[compose and drafts](docs/m1-compose-drafts.md) and
-[the complete draft lifecycle](docs/m1-gmail-completion.md).
-
-Send first saves a complete encrypted MIME snapshot to Outbox. The background
-worker checks the Gmail primary mailbox, submits once, and distinguishes Gmail
-acceptance from failed or unknown outcomes. Unknown sends are never automatically
-resent; use **Check Sent** in Compose → Outbox or Settings → Remote Writes.
-Queued acceptance is not delivery confirmation. See [Gmail outbox](docs/m1-gmail-outbox.md).
-
-Conversation view supports paginated thread lists, expanded privacy-rendered
-messages, attachments and replies. Native Gmail thread IDs are account-scoped;
-header fallback never merges mail by subject alone. Replies preserve parent
-References and, for unchanged subjects, the original Gmail thread ID. See
-[conversations and threading](docs/m1-threads.md).
-
-Settings → Accounts → **Gmail labels** manages server labels online, with system
-label protection and explicit confirmation before deleting a custom label.
-Deleting a label does not delete its messages. Uncertain writes are retained for
-read-only refresh/reconciliation instead of automatic retries. See
-[Gmail labels](docs/m1-gmail-labels.md).
-
-Settings → Accounts → **Gmail connection** shows each account's local access
-state and offers **Reconnect** / **Cancel sign-in**. Bad credentials in one account
-do not prevent other accounts from restoring. Confirmed authorization failures
-pause that account's sync and queued work without exhausting retry attempts;
-temporary network failures retain normal backoff. Reconnection verifies the same
-Gmail mailbox, preserves account settings/mail/drafts, and keeps unknown sends
-unknown. See [account access and reconnection](docs/m1-account-reauth.md).
-
-Settings → General → **Quit app when window is closed** controls native close
-behavior. Otherwise the existing window hides and background workers continue;
-application activation or another launch restores that same window and compose
-state. Explicit Quit always shuts down. Notification/tray/autostart and hidden
-startup features remain unavailable. HTTP(S) message/About links open through a
-validated Go service; failures show a generic error without exposing private URLs.
-
-Unsupported features are disabled or hidden across settings, navigation, command
-palette, keyboard shortcuts and mail/compose actions. These include advanced
-search filters, local labels, contacts, Kanban, snooze,
-rules, templates, AI, translation and backup. Basic search, local appearance and
-supported Gmail workflows remain available; empty-trash/permanent delete is still
-unavailable with Gmail modify access.
-
-Settings → Accounts → **Edit account** saves the Gmail sender name, account label,
-color and encrypted signature together. Signature reads require the profile key
-and must complete before settings can be saved. Gmail's separate network panel
-changes its account route. Mailbox address reassignment is unavailable; use same-mailbox Reconnect for authorization
-repair. Queued messages retain their original sender and content snapshot. See
-[account editing and signatures](docs/m1-account-settings.md).
-
-## Gmail OAuth configuration
+Copy `.env.example` to `.env` if you want to configure local Gmail OAuth credentials:
 
 ```dotenv
 GOOGLE_CLIENT_ID=your-desktop-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-desktop-client-secret
 ```
 
-Bun loads `.env` during development. `bun run build` injects these local values
-using `MYGO_LDFLAGS -X`. Process environment values override packaged defaults;
-an explicitly empty process value disables a packaged value. Microsoft setup
-accepts a native public-client ID, validated tenant/audience and separate resource
-consent in the account form; no Microsoft client secret is used. Without a Google client ID, the login button says
-“未配置” and no authorization request is made.
+- Bun loads `.env` during development. `bun run build` injects local values via `MYGO_LDFLAGS -X` (`github.com/duanyongcheng/pebble-go/internal/oauth`).
+- Process environment variables override packaged defaults; an explicitly empty process value disables a packaged default.
+- Without a Google client ID, the Google login button displays “未配置” and no authorization request is made.
+- Gmail requests `gmail.modify` plus `openid email profile` using PKCE and a one-shot loopback callback in the system browser. User consent and real Google account verification are manual steps; automated checks use local fixtures only.
+- Microsoft setup accepts a native public-client ID, validated tenant/audience, and separate resource consent directly in the account form; no Microsoft client secret is used.
 
-Gmail requests `gmail.modify` plus `openid email profile`. Google authorization
-opens in the system browser with PKCE and a one-shot loopback callback. User
-consent and real Google account verification are manual steps; automated checks
-use local fixtures only. Sending is supported through Outbox; permanent delete
-remains unavailable with `gmail.modify`.
+OAuth tokens and protocol credentials are encrypted in `accounts.auth_data` using the Pebble v1 AES-256-GCM envelope bound to account identity. The master DEK is stored in the independent `dev.bary.pebble.go` OS keyring service, and token refresh uses compare-and-swap persistence. A locked keyring or missing DEK preserves ciphertext and requires attention with no plaintext fallback; the upstream Pebble keyring is never read.
 
-OAuth tokens are encrypted in `accounts.auth_data` with the Pebble v1
-AES-256-GCM envelope, bound to account identity. The DEK uses the independent
-`dev.bary.pebble.go` keyring service. Refresh uses compare-and-swap persistence.
-A locked keyring or missing DEK preserves the ciphertext and requires attention;
-there is no plaintext fallback. The old Pebble keyring is never read.
+> **Security:** Never commit `.env`, OAuth credentials, tokens, profiles, or mailbox data to Git. `.env` and `.env.*` are gitignored; `.env.example` contains placeholders only.
 
-Do not put OAuth values, tokens, profiles, or mailbox data in Git. `.env` files
-are ignored; `.env.example` contains placeholders only.
+---
 
-## Profiles and storage
+## Profiles & Storage
 
-The application identifier is `dev.bary.pebble.go` and its name is `Pebble Go`.
-Profile directory precedence matches the old app:
+The application identifier is `dev.bary.pebble.go` and its display name is `Pebble Go`. Profile directory resolution follows this precedence:
 
-1. `PEBBLE_PROFILE_DIR` (relative values resolve beside the executable).
-2. The first line of `pebble-profile.txt` beside the executable.
+1. `PEBBLE_PROFILE_DIR` (relative paths resolve beside the executable).
+2. First line of `pebble-profile.txt` beside the executable.
 3. A `pebble-profile` directory beside the executable.
-4. MyGO's application user-data directory.
+4. MyGO's platform user-data directory.
 
-A persistent `profile-id` isolates frontend preferences even if a profile is
-moved. The database is `pebble.sqlite`; attachment content is stored under
-`attachments/` and referenced by relative `attachments.local_path`. Logs rotate
-under `logs/` and contain operation statuses, not credential or mail payloads.
+Inside a profile directory:
 
-`internal/store` uses `database/sql` + `modernc.org/sqlite`, one writer and four
-read-only connections, WAL, foreign keys and a 15-second busy timeout. Every
-writer connection uses `synchronous=FULL`, including pool replacement, to strengthen
-committed outbox/cloud/label intent durability before external side effects. This
-is not an exactly-once delivery guarantee; unknown outcomes still require checks. Legacy
-migrations v1–v20 match the Rust schema; Go adds the FTS5 search cache in v21
-and the account-scoped backfill reconciliation table in v22. Version 23 adds
-persistent Gmail message download failures and retry timing. Version 24 adds a
-Go-only operation-sequence sidecar for FIFO replay and sync reconciliation.
-Version 25 adds separate encrypted local drafts, staged attachment objects and
-reference tracking; these are not part of remotely synchronized mail or FTS.
-Version 26 adds the encrypted send outbox, independent of idempotent mail mutations.
-Version 27 adds an account-scoped conversation index without modifying legacy tables.
-Version 28 records unresolved Gmail label-management writes for safe reconciliation.
-Version 29 adds encrypted account-scoped Gmail signatures. Version 30 records
-Gmail cloud-copy identities and durable write intents. Version 31 adds cloud
-copy deletion/send lifecycle states and outbox association. Version 32 adds
-provider/account/scope checkpoints, remote identity mappings and explicit global
-network configuration. Protocol credentials and resource grants remain encrypted
-in account-bound vault envelopes. These additions do
-not change the Rust v20 schema. An unversioned PoC database is rejected instead of being silently
-rewritten.
-Old live-profile import remains M6 work: use a separate Pebble-Go profile.
+- `profile-id`: persistent namespace isolating frontend preferences even if the profile is moved.
+- `pebble.sqlite`: SQLite database (`database/sql` + `modernc.org/sqlite`, 1 writer + 4 read-only connections, WAL, foreign keys, 15-second busy timeout, and `synchronous=FULL` on every writer connection including pool replacement).
+- `attachments/`: cached attachment content referenced by relative `attachments.local_path`.
+- `logs/`: rotating operational logs (operation statuses only — no credentials or mail payloads).
 
-## Checks and local desktop selftest
+### Schema Migrations
+
+- **v1–v20:** Match the upstream Pebble Rust schema.
+- **v21–v32 (Go additions without altering v1–v20 tables):**
+  - `v21`: FTS5 search cache.
+  - `v22`: Account-scoped backfill reconciliation table.
+  - `v23`: Persistent Gmail message download failures and retry timing.
+  - `v24`: Operation-sequence sidecar for FIFO replay and sync reconciliation.
+  - `v25`: Separate encrypted local drafts, staged attachment objects, and reference tracking (excluded from remote sync and FTS).
+  - `v26`: Encrypted send Outbox, independent of idempotent mail mutations.
+  - `v27`: Account-scoped conversation index.
+  - `v28`: Unresolved Gmail label-management write log for safe reconciliation.
+  - `v29`: Encrypted account-scoped Gmail signatures.
+  - `v30`: Gmail cloud-copy identities and durable write intents.
+  - `v31`: Cloud-copy deletion/send lifecycle states and Outbox association.
+  - `v32`: Provider/account/scope checkpoints, remote identity mappings, and explicit global network configuration.
+
+Unversioned PoC databases are rejected rather than silently rewritten.
+
+---
+
+## Sync, Compose & Operational Contracts
+
+- **Sync & Scheduling ([docs/m1-sync.md](docs/m1-sync.md)):** Backfill runs in pages of up to 100 messages, persisting checkpoints per page (up to 10 pages per pass; unfinished work continues after 1 second, including manual backfill). Realtime polling uses 10s active / 30s idle / 120s background with backoff up to 5 minutes; balanced and battery modes use 30s and 60s foreground intervals; manual mode disables scheduled polling and ignores focus/reconnect triggers.
+- **Download Recovery ([docs/m1-recovery.md](docs/m1-recovery.md)):** Gmail raw and decoded MIME content is bounded at 50 MiB. Malformed or oversized messages are recorded for retry without blocking other mail. Inspect and retry failures under **Settings → Accounts → Mail downloads**.
+- **Remote-Write Queue ([docs/m1-remote-ops.md](docs/m1-remote-ops.md), [docs/m1-remote-ops-reliability.md](docs/m1-remote-ops-reliability.md)):** Flags, archive/restore, trash, moves, batch actions, and mark-all-read commit locally and enqueue a remote write atomically. Inspect pending retries and dismiss failures in **Settings → Remote Writes**. Unknown outcomes are never auto-retried.
+- **Drafts & Cloud Copies ([docs/m1-compose-drafts.md](docs/m1-compose-drafts.md), [docs/m1-gmail-completion.md](docs/m1-gmail-completion.md)):** Compose autosaves locally every 3 seconds with encrypted body and staged attachments (zero network on autosave). Open blank compose → **Local drafts** for explicit **Upload to Gmail**, **Update Gmail copy**, read-only **Check Gmail copy**, cloud draft browsing/import, and conflict recovery/deletion. Lossy HTML-to-rich/Markdown conversions are refused without altering the source.
+- **Durable Outbox ([docs/m1-gmail-outbox.md](docs/m1-gmail-outbox.md)):** Sending persists an encrypted MIME snapshot before submission, checks the primary mailbox, and separates acceptance from failure or unknown outcomes. Unknown sends are never auto-resent; use **Check Sent** in Compose → Outbox or Settings → Remote Writes.
+- **Conversations & Threading ([docs/m1-threads.md](docs/m1-threads.md)):** Paginated thread lists with account-scoped Gmail thread IDs; header fallback never merges by subject alone.
+- **Gmail Labels, Access & Settings ([docs/m1-gmail-labels.md](docs/m1-gmail-labels.md), [docs/m1-account-reauth.md](docs/m1-account-reauth.md), [docs/m1-account-settings.md](docs/m1-account-settings.md)):** Manage custom server labels online with system-label protection, inspect account access states and safely reconnect the same mailbox without losing cached mail/drafts/unknown sends, and edit sender name, label, color, and encrypted signature atomically offline.
+
+---
+
+## Checks & Local Desktop Selftest
 
 ```sh
 bun run test
@@ -275,34 +166,21 @@ bun run check
 bun run build -skip-dmg -skip-notarize
 ```
 
-`check` runs Go tests/vet/race, MyGO vet, binding generation, TypeScript,
-Vitest, frontend build and CGO-free compilation for darwin/amd64,
-linux/amd64+arm64 and windows/amd64+arm64. It prints the temporary directory
-containing detailed logs and compile artifacts. Cross-compilation does not
-claim Windows/Linux runtime validation.
+`bun run check` executes:
 
-All 130 upstream test files are present. Seven upstream-only suites are
-excluded with individual reasons in `tests/skipped.json`: six Rust/Tauri config
-suites and the separate public website suite. The remaining upstream tests run
-alongside Pebble-Go adapter tests.
+1. `go test -count=1 ./...` and `go vet ./...` (`CGO_ENABLED=0`)
+2. `go test -race -count=1 ./internal/...` (`CGO_ENABLED=1`)
+3. `go tool mygo vet .` and `go tool mygo generate`
+4. TypeScript type-checking (`bun run typecheck`), Vitest (`bun run test`), and Vite production build (`bun run build:web`)
+5. CGO-free cross-compilation for `darwin/amd64`, `linux/amd64`, `linux/arm64`, `windows/amd64`, and `windows/arm64`
 
-The explicit desktop selftest uses a synthetic local Gmail server, verifies the
-inbox, conversation view, Gmail label CRUD, sender trust/revocation, local account
-settings and encrypted signatures, attachment export, local draft restore/save,
-Gmail cloud-copy upload/check/update, failed-download retry, same-mailbox reconnection with unknown-send and draft
-preservation, and a single send to the local Gmail fixture through the UI. Hardening
-checks exercise real message-link routing to an in-memory opener, unavailable
-settings, close/restore with edited compose state, a real second instance, and
-native quit-on-close. The selftest uses a separate application name/instance lock. It
-writes a JSON report and screenshots, then exits. It does not
-contact Google or the system keyring; draft checks use an in-memory test keyring.
-Seven M2 backend checks exercise protocol account test/save/sync, encrypted
-reopen with zero network, POP3 UIDL deduplication and SMTP Outbox/Bcc using
-isolated local TLS servers in a separate runtime. Seven separately named
-WebView checks operate the real IMAP setup/settings/read and SMTP/Bcc compose
-controls through native typed bindings. Their evidence and remaining limits are
-recorded in [the independent review](docs/m2-review-validation.md). None of these
-checks establishes live account acceptance:
+Detailed logs and compile artifacts are written to a printed temporary directory. Cross-compilation does not claim Windows/Linux runtime validation.
+
+All 130 upstream test files are present alongside Pebble Go adapter and feature tests. Seven upstream-only suites (six Rust/Tauri config suites and the separate public website suite) are explicitly excluded with individual reasons in [tests/skipped.json](tests/skipped.json).
+
+### Explicit Desktop Selftest
+
+The desktop selftest runs against synthetic local Gmail and TLS IMAP/SMTP/POP3 fixtures using an isolated application name (`Pebble Go Selftest`), disposable profile, and in-memory test keyring. It writes a JSON report and screenshots, then exits without contacting real mail providers or the OS keyring:
 
 ```sh
 CGO_ENABLED=0 go build -o /tmp/pebble-go-selftest .
@@ -312,34 +190,51 @@ PEBBLE_SELFTEST_DIR=/tmp/pebble-go-test-results \
 /tmp/pebble-go-selftest
 ```
 
-Use a dedicated temporary profile for selftest. Without `PEBBLE_SELFTEST=1`, the
-fixture and automatic exit are disabled.
+Always use a dedicated temporary profile for selftest. Without `PEBBLE_SELFTEST=1`, the fixtures and automatic exit are disabled. Synthetic selftest evidence and limits are documented in [docs/m2-review-validation.md](docs/m2-review-validation.md); none of these checks establishes live-account acceptance.
 
-## Architecture and compatibility
+---
+
+## Architecture & Compatibility
 
 ```text
-React / src/lib/api.ts
-  -> explicit typed command table / src/lib/platform/
-  -> generated MyGO bindings
-  -> application services / internal/app
-  -> provider interfaces / internal/domain
-  -> Gmail provider / internal/provider/gmail
-  -> repositories / internal/store, crypto, oauth
+React UI (src/lib/api.ts)
+  -> Explicit typed command table (src/lib/platform/)
+  -> Generated MyGO bindings (src/mygo.ts)
+  -> Application services (internal/app)
+  -> Provider interfaces & domain models (internal/domain)
+  -> Providers (internal/provider/{gmail,imap,smtp,pop3,graph})
+  -> Storage, crypto & OAuth (internal/{store,crypto,oauth})
 ```
 
-There is no generic backend dispatcher. Each of the 145 invoke commands in the
-copied frontend is listed in [docs/parity.md](docs/parity.md). Implemented
-commands call generated services, optional startup stubs return explicit safe
-values, action stubs throw `NotImplemented` with the command name, and unknown
-commands fail.
+There is no generic backend command dispatcher. Every one of the 145 frontend invoke commands is tracked in [docs/parity.md](docs/parity.md): implemented commands call generated MyGO services, optional startup stubs return explicit safe values, unimplemented action stubs throw `NotImplemented` with the command name, and unknown commands fail.
 
-To regenerate the independent Rust v20 schema oracle without changing the
-reference checkout:
+### Regenerating the Rust v20 Schema Oracle
+
+To regenerate `internal/store/testdata/legacy_v20.json` from a local checkout of the upstream Rust [Pebble](https://github.com/QingJ01/Pebble) repository without modifying it or opening user profiles:
 
 ```sh
-python3 scripts/generate_legacy_golden.py ../Pebble
+python3 scripts/generate_legacy_golden.py /path/to/Pebble
 ```
 
-The generator creates a temporary Cargo project with a path dependency on the
-reference `pebble-store`, opens a synthetic database and records the normalized
-schema in `internal/store/testdata/legacy_v20.json`. It does not open profiles.
+---
+
+## Documentation
+
+| Area | Document |
+| --- | --- |
+| Frontend command parity | [docs/parity.md](docs/parity.md) |
+| Gmail completion & draft lifecycle | [docs/m1-gmail-completion.md](docs/m1-gmail-completion.md) |
+| Daily-use hardening contract | [docs/m1-daily-use-hardening.md](docs/m1-daily-use-hardening.md) |
+| Offline local workflow validation | [docs/m1-offline-local-workflows-validation.md](docs/m1-offline-local-workflows-validation.md) |
+| Address display-name decoding | [docs/address-name-decoding-validation.md](docs/address-name-decoding-validation.md) |
+| M2 integration evidence & limits | [docs/m2-integration-validation.md](docs/m2-integration-validation.md) |
+| M2 independent review & WebView selftest | [docs/m2-review-validation.md](docs/m2-review-validation.md) |
+| M1/M2 live-account acceptance tracker | [docs/m1-m2-live-acceptance.md](docs/m1-m2-live-acceptance.md) |
+| Historical Gmail PoC notes | [POC-README.md](POC-README.md) |
+
+---
+
+## Acknowledgements
+
+- [Pebble](https://github.com/QingJ01/Pebble) — upstream Rust/Tauri desktop email client and React UI design.
+- [MyGO](https://github.com/egoist/mygo) — Go desktop WebView framework.

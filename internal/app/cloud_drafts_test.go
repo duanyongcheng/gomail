@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bary/pebble-go/internal/googleapi"
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
 )
 
 type draftServer struct {

@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bary/pebble-go/internal/crypto"
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/crypto"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 	"golang.org/x/oauth2"
 )
 

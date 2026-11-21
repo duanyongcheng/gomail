@@ -2,6 +2,14 @@
   "name": "pebble-go",
   "private": true,
   "type": "module",
+  "homepage": "https://github.com/duanyongcheng/pebble-go#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duanyongcheng/pebble-go.git"
+  },
+  "bugs": {
+    "url": "https://github.com/duanyongcheng/pebble-go/issues"
+  },
   "scripts": {
     "dev": "mygo dev",
     "build": "bun scripts/build.ts",

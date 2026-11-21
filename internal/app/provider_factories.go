@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/provider/imap"
-	"github.com/bary/pebble-go/internal/provider/pop3"
-	"github.com/bary/pebble-go/internal/provider/smtp"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/provider/imap"
+	"github.com/duanyongcheng/pebble-go/internal/provider/pop3"
+	"github.com/duanyongcheng/pebble-go/internal/provider/smtp"
 )
 
 type imapSubmission struct {

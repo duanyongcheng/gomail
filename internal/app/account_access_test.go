@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bary/pebble-go/internal/crypto"
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/googleapi"
-	"github.com/bary/pebble-go/internal/oauth"
-	"github.com/bary/pebble-go/internal/provider/gmail"
-	"github.com/bary/pebble-go/internal/store"
-	"github.com/bary/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/pebble-go/internal/crypto"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/pebble-go/internal/oauth"
+	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/testgmail"
 	"golang.org/x/oauth2"
 )
 

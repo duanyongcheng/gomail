@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bary/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
 	"github.com/emersion/go-sasl"
 	"golang.org/x/oauth2"
 )

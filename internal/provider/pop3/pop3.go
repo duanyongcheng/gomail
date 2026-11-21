@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/mailnet"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 type Config struct {

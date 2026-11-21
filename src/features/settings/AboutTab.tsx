@@ -9,7 +9,7 @@ import { readAppLog, type AppLogSnapshot } from "@/lib/api";
 import { openExternalLink } from "@/lib/external-links";
 import { isCommandAvailable, unavailableReason } from "@/lib/availability";
 
-const REPO = "QingJ01/Pebble";
+const REPO = "duanyongcheng/pebble-go";
 const RELEASES_URL = `https://github.com/${REPO}/releases`;
 
 function openUrl(url: string) {

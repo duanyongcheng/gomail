@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
 	"github.com/emersion/go-message/mail"
 	"github.com/emersion/go-message/textproto"
 )

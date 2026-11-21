@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bary/pebble-go/internal/googleapi"
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/store"
 )
 
 const cloudDraftPurpose = "gmail_draft_copies.data"

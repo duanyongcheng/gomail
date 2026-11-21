@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bary/pebble-go/internal/app"
-	"github.com/bary/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
 	"github.com/egoist/mygo"
 	protocol "github.com/emersion/go-imap/v2"
 )

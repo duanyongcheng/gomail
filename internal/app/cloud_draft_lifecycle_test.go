@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bary/pebble-go/internal/mailmime"
-	"github.com/bary/pebble-go/internal/provider/gmail"
-	"github.com/bary/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/pebble-go/internal/testgmail"
 )
 
 func lifecycleFixture(t *testing.T) (*ComposeService, *testgmail.Mock) {

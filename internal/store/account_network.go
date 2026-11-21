@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/bary/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
 )
 
 func (db *DB) AccountNetwork(ctx context.Context, account string) (mailnet.ProxySetting, error) {

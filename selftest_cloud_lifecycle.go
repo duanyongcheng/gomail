@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bary/pebble-go/internal/app"
-	"github.com/bary/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
 	"github.com/egoist/mygo"
 )
 

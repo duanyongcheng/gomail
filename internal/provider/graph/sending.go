@@ -6,8 +6,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailmime"
 	"github.com/emersion/go-message/mail"
 )
 

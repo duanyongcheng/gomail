@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/domain"
-	"github.com/bary/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/pebble-go/internal/mailnet"
 	"golang.org/x/oauth2"
 )
 

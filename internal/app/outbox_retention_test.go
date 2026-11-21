@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/store"
-	"github.com/bary/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/testgmail"
 )
 
 func retainedCloudOutboxFixture(t *testing.T) (*ComposeService, *testgmail.Mock, SendRequest, SaveDraftRequest) {

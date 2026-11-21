@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bary/pebble-go/internal/mailcore"
+	"github.com/duanyongcheng/pebble-go/internal/mailcore"
 	"github.com/egoist/mygo/plugins/sqlite"
 	"github.com/emersion/go-message/mail"
 	"golang.org/x/oauth2"

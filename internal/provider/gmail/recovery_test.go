@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bary/pebble-go/internal/provider/gmail"
-	"github.com/bary/pebble-go/internal/store"
-	"github.com/bary/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/pebble-go/internal/testgmail"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
