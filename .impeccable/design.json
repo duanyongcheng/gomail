@@ -1,0 +1,626 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-22T07:42:00Z",
+  "title": "Design System: Pebble Go",
+  "extensions": {
+    "colorMeta": {
+      "marine-cerulean": {
+        "role": "primary",
+        "displayName": "Marine Cerulean",
+        "canonical": "#155e8a",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "marine-cerulean-hover": {
+        "role": "primary",
+        "displayName": "Marine Cerulean Hover",
+        "canonical": "#104c71",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "marine-mist": {
+        "role": "primary",
+        "displayName": "Marine Mist",
+        "canonical": "#dfecf3",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "marine-active-border": {
+        "role": "primary",
+        "displayName": "Marine Active Border",
+        "canonical": "#b7d3e3",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "row-selected-bg": {
+        "role": "primary",
+        "displayName": "Selected Row Wash",
+        "canonical": "#ebf4fa",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "row-selected-border": {
+        "role": "primary",
+        "displayName": "Selected Row Border",
+        "canonical": "#a6cadf",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "night-marine-cerulean": {
+        "role": "primary",
+        "displayName": "Night Marine Cerulean",
+        "canonical": "#62b3e3",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "night-marine-cerulean-hover": {
+        "role": "primary",
+        "displayName": "Night Marine Cerulean Hover",
+        "canonical": "#7bc3ec",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "night-marine-mist": {
+        "role": "primary",
+        "displayName": "Night Marine Mist",
+        "canonical": "#1b3449",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "night-marine-contrast": {
+        "role": "primary",
+        "displayName": "Night Marine Contrast Ink",
+        "canonical": "#08131d",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-marine-active-border": {
+        "role": "primary",
+        "displayName": "Night Marine Active Border",
+        "canonical": "#335b7d",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "night-row-selected-bg": {
+        "role": "primary",
+        "displayName": "Night Selected Row Wash",
+        "canonical": "#1c3349",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "night-row-selected-border": {
+        "role": "primary",
+        "displayName": "Night Selected Row Border",
+        "canonical": "#3d6d94",
+        "tonalRamp": ["oklch(17% 0.045 240)", "oklch(28% 0.075 240)", "oklch(40% 0.105 240)", "oklch(50% 0.115 240)", "oklch(62% 0.105 240)", "oklch(75% 0.085 240)", "oklch(87% 0.045 240)", "oklch(95% 0.018 240)"]
+      },
+      "terracotta-signal": {
+        "role": "secondary",
+        "displayName": "Terracotta Signal",
+        "canonical": "#b84a24",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "terracotta-signal-bg": {
+        "role": "secondary",
+        "displayName": "Terracotta Signal Wash",
+        "canonical": "#fdf4ee",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "terracotta-signal-border": {
+        "role": "secondary",
+        "displayName": "Terracotta Signal Border",
+        "canonical": "#edd0be",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "terracotta-signal-ink": {
+        "role": "secondary",
+        "displayName": "Terracotta Signal Ink",
+        "canonical": "#843115",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "night-terracotta-signal": {
+        "role": "secondary",
+        "displayName": "Night Terracotta Signal",
+        "canonical": "#ee936e",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "night-terracotta-signal-bg": {
+        "role": "secondary",
+        "displayName": "Night Terracotta Signal Wash",
+        "canonical": "#2a1d19",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "night-terracotta-signal-border": {
+        "role": "secondary",
+        "displayName": "Night Terracotta Signal Border",
+        "canonical": "#5a382c",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "night-terracotta-signal-ink": {
+        "role": "secondary",
+        "displayName": "Night Terracotta Signal Ink",
+        "canonical": "#f6baa0",
+        "tonalRamp": ["oklch(18% 0.042 42)", "oklch(29% 0.078 42)", "oklch(41% 0.112 42)", "oklch(52% 0.132 42)", "oklch(65% 0.118 42)", "oklch(77% 0.092 42)", "oklch(88% 0.048 42)", "oklch(96% 0.016 42)"]
+      },
+      "kelp-success": {
+        "role": "tertiary",
+        "displayName": "Kelp Success",
+        "canonical": "#1b6e56",
+        "tonalRamp": ["oklch(18% 0.038 162)", "oklch(29% 0.068 162)", "oklch(41% 0.092 162)", "oklch(52% 0.102 162)", "oklch(65% 0.098 162)", "oklch(76% 0.082 162)", "oklch(88% 0.042 162)", "oklch(96% 0.015 162)"]
+      },
+      "amber-warning": {
+        "role": "tertiary",
+        "displayName": "Amber Warning",
+        "canonical": "#9a5710",
+        "tonalRamp": ["oklch(18% 0.038 68)", "oklch(30% 0.068 68)", "oklch(42% 0.098 68)", "oklch(54% 0.118 68)", "oklch(67% 0.112 68)", "oklch(79% 0.095 68)", "oklch(90% 0.048 68)", "oklch(96% 0.016 68)"]
+      },
+      "buoy-danger": {
+        "role": "tertiary",
+        "displayName": "Buoy Danger",
+        "canonical": "#b83327",
+        "tonalRamp": ["oklch(18% 0.045 28)", "oklch(29% 0.085 28)", "oklch(41% 0.125 28)", "oklch(52% 0.145 28)", "oklch(64% 0.128 28)", "oklch(75% 0.098 28)", "oklch(87% 0.048 28)", "oklch(96% 0.016 28)"]
+      },
+      "night-kelp-success": {
+        "role": "tertiary",
+        "displayName": "Night Kelp Success",
+        "canonical": "#5cc49f",
+        "tonalRamp": ["oklch(18% 0.038 162)", "oklch(29% 0.068 162)", "oklch(41% 0.092 162)", "oklch(52% 0.102 162)", "oklch(65% 0.098 162)", "oklch(76% 0.082 162)", "oklch(88% 0.042 162)", "oklch(96% 0.015 162)"]
+      },
+      "night-amber-warning": {
+        "role": "tertiary",
+        "displayName": "Night Amber Warning",
+        "canonical": "#ebb567",
+        "tonalRamp": ["oklch(18% 0.038 68)", "oklch(30% 0.068 68)", "oklch(42% 0.098 68)", "oklch(54% 0.118 68)", "oklch(67% 0.112 68)", "oklch(79% 0.095 68)", "oklch(90% 0.048 68)", "oklch(96% 0.016 68)"]
+      },
+      "night-buoy-danger": {
+        "role": "tertiary",
+        "displayName": "Night Buoy Danger",
+        "canonical": "#f18c82",
+        "tonalRamp": ["oklch(18% 0.045 28)", "oklch(29% 0.085 28)", "oklch(41% 0.125 28)", "oklch(52% 0.145 28)", "oklch(64% 0.128 28)", "oklch(75% 0.098 28)", "oklch(87% 0.048 28)", "oklch(96% 0.016 28)"]
+      },
+      "harbor-mist": {
+        "role": "neutral",
+        "displayName": "Harbor Mist Chrome",
+        "canonical": "#ebf1f4",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "harbor-mist-hover": {
+        "role": "neutral",
+        "displayName": "Harbor Mist Hover",
+        "canonical": "#dfe9ef",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "harbor-mist-active": {
+        "role": "neutral",
+        "displayName": "Harbor Mist Active",
+        "canonical": "#d6e6f0",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "chalk-sea": {
+        "role": "neutral",
+        "displayName": "Chalk Sea List",
+        "canonical": "#f7fafb",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "reading-sheet": {
+        "role": "neutral",
+        "displayName": "Reading Sheet",
+        "canonical": "#ffffff",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "surface-hover": {
+        "role": "neutral",
+        "displayName": "Surface Hover",
+        "canonical": "#edf3f6",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "surface-secondary": {
+        "role": "neutral",
+        "displayName": "Surface Secondary",
+        "canonical": "#e3ecf1",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "harbor-hairline": {
+        "role": "neutral",
+        "displayName": "Harbor Hairline",
+        "canonical": "#d4e0e7",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "harbor-hairline-strong": {
+        "role": "neutral",
+        "displayName": "Harbor Hairline Strong",
+        "canonical": "#b6c9d5",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "navy-ink": {
+        "role": "neutral",
+        "displayName": "Navy Ink",
+        "canonical": "#142538",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "slate-ink": {
+        "role": "neutral",
+        "displayName": "Slate Ink",
+        "canonical": "#435a70",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "harbor-muted-ink": {
+        "role": "neutral",
+        "displayName": "Harbor Muted Ink",
+        "canonical": "#526a80",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "scrollbar-thumb": {
+        "role": "neutral",
+        "displayName": "Scrollbar Thumb",
+        "canonical": "#bfd0db",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "scrollbar-thumb-hover": {
+        "role": "neutral",
+        "displayName": "Scrollbar Thumb Hover",
+        "canonical": "#90abc0",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "scrim-backdrop": {
+        "role": "neutral",
+        "displayName": "Scrim Backdrop",
+        "canonical": "rgb(14 23 33 / 44%)",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-chrome": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Chrome",
+        "canonical": "#0e1721",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-hover": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Hover",
+        "canonical": "#162433",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-active": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Active",
+        "canonical": "#1c3145",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-list": {
+        "role": "neutral",
+        "displayName": "Deep Harbor List",
+        "canonical": "#131e2a",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-sheet": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Sheet",
+        "canonical": "#172432",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-surface-hover": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Surface Hover",
+        "canonical": "#1e2e3f",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-surface-secondary": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Surface Secondary",
+        "canonical": "#223548",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-hairline": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Hairline",
+        "canonical": "#25384b",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "deep-harbor-hairline-strong": {
+        "role": "neutral",
+        "displayName": "Deep Harbor Hairline Strong",
+        "canonical": "#38516a",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-foam-ink": {
+        "role": "neutral",
+        "displayName": "Night Foam Ink",
+        "canonical": "#ebf2f7",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-slate-ink": {
+        "role": "neutral",
+        "displayName": "Night Slate Ink",
+        "canonical": "#a8bfd2",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-muted-ink": {
+        "role": "neutral",
+        "displayName": "Night Muted Ink",
+        "canonical": "#88a4bc",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-scrollbar-thumb": {
+        "role": "neutral",
+        "displayName": "Night Scrollbar Thumb",
+        "canonical": "#31485e",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-scrollbar-thumb-hover": {
+        "role": "neutral",
+        "displayName": "Night Scrollbar Thumb Hover",
+        "canonical": "#476684",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      },
+      "night-scrim-backdrop": {
+        "role": "neutral",
+        "displayName": "Night Scrim Backdrop",
+        "canonical": "rgb(3 9 16 / 64%)",
+        "tonalRamp": ["oklch(16% 0.018 236)", "oklch(25% 0.024 236)", "oklch(36% 0.028 236)", "oklch(48% 0.030 236)", "oklch(62% 0.026 236)", "oklch(76% 0.020 236)", "oklch(89% 0.012 236)", "oklch(97% 0.005 236)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Subject",
+        "purpose": "Message subject headings inside the native Harbor reading sheet (clamps to 22px below 520px)."
+      },
+      "headline": {
+        "displayName": "View Headline",
+        "purpose": "Settings tab panel headings (22px) and thread reader subjects (20px)."
+      },
+      "title": {
+        "displayName": "Pane Title",
+        "purpose": "56px pane header titles across Inbox, Starred, Compose, and empty-reader guidance headings."
+      },
+      "reading": {
+        "displayName": "Reading Body",
+        "purpose": "Long-form Chinese and English email body prose and rich-text/Markdown compose editor text inside the 740px sheet."
+      },
+      "body": {
+        "displayName": "UI Body",
+        "purpose": "Default application chrome, navigation rows, mail list sender/subject lines, settings controls, and dialog descriptions."
+      },
+      "label": {
+        "displayName": "Ledger Label",
+        "purpose": "Natural-case sidebar section labels, unread pills, timestamps, snippets, and 28px bottom status bar readouts with tabular numerals."
+      },
+      "mono": {
+        "displayName": "Monospace Keycap & Code",
+        "purpose": "Keyboard shortcut badges, command palette bindings, HTML source input mode, and inline code spans."
+      },
+      "serif": {
+        "displayName": "Editorial Serif Companion",
+        "purpose": "Local OS serif stack reserved for independent serif message-detail templates such as Letter and Claude."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ui-shadow-sm",
+        "value": "0 1px 2px rgb(20 37 56 / 6%), 0 2px 6px rgb(20 37 56 / 4%)",
+        "purpose": "Light-mode subtle lift for resting Compose CTA, expanded thread bubbles, floating row action trays, Compose editor frame, and appearance preview card."
+      },
+      {
+        "name": "ui-shadow-md",
+        "value": "0 6px 20px rgb(20 37 56 / 10%), 0 2px 6px rgb(20 37 56 / 5%)",
+        "purpose": "Light-mode floating elevation for Compose CTA hover, toast notifications, and portalled context menus."
+      },
+      {
+        "name": "ui-shadow-lg",
+        "value": "0 18px 44px rgb(12 24 38 / 22%), 0 4px 14px rgb(12 24 38 / 10%)",
+        "purpose": "Light-mode modal depth for Command Palette and Confirm Dialog above the translucent backdrop scrim."
+      },
+      {
+        "name": "ui-shadow-sm-dark",
+        "value": "0 2px 6px rgb(4 10 18 / 28%)",
+        "purpose": "Dark-mode subtle lift for resting Compose CTA, expanded thread bubbles, floating row trays, and editor frame."
+      },
+      {
+        "name": "ui-shadow-md-dark",
+        "value": "0 8px 24px rgb(4 10 18 / 40%)",
+        "purpose": "Dark-mode floating elevation for Compose CTA hover, toasts, and folder context menus."
+      },
+      {
+        "name": "ui-shadow-lg-dark",
+        "value": "0 22px 52px rgb(2 8 15 / 56%)",
+        "purpose": "Dark-mode modal depth for Command Palette and Confirm Dialog."
+      },
+      {
+        "name": "focus-isolation-ring",
+        "value": "inset 0 0 0 1px var(--color-row-selected-border)",
+        "purpose": "Crisp 1px inset hairline isolating selected message, thread, and search rows without layout shift."
+      },
+      {
+        "name": "input-focus-halo",
+        "value": "0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent)",
+        "purpose": "Soft Marine Cerulean perimeter halo around focused search shells and settings form inputs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ui-motion-ease",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Primary exponential ease-out curve for crisp, zero-overshoot desktop state transitions."
+      },
+      {
+        "name": "ui-motion-fast",
+        "value": "150ms",
+        "purpose": "Hover, focus, border, background, and selection transitions on buttons, rows, chips, and thread bubbles."
+      },
+      {
+        "name": "ui-motion-base",
+        "value": "190ms",
+        "purpose": "Sidebar rail width collapse/expand and transient toast entrance animation."
+      },
+      {
+        "name": "theme-switching-lock",
+        "value": "0ms (html[data-theme-switching])",
+        "purpose": "Temporarily zeroes motion tokens during light/dark switches to eliminate cross-fade flicker."
+      },
+      {
+        "name": "reduced-motion-guard",
+        "value": "0.01ms / transition: none (@media (prefers-reduced-motion: reduce))",
+        "purpose": "Global WCAG 2.3.3 guard plus per-stylesheet transition suppression honoring OS reduced-motion settings."
+      },
+      {
+        "name": "toast-in",
+        "value": "translateY(12px) scale(0.95) -> translateY(0) scale(1) over 190ms",
+        "purpose": "Single subtle upward entrance for transient toast feedback."
+      }
+    ],
+    "breakpoints": [
+      { "name": "lg-settings", "value": "1100px" },
+      { "name": "md-reader", "value": "900px" },
+      { "name": "sm-shell", "value": "760px" },
+      { "name": "xs-settings-rail", "value": "560px" },
+      { "name": "xs-reader", "value": "520px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Compose Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary Marine Cerulean workspace CTA anchored at the top of the Harbor Mist navigation rail with trailing tabular shortcut badge.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\"><svg class=\"ds-btn-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 20h9\"/><path d=\"M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z\"/></svg><span>Compose</span><kbd class=\"ds-btn-kbd\">⌘N</kbd></button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; min-width: 204px; min-height: 38px; padding: 8px 13px; border: 1px solid transparent; border-radius: var(--ui-radius-md, 8px); background: var(--color-accent, #155e8a); color: var(--color-accent-contrast, #ffffff); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: var(--ui-shadow-sm, 0 1px 2px rgb(20 37 56 / 6%), 0 2px 6px rgb(20 37 56 / 4%)); transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-btn-primary:hover:not(:disabled) { background: var(--color-accent-hover, #104c71); box-shadow: var(--ui-shadow-md, 0 6px 20px rgb(20 37 56 / 10%), 0 2px 6px rgb(20 37 56 / 5%)); } .ds-btn-primary:active:not(:disabled) { background: var(--color-accent-hover, #104c71); box-shadow: var(--ui-shadow-sm, 0 1px 2px rgb(20 37 56 / 6%)); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; } .ds-btn-icon { flex-shrink: 0; } .ds-btn-kbd { margin-left: auto; padding: 2px 6px; border-radius: 5px; background: color-mix(in srgb, currentColor 16%, transparent); font-family: var(--font-mono, \"SF Mono\", Menlo, Consolas, monospace); font-size: 10.5px; font-weight: 500; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Flat outlined action button for saving drafts, dialog cancellation, and secondary settings actions.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\">Save draft</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--color-border-strong, #b6c9d5); border-radius: var(--ui-radius-md, 8px); background: var(--color-bg, #ffffff); color: var(--color-text-primary, #142538); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-btn-secondary:hover:not(:disabled) { background: var(--color-bg-hover, #edf3f6); border-color: var(--color-border-strong, #b6c9d5); } .ds-btn-secondary:active:not(:disabled) { background: var(--color-bg-secondary, #e3ecf1); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Buoy Danger confirmation trigger reserved exclusively for irreversible actions such as emptying trash or discarding drafts.",
+      "html": "<button type=\"button\" class=\"ds-btn-destructive\">Delete permanently</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 16px; border: 1px solid transparent; border-radius: var(--ui-radius-md, 8px); background: var(--color-error, #b83327); color: #ffffff; font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-btn-destructive:hover:not(:disabled) { opacity: 0.92; } .ds-btn-destructive:active:not(:disabled) { opacity: 0.85; } .ds-btn-destructive:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 2px; } .ds-btn-destructive:disabled { opacity: 0.55; cursor: not-allowed; }"
+    },
+    {
+      "name": "Search Input Shell",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Embedded Chalk Sea list search input with 36px height, harbor hairline border, and Marine Cerulean focus halo.",
+      "html": "<label class=\"ds-search-shell\"><svg class=\"ds-search-icon\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input type=\"search\" class=\"ds-search-input\" placeholder=\"Search mail in Inbox...\" aria-label=\"Search mail\" /><kbd class=\"ds-search-kbd\">/</kbd></label>",
+      "css": ".ds-search-shell { display: inline-flex; align-items: center; gap: 8px; width: 280px; height: 36px; padding: 0 11px; border: 1px solid var(--color-border, #d4e0e7); border-radius: var(--ui-radius-md, 8px); background: var(--color-bg, #ffffff); color: var(--color-text-secondary, #435a70); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); transition: border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-search-shell:hover { border-color: var(--color-border-strong, #b6c9d5); } .ds-search-shell:focus-within { border-color: var(--color-accent, #155e8a); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #155e8a) 14%, transparent); } .ds-search-icon { flex-shrink: 0; color: var(--color-text-tertiary, #526a80); } .ds-search-input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--color-text-primary, #142538); caret-color: var(--color-accent, #155e8a); font-size: 12.5px; outline: none; } .ds-search-input::placeholder { color: var(--color-text-tertiary, #526a80); } .ds-search-kbd { padding: 1px 6px; border-radius: 5px; background: var(--color-bg-secondary, #e3ecf1); color: var(--color-text-tertiary, #526a80); font-family: var(--font-mono, \"SF Mono\", Menlo, Consolas, monospace); font-size: 10.5px; font-weight: 500; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Sidebar Navigation Rows",
+      "kind": "nav",
+      "refersTo": "nav-row",
+      "description": "Harbor Mist sidebar destinations with uniform 34px rows, active Marine Cerulean icon focus, and fixed 30px trailing tabular unread count slot.",
+      "html": "<nav class=\"ds-nav-rail\" aria-label=\"Mailboxes\"><button type=\"button\" class=\"ds-nav-row ds-nav-row--active\" aria-current=\"page\"><svg class=\"ds-nav-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/></svg><span class=\"ds-nav-label\">Inbox</span><span class=\"ds-nav-slot\"><span class=\"ds-nav-count\">12</span></span></button><button type=\"button\" class=\"ds-nav-row\"><svg class=\"ds-nav-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\"/></svg><span class=\"ds-nav-label\">Starred</span><span class=\"ds-nav-slot\"><span class=\"ds-nav-count\">3</span></span></button></nav>",
+      "css": ".ds-nav-rail { display: flex; flex-direction: column; gap: 2px; width: 224px; padding: 8px; border-radius: var(--ui-radius-lg, 12px); background: var(--color-sidebar-bg, #ebf1f4); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); } .ds-nav-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--ui-radius-md, 8px); background: transparent; color: var(--color-text-secondary, #435a70); font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-nav-row:hover { background: var(--color-sidebar-hover, #dfe9ef); color: var(--color-text-primary, #142538); } .ds-nav-row:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: -2px; } .ds-nav-row--active { background: var(--color-sidebar-active, #d6e6f0); border-color: var(--color-active-border, #b7d3e3); color: var(--color-text-primary, #142538); font-weight: 600; } .ds-nav-icon { flex-shrink: 0; color: var(--color-text-secondary, #435a70); } .ds-nav-row--active .ds-nav-icon { color: var(--color-accent, #155e8a); } .ds-nav-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-nav-slot { flex-shrink: 0; width: 30px; display: inline-flex; justify-content: flex-end; } .ds-nav-count { padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--color-accent, #155e8a) 12%, transparent); color: var(--color-accent, #155e8a); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.4; } .ds-nav-row--active .ds-nav-count { background: color-mix(in srgb, var(--color-accent, #155e8a) 18%, var(--color-bg, #ffffff)); }"
+    },
+    {
+      "name": "Toolbar & Signal Chips",
+      "kind": "chip",
+      "refersTo": "chip-signal",
+      "description": "Compact 6px-radius list filter chip paired with a reserved Terracotta signal pill beacon for pending or failed remote writes.",
+      "html": "<div class=\"ds-chip-group\"><button type=\"button\" class=\"ds-chip-toolbar\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3\"/></svg>Unread</button><span class=\"ds-chip-signal\" role=\"status\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"16\" x2=\"12.01\" y2=\"16\"/></svg>2 remote writes pending</span></div>",
+      "css": ".ds-chip-group { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); } .ds-chip-toolbar { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--color-border, #d4e0e7); border-radius: var(--ui-radius-sm, 6px); background: var(--color-bg, #ffffff); color: var(--color-text-primary, #142538); font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-chip-toolbar:hover { background: var(--color-bg-hover, #edf3f6); border-color: var(--color-border-strong, #b6c9d5); } .ds-chip-toolbar:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 2px; } .ds-chip-signal { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border: 1px solid var(--color-signal-border, #edd0be); border-radius: 999px; background: var(--color-signal-bg, #fdf4ee); color: var(--color-signal-text, #843115); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Settings Choice Card",
+      "kind": "card",
+      "refersTo": "choice-card",
+      "description": "Selectable option card used in Appearance and Language settings with Marine Mist fill and 1px inset accent border on active selection.",
+      "html": "<div class=\"ds-choice-grid\"><button type=\"button\" class=\"ds-choice-card\" aria-pressed=\"true\"><span class=\"ds-choice-title\">Light</span><span class=\"ds-choice-desc\">Daylit Harbor Mist chrome and pure white sheet</span></button><button type=\"button\" class=\"ds-choice-card\" aria-pressed=\"false\"><span class=\"ds-choice-title\">Dark</span><span class=\"ds-choice-desc\">Deep Harbor low-glare night palette</span></button></div>",
+      "css": ".ds-choice-grid { display: flex; gap: 10px; max-width: 420px; font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); } .ds-choice-card { flex: 1 1 180px; padding: 12px 14px; border: 1px solid var(--color-border, #d4e0e7); border-radius: var(--ui-radius-md, 8px); background: var(--color-bg, #ffffff); color: var(--color-text-primary, #142538); text-align: left; cursor: pointer; transition: border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-choice-card:hover { background: var(--color-list-bg, #f7fafb); border-color: var(--color-border-strong, #b6c9d5); } .ds-choice-card[aria-pressed=\"true\"] { border-color: var(--color-accent, #155e8a); background: var(--color-accent-soft, #dfecf3); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent, #155e8a) 26%, transparent); } .ds-choice-card:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 2px; } .ds-choice-title { display: block; font-size: 13px; font-weight: 600; line-height: 1.35; } .ds-choice-desc { display: block; margin-top: 4px; font-size: 12px; line-height: 1.45; color: var(--color-text-secondary, #435a70); }"
+    },
+    {
+      "name": "Mail Row (Focus Isolation)",
+      "kind": "custom",
+      "refersTo": "mail-row-selected",
+      "description": "88px Chalk Sea mail ledger rows showing leading 6px Marine Cerulean unread pip, tabular timestamp, and crisp 1px inset focus isolation.",
+      "html": "<div class=\"ds-mail-list\" role=\"listbox\" aria-label=\"Messages\"><div class=\"ds-mail-row ds-mail-row--unread\" role=\"option\" aria-selected=\"true\" tabindex=\"0\"><span class=\"ds-mail-pip\" aria-hidden=\"true\"></span><div class=\"ds-mail-main\"><div class=\"ds-mail-head\"><span class=\"ds-mail-sender\">Lin Mei · Design Ops</span><span class=\"ds-mail-date\">09:42</span></div><div class=\"ds-mail-subject\">Q4 Release Notes &amp; Localization Sign-off</div><div class=\"ds-mail-snippet\">Attached are the final Chinese and English changelog drafts ready for review...</div></div></div><div class=\"ds-mail-row\" role=\"option\" aria-selected=\"false\" tabindex=\"0\"><div class=\"ds-mail-main\"><div class=\"ds-mail-head\"><span class=\"ds-mail-sender\">Harbor Post</span><span class=\"ds-mail-date\">Yesterday</span></div><div class=\"ds-mail-subject\">Weekly offline storage backup confirmed</div><div class=\"ds-mail-snippet\">Local SQLite WAL checkpoint completed with zero pending remote writes.</div></div></div></div>",
+      "css": ".ds-mail-list { width: 356px; border: 1px solid var(--color-border, #d4e0e7); border-radius: var(--ui-radius-md, 8px); overflow: hidden; background: var(--color-list-bg, #f7fafb); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); } .ds-mail-row { position: relative; display: flex; align-items: flex-start; min-height: 88px; padding: 13px 18px 13px 22px; border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d4e0e7) 72%, transparent); cursor: pointer; transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-mail-row:last-child { border-bottom: 0; } .ds-mail-row[aria-selected=\"false\"]:hover { background: var(--color-bg-hover, #edf3f6); } .ds-mail-row[aria-selected=\"true\"] { background: var(--color-row-selected-bg, #ebf4fa); box-shadow: inset 0 0 0 1px var(--color-row-selected-border, #a6cadf); } .ds-mail-row:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: -2px; } .ds-mail-pip { position: absolute; top: 20px; left: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent, #155e8a); } .ds-mail-main { flex: 1; min-width: 0; } .ds-mail-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; line-height: 19px; } .ds-mail-sender { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary, #435a70); font-size: 13.5px; font-weight: 500; } .ds-mail-subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 3px; color: var(--color-text-secondary, #435a70); font-size: 13px; font-weight: 450; line-height: 18px; } .ds-mail-row--unread .ds-mail-sender { color: var(--color-text-primary, #142538); font-weight: 650; } .ds-mail-row--unread .ds-mail-subject { color: var(--color-text-primary, #142538); font-weight: 600; } .ds-mail-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-tertiary, #526a80); font-size: 12px; line-height: 18px; } .ds-mail-date { flex-shrink: 0; color: var(--color-text-tertiary, #526a80); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; } .ds-mail-row--unread .ds-mail-date { color: var(--color-accent, #155e8a); font-weight: 600; }"
+    },
+    {
+      "name": "Harbor-Channel Signal Strip",
+      "kind": "custom",
+      "refersTo": "signal-strip",
+      "description": "Signature full-width Terracotta operational strip positioned above the reading sheet for privacy tracker and remote image controls.",
+      "html": "<div class=\"ds-signal-strip\" role=\"region\" aria-label=\"Privacy notice\"><span class=\"ds-signal-dot\" aria-hidden=\"true\"></span><svg class=\"ds-signal-icon\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/></svg><span class=\"ds-signal-text\">Blocked 2 trackers and 4 remote images</span><div class=\"ds-signal-actions\"><button type=\"button\" class=\"ds-signal-btn\">Load images</button><button type=\"button\" class=\"ds-signal-btn\">Trust sender</button></div></div>",
+      "css": ".ds-signal-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 20px; border: 1px solid var(--color-signal-border, #edd0be); border-radius: var(--ui-radius-md, 8px); background: var(--color-signal-bg, #fdf4ee); color: var(--color-signal-text, #843115); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); font-size: 12.5px; line-height: 1.45; } .ds-signal-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--color-signal, #b84a24); } .ds-signal-icon { flex: none; color: var(--color-signal, #b84a24); } .ds-signal-text { flex: 1; min-width: 180px; } .ds-signal-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; } .ds-signal-btn { padding: 4px 10px; border: 1px solid var(--color-signal-border, #edd0be); border-radius: var(--ui-radius-sm, 6px); background: var(--color-bg, #ffffff); color: var(--color-signal-text, #843115); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-signal-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--color-signal, #b84a24) 10%, var(--color-bg, #ffffff)); border-color: var(--color-signal, #b84a24); } .ds-signal-btn:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 2px; } .ds-signal-btn:disabled { opacity: 0.45; cursor: not-allowed; }"
+    },
+    {
+      "name": "Bottom Horizon Status Bar",
+      "kind": "custom",
+      "refersTo": "statusbar-horizon",
+      "description": "28px Harbor Mist operational footer pairing live sync dot, realtime status, manual refresh button, and compact remote-write beacons.",
+      "html": "<footer class=\"ds-statusbar\"><span class=\"ds-statusbar-primary\" role=\"status\">Ready</span><span class=\"ds-statusbar-meta\">Realtime connected</span><button type=\"button\" class=\"ds-statusbar-btn\" aria-label=\"Sync now\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/></svg></button><span class=\"ds-statusbar-pill\">1 remote write queued</span></footer>",
+      "css": ".ds-statusbar { display: flex; align-items: center; gap: 12px; height: 28px; padding: 0 14px; border-top: 1px solid var(--color-border, #d4e0e7); background: var(--color-statusbar-bg, #ebf1f4); color: var(--color-text-secondary, #435a70); font-family: var(--font-ui, \"Avenir Next\", \"SF Pro Text\", \"PingFang SC\", system-ui, sans-serif); font-size: 11.5px; font-variant-numeric: tabular-nums; } .ds-statusbar-primary { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; } .ds-statusbar-primary::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: var(--color-success, #1b6e56); } .ds-statusbar-meta { color: var(--color-text-secondary, #435a70); } .ds-statusbar-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-text-secondary, #435a70); cursor: pointer; transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)), color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); } .ds-statusbar-btn:hover { background: var(--color-sidebar-hover, #dfe9ef); color: var(--color-text-primary, #142538); } .ds-statusbar-btn:focus-visible { outline: 2px solid var(--color-accent, #155e8a); outline-offset: 1px; } .ds-statusbar-pill { margin-left: auto; padding: 1px 8px; border: 1px solid var(--color-border, #d4e0e7); border-radius: 999px; background: var(--color-bg, #ffffff); color: var(--color-text-secondary, #435a70); font-size: 11px; font-weight: 500; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Harbor Chartroom",
+    "overview": "Pebble Go is designed as a luminous coastal reading room for everyday desktop correspondence. Rather than mimicking crowded browser webmail or fracturing into competing application skins, the entire desktop shell—titlebar, collapsible account rail, message ledger, long-form reading sheet, composer, settings tabs, and guarded upcoming views—shares one disciplined architectural system. Three stepped tonal planes step smoothly toward the reading surface, letting the user's eye settle effortlessly on the message at hand while preserving instant scannability across accounts, unread counts, and sync state.\n\nBuilt as a local-first Go and MyGO WebView desktop client operating across macOS, Linux, and Windows, the visual language pairs unhurried clarity with honest operational feedback. Marine Cerulean marks intentional focus and primary action, while warm Terracotta is held exclusively for high-trust operational signals—blocked trackers and remote images, offline pauses, failed or queued remote writes, and uncertain send outcomes. Everything ships locally with zero network CDN dependencies, pairing OS-native humanist sans-serifs for seamless Chinese (`zh`) and English (`en`) prose across both daylit Harbor and Deep-Harbor dark modes, while leaving independent message-detail reading templates untouched.\n\nConfirmed visual rejections shape this restraint: Pebble Go rejects generic grey-blue SaaS inbox chrome, rejects the legacy five-theme application switcher in favor of one unified Harbor system (`harbor`) with independent `light` / `dark` / `system` modes, rejects thick colored side-stripes on rows or callouts, rejects uppercase eyebrow kickers above view headings, and rejects decorative entrance staggers in favor of brisk, purposeful state feedback.",
+    "keyCharacteristics": [
+      "Three-step tonal depth stepping cleanly from Harbor Mist chrome (`#ebf1f4` / `#0e1721`) through Chalk Sea lists (`#f7fafb` / `#131e2a`) to a crisp Reading Sheet (`#ffffff` / `#172432`).",
+      "Strict 56px shared horizontal baseline aligning pane headers, message action toolbars, compose bars, and secondary mail headings across the workspace.",
+      "Active focus isolation on mail and thread rows using a washed cerulean fill and a `1px` inset hairline border rather than heavy shadows or left stripes.",
+      "Reserved Terracotta signal beacons uniting privacy blocking, offline notices, outbox warnings, and failed remote writes into one unmistakable channel.",
+      "Local-only OS typography calibrated for bilingual Chinese and English reading (`15px` / `1.82` leading inside a `740px` reading sheet) with `tabular-nums` alignment across every ledger count and timestamp.",
+      "Independent 9-template message-detail reading architecture (`app` default plus 8 adaptive and fixed-palette skins) decoupled from the unified application shell."
+    ],
+    "rules": [
+      {
+        "name": "The Three-Plane Luminance Rule",
+        "body": "Chrome (`#ebf1f4` / `#0e1721`), triage lists (`#f7fafb` / `#131e2a`), and the reading sheet (`#ffffff` / `#172432`) step progressively brighter in both light and dark modes so reading always owns visual focus without decorative borders.",
+        "section": "colors"
+      },
+      {
+        "name": "The Terracotta Signal Doctrine",
+        "body": "Warm Terracotta (`#b84a24` / `#ee936e` on `#fdf4ee` / `#2a1d19`) is reserved exclusively for privacy protection, offline status, queued/failed remote writes, and uncertain send outcomes; never spend it on promotional accents, unread badges, or routine navigation.",
+        "section": "colors"
+      },
+      {
+        "name": "The Marine Focus Scarcity Rule",
+        "body": "Marine Cerulean (`#155e8a` / `#62b3e3`) marks active selection, unread pips, primary CTAs, and keyboard focus rings only—never paint entire chrome regions or passive containers in the primary accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Bilingual Legibility Rule",
+        "body": "Never apply `text-transform: uppercase` to navigation section headings or bilingual UI labels; preserve natural casing, maintain `1.82` reading line-height for dense Chinese and English paragraphs, and truncate CJK sender monograms to a single glyph (vs. up to two Latin initials).",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Ledger Rule",
+        "body": "Apply `font-variant-numeric: tabular-nums` to every unread count pill, message timestamp, thread date, statusbar readout, and shortcut cap so numbers stay vertically locked during live sync updates.",
+        "section": "typography"
+      },
+      {
+        "name": "The 56px Shared Horizon Rule",
+        "body": "Every primary pane header—Inbox list header, native Reader action toolbar, Thread reader header, Compose header, Starred header, and Search toolbar—holds a `56px` minimum height with a `1px` bottom hairline so adjacent panes share one continuous horizontal datum line.",
+        "section": "layout"
+      },
+      {
+        "name": "The Single-Slot Ledger Rule",
+        "body": "Reserve a fixed `30px` trailing slot (`24px` below `760px`) for unread counts on every sidebar row and align nested folder labels to the parent account's trailing edge so counts form one vertical column and never shift labels when mail arrives.",
+        "section": "layout"
+      },
+      {
+        "name": "The Tonal-First Flatness Rule",
+        "body": "Keep navigation panes, list rows, reading sheets, and form fieldsets flat at rest; spend elevation shadows exclusively on primary triggers, expanded thread disclosures, floating menus, toasts, and modal overlays.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Crisp State-Only Motion Rule",
+        "body": "Limit motion to direct 150ms–190ms state responses (`cubic-bezier(0.22, 1, 0.36, 1)`); suppress transitions during theme switches and zero them completely under `prefers-reduced-motion: reduce`.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do step surfaces cleanly across the three luminance planes—Harbor Mist chrome (`#ebf1f4` / `#0e1721`), Chalk Sea lists (`#f7fafb` / `#131e2a`), and Reading Sheet (`#ffffff` / `#172432`)—for every view including Settings and guarded views.",
+      "Do align every primary pane header, reader toolbar, compose bar, and secondary mail heading to the `56px` shared horizontal baseline (`--ui-pane-header-height`).",
+      "Do reserve Terracotta signal tokens (`--color-signal*`) strictly for privacy blocking, offline state, queued/failed remote writes, and uncertain send outcomes.",
+      "Do set `font-variant-numeric: tabular-nums` on every count badge, date, timestamp, shortcut badge, and status bar readout.",
+      "Do use the local OS font stack (`--font-ui`, `--font-mono`, `--font-serif`) with `1.82` reading line-height inside a `740px` measure so bilingual Chinese and English mail renders comfortably offline with zero CDN requests.",
+      "Do preserve keyboard `:focus-visible` outlines (`2px solid var(--color-accent)`), roving ARIA tablists, live status regions, `html[data-theme-switching]` zero-flash switching, and `prefers-reduced-motion: reduce` overrides on all interactive controls.",
+      "Do keep message-detail reading templates (`--msg-*` / `data-msg-*`) decoupled from application chrome tokens and preserve the dark-mode light-sheet link contrast guard (`#155e8a`).",
+      "Do render guarded/upcoming features (`Kanban`, `Contacts`, `Snoozed`, `Rules`, `AI`, `Translation`, `Cloud Sync`) inside the unified Harbor surface language with honest disabled states and clear unavailability notes."
+    ],
+    "donts": [
+      "Don't add thick (`3px`–`4px`) colored side-stripes to mail rows, privacy banners, callouts, or active navigation items; use `1px` hairlines, leading `6px` pips, or inset focus-isolation borders instead.",
+      "Don't place uppercase eyebrow kickers above pane titles, settings headers, or dialog headings, and never apply `text-transform: uppercase` to bilingual Chinese/English navigation section labels.",
+      "Don't reintroduce multiple competing application-shell themes; keep `harbor` as the single application visual system with independent `light` / `dark` / `system` color modes.",
+      "Don't load external web fonts, icon CDNs, or third-party stylesheets at runtime.",
+      "Don't paint unread mail rows with a competing background fill that fights selected-row focus isolation, or reuse Terracotta signal hues for decorative accents.",
+      "Don't add decorative staggered entrance animations to workspace lists, tabs, or dialogs; keep motion strictly to `150ms`–`190ms` state transitions.",
+      "Don't hardcode raw `#ffffff` button text against `var(--color-accent)` without using `var(--color-accent-contrast)` (`#08131d` in dark mode), or dark-mode primary buttons lose text contrast."
+    ]
+  }
+}

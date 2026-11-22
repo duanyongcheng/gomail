@@ -594,9 +594,9 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
             {actionToolbar}
             {headerActions}
           </div>
+          {privacyNode}
           <div className="scroll-region app-reader-scroll">
             <article className="app-reader-sheet">
-              {privacyNode}
               {titleNode}
               <div className="app-reader-sender">
                 {avatarNode}

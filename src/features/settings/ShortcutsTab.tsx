@@ -124,7 +124,7 @@ function ShortcutRow({ actionId }: { actionId: string }) {
             aria-live="polite"
             style={{
               fontSize: "11px",
-              color: "var(--color-error, #e53e3e)",
+              color: "var(--color-error)",
               minWidth: conflict ? undefined : 0,
             }}
           >
@@ -150,18 +150,18 @@ function ShortcutRow({ actionId }: { actionId: string }) {
             }}
             title={t("shortcuts.edit")}
             style={{
-              padding: "3px 8px",
-              borderRadius: "4px",
+              padding: "3px 9px",
+              borderRadius: "var(--ui-radius-sm)",
               border: isRecording
-                ? "1px solid var(--color-accent, #3b82f6)"
+                ? "1px solid var(--color-accent)"
                 : "1px solid var(--color-border)",
               backgroundColor: isRecording
-                ? "var(--color-accent-bg, rgba(59,130,246,0.1))"
+                ? "var(--color-accent-soft)"
                 : "var(--color-bg-secondary)",
               fontSize: "12px",
-              fontFamily: "monospace",
+              fontFamily: "var(--font-mono)",
               color: isRecording
-                ? "var(--color-accent, #3b82f6)"
+                ? "var(--color-accent)"
                 : "var(--color-text-secondary)",
               cursor: "pointer",
               minWidth: "60px",
@@ -205,19 +205,10 @@ export default function ShortcutsTab() {
           </h3>
         </div>
         <button
+          type="button"
+          className="settings-button"
           onClick={handleReset}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            padding: "4px 10px",
-            borderRadius: "6px",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "var(--color-bg-secondary)",
-            color: "var(--color-text-secondary)",
-            fontSize: "12px",
-            cursor: "pointer",
-          }}
+          style={{ padding: "5px 11px", fontSize: "12px" }}
         >
           <RotateCcw size={12} />
           {t("shortcuts.resetDefaults")}
@@ -227,13 +218,11 @@ export default function ShortcutsTab() {
       <div role="status" aria-live="polite">
         {resetMessage && (
           <div
+            className="settings-callout"
             style={{
-              padding: "8px 12px",
               marginBottom: "16px",
-              borderRadius: "6px",
-              backgroundColor: "var(--color-accent-bg, rgba(59,130,246,0.1))",
-              color: "var(--color-accent, #3b82f6)",
-              fontSize: "12px",
+              color: "var(--color-accent)",
+              fontSize: "12.5px",
             }}
           >
             {t("shortcuts.resetConfirm")}

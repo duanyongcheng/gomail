@@ -11,10 +11,10 @@ describe("UI store interface themes", () => {
     document.documentElement.style.removeProperty("--ui-mail-row-height");
   });
 
-  it("defaults to Quiet Paper and applies it before the first render", async () => {
+  it("defaults to Harbor Chartroom and applies it before the first render", async () => {
     const { useUIStore } = await import("@/stores/ui.store");
-    expect(useUIStore.getState().appTheme).toBe("paper");
-    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("paper");
+    expect(useUIStore.getState().appTheme).toBe("harbor");
+    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
     expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("88px");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBeNull();
   });
@@ -27,41 +27,41 @@ describe("UI store interface themes", () => {
     expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe(`${APP_THEMES.find((option) => option.id === theme)?.rowHeight}px`);
   });
 
-  it("preserves a damaged stored preference while falling back to Paper", async () => {
+  it("preserves a legacy or damaged stored preference while falling back to Harbor", async () => {
     localStorage.setItem(APP_THEME_STORAGE_KEY, "unrecognized");
     const { useUIStore } = await import("@/stores/ui.store");
-    expect(useUIStore.getState().appTheme).toBe("paper");
-    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("paper");
+    expect(useUIStore.getState().appTheme).toBe("harbor");
+    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("unrecognized");
   });
 
-  it("changes application style without overwriting color mode or message template", async () => {
+  it("keeps application style independent of color mode and message template", async () => {
     localStorage.setItem("pebble-theme", "dark");
     localStorage.setItem("pebble-message-theme", "telegram");
     const { useUIStore, applyThemeToDom } = await import("@/stores/ui.store");
     applyThemeToDom(useUIStore.getState().theme);
-    useUIStore.getState().setAppTheme("glass");
-    expect(useUIStore.getState()).toMatchObject({ appTheme: "glass", theme: "dark", messageTheme: "telegram" });
-    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("glass");
-    expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("84px");
+    useUIStore.getState().setAppTheme("harbor");
+    expect(useUIStore.getState()).toMatchObject({ appTheme: "harbor", theme: "dark", messageTheme: "telegram" });
+    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
+    expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("88px");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
-    expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("glass");
+    expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("harbor");
     expect(localStorage.getItem("pebble-theme")).toBe("dark");
     expect(localStorage.getItem("pebble-message-theme")).toBe("telegram");
 
     useUIStore.getState().setTheme("light");
-    expect(useUIStore.getState().appTheme).toBe("glass");
-    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("glass");
+    expect(useUIStore.getState().appTheme).toBe("harbor");
+    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("ignores invalid runtime writes", async () => {
     const { useUIStore } = await import("@/stores/ui.store");
-    useUIStore.getState().setAppTheme("clay");
+    useUIStore.getState().setAppTheme("harbor");
     useUIStore.getState().setAppTheme("unrecognized" as never);
-    expect(useUIStore.getState().appTheme).toBe("clay");
-    expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("clay");
-    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("clay");
+    expect(useUIStore.getState().appTheme).toBe("harbor");
+    expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("harbor");
+    expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
   });
 
   it("keeps theme writes and restoration scoped to the active profile", async () => {
@@ -69,14 +69,14 @@ describe("UI store interface themes", () => {
     await initializeProfileStorageNamespace(async () => "theme-profile-a");
     localStorage.setItem("pebble:profile:theme-profile-a:pebble-app-theme", "editorial");
     const { useUIStore } = await import("@/stores/ui.store");
-    expect(useUIStore.getState().appTheme).toBe("editorial");
-    useUIStore.getState().setAppTheme("minimal");
-    expect(localStorage.getItem("pebble:profile:theme-profile-a:pebble-app-theme")).toBe("minimal");
+    expect(useUIStore.getState().appTheme).toBe("harbor");
+    useUIStore.getState().setAppTheme("harbor");
+    expect(localStorage.getItem("pebble:profile:theme-profile-a:pebble-app-theme")).toBe("harbor");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBeNull();
 
     await initializeProfileStorageNamespace(async () => "theme-profile-b");
-    useUIStore.getState().setAppTheme("clay");
-    expect(localStorage.getItem("pebble:profile:theme-profile-b:pebble-app-theme")).toBe("clay");
-    expect(localStorage.getItem("pebble:profile:theme-profile-a:pebble-app-theme")).toBe("minimal");
+    useUIStore.getState().setAppTheme("harbor");
+    expect(localStorage.getItem("pebble:profile:theme-profile-b:pebble-app-theme")).toBe("harbor");
+    expect(localStorage.getItem("pebble:profile:theme-profile-a:pebble-app-theme")).toBe("harbor");
   });
 });

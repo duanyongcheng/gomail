@@ -1,5 +1,4 @@
-import { useId, useRef, type CSSProperties, type KeyboardEvent } from "react";
-import { Check } from "lucide-react";
+import { useId, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { APP_THEMES, type AppThemeId, type AppThemePreviewPalette } from "@/lib/appThemes";
 import { useResolvedAppTheme } from "@/hooks/useResolvedAppTheme";
@@ -19,55 +18,24 @@ export default function AppThemePicker({ activeTheme, onSelect }: AppThemePicker
   const { t } = useTranslation();
   const mode = useResolvedAppTheme();
   const id = useId();
-  const options = useRef<Array<HTMLButtonElement | null>>([]);
-
-  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    let next: number;
-    switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
-        next = (index + 1) % APP_THEMES.length;
-        break;
-      case "ArrowLeft":
-      case "ArrowUp":
-        next = (index + APP_THEMES.length - 1) % APP_THEMES.length;
-        break;
-      case "Home":
-        next = 0;
-        break;
-      case "End":
-        next = APP_THEMES.length - 1;
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    onSelect(APP_THEMES[next].id);
-    options.current[next]?.focus();
-  }
 
   return (
     <div
       className="app-theme-picker"
-      role="radiogroup"
       aria-label={t("appThemes.title", "Interface theme")}
     >
-      {APP_THEMES.map((theme, index) => {
+      {APP_THEMES.map((theme) => {
         const selected = activeTheme === theme.id;
         return (
           <button
             key={theme.id}
-            ref={(element) => { options.current[index] = element; }}
             type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={`${theme.letter} ${t(theme.labelKey, theme.name)}`}
+            aria-label={t(theme.labelKey, theme.name)}
             aria-describedby={`${id}-${theme.id}-description`}
-            tabIndex={selected ? 0 : -1}
             className="app-theme-option"
             data-app-theme-option={theme.id}
+            data-active={selected ? "true" : "false"}
             onClick={() => onSelect(theme.id)}
-            onKeyDown={(event) => handleKeyDown(event, index)}
           >
             <div
               className="app-theme-preview"
@@ -93,12 +61,9 @@ export default function AppThemePicker({ activeTheme, onSelect }: AppThemePicker
             </div>
             <div className="app-theme-option-info">
               <div className="app-theme-option-heading">
-                <span className="app-theme-option-letter">{theme.letter}</span>
                 <span className="app-theme-option-name">{t(theme.labelKey, theme.name)}</span>
-                <span className="app-theme-option-check" aria-hidden="true">{selected && <Check size={13} strokeWidth={2.5} />}</span>
               </div>
               <p id={`${id}-${theme.id}-description`}>{t(theme.descriptionKey, theme.description)}</p>
-              <span className="app-theme-option-status">{selected ? t("appThemes.selected", "Selected") : theme.name}</span>
             </div>
           </button>
         );

@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync(join(process.cwd(), "src/styles/mail-redesign.css"), "utf8");
 
 describe("redesigned mail surfaces", () => {
-  it("keeps each direction's structural list treatment", () => {
-    expect(css).toMatch(/\[data-ui-theme="clay"\]\s*\{[^}]*--mail-row-radius:\s*14px/s);
-    expect(css).toMatch(/\[data-ui-theme="glass"\]\s*\{[^}]*--mail-avatar-display:\s*grid/s);
-    expect(css).toMatch(/\[data-ui-theme="editorial"\]\s*\{[^}]*--mail-row-rule:\s*dotted/s);
-    expect(css).toMatch(/\[data-ui-theme="minimal"\]\s*\{[^}]*--mail-index-display:\s*block/s);
+  it("keeps the Harbor Chartroom list hierarchy and active focus isolation", () => {
+    expect(css).toContain(".mail-list-heading");
+    expect(css).toContain('[aria-selected="true"]');
+    expect(css).toContain(".mail-state-center");
+    expect(css).toContain("--mail-unread-marker-display: block");
   });
 
   it("uses measurable theme-driven row size rather than clipping at a fixed height", () => {

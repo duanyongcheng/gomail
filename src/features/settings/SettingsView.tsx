@@ -52,6 +52,13 @@ export default function SettingsView() {
   useEffect(() => {
     if (!isSettingsTabAvailable(restoredTab)) useUIStore.getState().setSettingsTab("accounts");
   }, [restoredTab]);
+  useEffect(() => {
+    if (!compactNavigation) return;
+    document.getElementById(`settings-tab-${activeTab}`)?.scrollIntoView?.({
+      inline: "nearest",
+      block: "nearest",
+    });
+  }, [activeTab, compactNavigation]);
   const setSettingsTab = useUIStore((s) => s.setSettingsTab);
 
   function handleTabChange(id: SettingsTab) {
@@ -70,7 +77,7 @@ export default function SettingsView() {
         {TAB_IDS.map((id) => (
           <button
             key={id}
-            className="settings-navigation-tab"
+            className={`settings-navigation-tab${activeTab === id ? " settings-navigation-tab--active" : ""}`}
             id={`settings-tab-${id}`}
             role="tab"
             disabled={!isSettingsTabAvailable(id)}
@@ -79,6 +86,9 @@ export default function SettingsView() {
             aria-controls={`settings-tabpanel-${id}`}
             tabIndex={activeTab === id ? 0 : -1}
             onClick={() => handleTabChange(id)}
+            style={{
+              transition: "background-color 0s, color 0s, border-color 0s",
+            }}
             onKeyDown={(e) => {
               const index = availableTabs.indexOf(id);
               let nextIndex = index;
@@ -90,21 +100,6 @@ export default function SettingsView() {
               e.preventDefault();
               handleTabChange(availableTabs[nextIndex]);
               document.getElementById(`settings-tab-${availableTabs[nextIndex]}`)?.focus();
-            }}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "left",
-              padding: "8px 20px",
-              border: "none",
-              background: activeTab === id ? "var(--color-bg-hover)" : "none",
-              color: activeTab === id ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-              fontWeight: activeTab === id ? 600 : 400,
-              fontSize: "13px",
-              cursor: isSettingsTabAvailable(id) ? "pointer" : "not-allowed",
-              opacity: isSettingsTabAvailable(id) ? 1 : 0.5,
-              borderRight: activeTab === id ? "2px solid var(--color-accent)" : "2px solid transparent",
-              transition: "background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease",
             }}
           >
             {t(TAB_LABEL_KEYS[id])}
@@ -118,33 +113,31 @@ export default function SettingsView() {
         role="tabpanel"
         aria-labelledby={`settings-tab-${activeTab}`}
         style={{
-          flex: 1,
-          minWidth: 0,
-          maxWidth: activeTab === "remoteWrites" || activeTab === "appearance" ? "1040px" : "760px",
-          boxSizing: "border-box",
           overflowY: "auto",
           overflowX: "hidden",
+          boxSizing: "border-box",
         }}
       >
-        <header className="settings-panel-heading">
-          <p className="workspace-eyebrow">{t("sidebar.settings", "Settings")}</p>
-          <h1>{t(TAB_LABEL_KEYS[activeTab])}</h1>
-        </header>
-        <p className="settings-availability-note">
-          {t("settings.unavailableHint", "Disabled settings are not available in Pebble Go yet.")}
-        </p>
-        {activeTab === "accounts" && <AccountsTab />}
-        {activeTab === "general" && <GeneralTab />}
-        {activeTab === "proxy" && <ProxyTab />}
-        {activeTab === "appearance" && <AppearanceTab />}
-        {activeTab === "rules" && <RulesTab />}
-        {activeTab === "remoteWrites" && <><OutboxPanel /><PendingOpsTab /></>}
-        {activeTab === "translation" && <TranslateTab />}
-        {activeTab === "ai" && <AiTab />}
-        {activeTab === "shortcuts" && <ShortcutsTab />}
-        {activeTab === "privacy" && <PrivacyTab />}
-        {activeTab === "cloudSync" && <CloudSyncTab />}
-        {activeTab === "about" && <AboutTab />}
+        <div className={`settings-panel-inner${activeTab === "remoteWrites" || activeTab === "appearance" ? " settings-panel-inner--wide" : ""}`}>
+          <header className="settings-panel-heading">
+            <h1>{t(TAB_LABEL_KEYS[activeTab])}</h1>
+          </header>
+          <p className="settings-availability-note">
+            {t("settings.unavailableHint", "Disabled settings are not available in Pebble Go yet.")}
+          </p>
+          {activeTab === "accounts" && <AccountsTab />}
+          {activeTab === "general" && <GeneralTab />}
+          {activeTab === "proxy" && <ProxyTab />}
+          {activeTab === "appearance" && <AppearanceTab />}
+          {activeTab === "rules" && <RulesTab />}
+          {activeTab === "remoteWrites" && <><OutboxPanel /><PendingOpsTab /></>}
+          {activeTab === "translation" && <TranslateTab />}
+          {activeTab === "ai" && <AiTab />}
+          {activeTab === "shortcuts" && <ShortcutsTab />}
+          {activeTab === "privacy" && <PrivacyTab />}
+          {activeTab === "cloudSync" && <CloudSyncTab />}
+          {activeTab === "about" && <AboutTab />}
+        </div>
       </div>
     </div>
   );

@@ -213,7 +213,7 @@ class ViewErrorBoundary extends Component<
             {i18next.t("errorBoundary.description", "Please try again or refresh the application.")}
           </p>
           {this.state.error && import.meta.env.DEV && (
-            <pre style={{ fontSize: 11, color: "#ef4444", maxWidth: "90%", overflow: "auto", whiteSpace: "pre-wrap", textAlign: "left" }}>
+            <pre style={{ fontSize: 11, color: "var(--color-error)", maxWidth: "90%", overflow: "auto", whiteSpace: "pre-wrap", textAlign: "left" }}>
               {this.state.error.message}
               {"\n"}
               {this.state.error.stack}
@@ -256,15 +256,9 @@ function OfflineBanner() {
   const networkStatus = useUIStore((s) => s.networkStatus);
   if (networkStatus === "online") return null;
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: "8px",
-      padding: "6px 16px",
-      backgroundColor: "rgba(239,68,68,0.1)",
-      borderBottom: "1px solid rgba(239,68,68,0.2)",
-      color: "#ef4444", fontSize: "12px",
-    }}>
-      <WifiOff size={14} />
-      {i18next.t("status.offline", "Offline")} — {i18next.t("status.offlineHint", "Mail sync is paused until you're back online")}
+    <div className="app-offline-banner" role="status">
+      <WifiOff size={14} aria-hidden="true" />
+      <span>{i18next.t("status.offline", "Offline")} — {i18next.t("status.offlineHint", "Mail sync is paused until you're back online")}</span>
     </div>
   );
 }

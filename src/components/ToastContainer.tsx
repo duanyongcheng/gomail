@@ -8,12 +8,6 @@ const iconMap = {
   info: Info,
 };
 
-const accentMap = {
-  success: "var(--color-accent)",
-  error: "#c0392b",
-  info: "var(--color-text-secondary)",
-};
-
 export default function ToastContainer() {
   const { t } = useTranslation();
   const toasts = useToastStore((s) => s.toasts);
@@ -23,68 +17,40 @@ export default function ToastContainer() {
 
   return (
     <div
+      className="toast-region"
       role="region"
       aria-label={t("common.notifications", "Notifications")}
-      style={{
-        position: "fixed",
-        bottom: "56px",
-        right: "24px",
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-        pointerEvents: "none",
-      }}
     >
       {toasts.map((toast) => {
         const Icon = iconMap[toast.type];
-        const accent = accentMap[toast.type];
+        const isError = toast.type === "error";
         return (
           <div
             key={toast.id}
-            role={toast.type === "error" ? "alert" : "status"}
-            aria-live={toast.type === "error" ? "assertive" : "polite"}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              padding: "12px 16px",
-              borderRadius: "8px",
-              backgroundColor: "var(--color-sidebar-bg)",
-              border: "1px solid var(--color-border)",
-              borderLeft: `3px solid ${accent}`,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              fontSize: "14px",
-              color: "var(--color-text-primary)",
-              pointerEvents: "auto",
-              animation: "toast-in 0.2s ease-out",
-              minWidth: "280px",
-              maxWidth: "420px",
-            }}
+            className={`toast-item${isError ? " toast-item--error" : ""}`}
+            role={isError ? "alert" : "status"}
+            aria-live={isError ? "assertive" : "polite"}
           >
-            <Icon
-              size={17}
-              color={accent}
-              strokeWidth={toast.type === "success" ? 2.5 : 2}
-              style={{ flexShrink: 0 }}
-            />
-            <span style={{ flex: 1, lineHeight: 1.4 }}>{toast.message}</span>
+            <span className="toast-icon-badge" aria-hidden="true">
+              <Icon
+                size={14}
+                strokeWidth={toast.type === "success" ? 2.4 : 2}
+              />
+            </span>
+            <span style={{ flex: 1, lineHeight: 1.45 }}>{toast.message}</span>
             {toast.action && (
               <button
+                type="button"
+                className="settings-button"
                 onClick={() => {
                   toast.action!.onClick();
                   removeToast(toast.id);
                 }}
                 style={{
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                  border: "1px solid var(--color-border)",
-                  backgroundColor: "transparent",
-                  color: "var(--color-accent)",
+                  padding: "3px 9px",
                   fontSize: "12px",
                   fontWeight: 600,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
+                  color: "var(--color-accent)",
                   flexShrink: 0,
                 }}
               >
@@ -92,17 +58,19 @@ export default function ToastContainer() {
               </button>
             )}
             <button
+              type="button"
               aria-label={t("common.closeNotification", "Close notification")}
               onClick={() => removeToast(toast.id)}
               style={{
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                padding: "2px",
-                color: "var(--color-text-secondary)",
+                padding: "4px",
+                borderRadius: "var(--ui-radius-sm)",
+                color: "currentColor",
                 display: "flex",
                 flexShrink: 0,
-                opacity: 0.6,
+                opacity: 0.7,
               }}
             >
               <X size={14} />

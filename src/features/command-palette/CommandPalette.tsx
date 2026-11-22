@@ -80,34 +80,17 @@ export default function CommandPalette() {
 
   return (
     <div
+      className="overlay-backdrop overlay-backdrop--palette"
       onClick={close}
       role="dialog"
       aria-modal="true"
       aria-label={t("commandPalette.title", "Command Palette")}
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        paddingTop: "20vh",
-        zIndex: 1000,
-      }}
     >
       <div
         ref={dialogRef}
+        className="command-palette-surface"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
-        style={{
-          width: "100%",
-          maxWidth: "480px",
-          backgroundColor: "var(--color-bg)",
-          borderRadius: "12px",
-          border: "1px solid var(--color-border)",
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-          overflow: "hidden",
-        }}
       >
         <input
           ref={inputRef}
@@ -125,22 +108,13 @@ export default function CommandPalette() {
           role="combobox"
           aria-expanded="true"
           aria-autocomplete="list"
-          style={{
-            width: "100%",
-            padding: "16px",
-            border: "none",
-            borderBottom: "1px solid var(--color-border)",
-            backgroundColor: "transparent",
-            fontSize: "15px",
-            color: "var(--color-text-primary)",
-          }}
+          className="command-palette-input"
         />
         <div
           id="command-listbox"
-          className="scroll-region command-list-scroll"
+          className="scroll-region command-list-scroll command-palette-list"
           role="listbox"
           aria-label={t("commandPalette.results", "Commands")}
-          style={{ maxHeight: "320px", overflowY: "auto" }}
         >
           {filteredCommands.map((cmd, i) => (
             <div
@@ -149,21 +123,13 @@ export default function CommandPalette() {
               role="option"
               aria-selected={i === selectedIndex}
               onClick={() => execute(cmd.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 16px",
-                cursor: "pointer",
-                backgroundColor: i === selectedIndex ? "var(--color-bg-hover, rgba(0,0,0,0.05))" : "transparent",
-                color: "var(--color-text-primary)",
-              }}
+              className="command-palette-item"
             >
               <div>
-                <span style={{ fontSize: "14px" }}>{cmd.name}</span>
+                <span style={{ fontSize: "13.5px", fontWeight: 500 }}>{cmd.name}</span>
                 <span
                   style={{
-                    fontSize: "11px",
+                    fontSize: "11.5px",
                     color: "var(--color-text-secondary)",
                     marginLeft: "8px",
                   }}
@@ -172,15 +138,7 @@ export default function CommandPalette() {
                 </span>
               </div>
               {cmd.shortcut && (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--color-text-secondary)",
-                    backgroundColor: "var(--color-bg-secondary, rgba(0,0,0,0.06))",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                  }}
-                >
+                <span className="command-palette-kbd">
                   {cmd.shortcut}
                 </span>
               )}

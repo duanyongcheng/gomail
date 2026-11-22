@@ -1,362 +1,129 @@
-/* Material, type, and rhythm belong to the application style, not color mode. */
-:root {
-  --font-ui: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
-  --font-serif: "Songti SC", "Noto Serif SC", "Iowan Old Style", Georgia, serif;
+/* Harbor Chartroom — unified application design tokens (light and dark). */
+:root,
+[data-ui-theme="harbor"] {
+  --font-ui: "Avenir Next", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Iowan Old Style", "Songti SC", "Noto Serif SC", Georgia, serif;
   --font-mono: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
-  --font-display: var(--font-serif);
-  --font-reading: var(--font-serif);
-  --ui-font-size: 13px;
+  --font-display: var(--font-ui);
+  --font-reading: var(--font-ui);
+
+  --ui-font-size: 13.5px;
   --ui-line-height: 1.55;
-  --ui-sidebar-width: 232px;
-  --ui-list-width: 392px;
-  --ui-mail-row-height: 88px;
-  --ui-radius-sm: 4px;
-  --ui-radius-md: 6px;
-  --ui-radius-lg: 8px;
-  --ui-shadow-sm: none;
-  --ui-shadow-md: none;
-  --ui-reader-gutter: clamp(20px, 3vw, 40px);
-  --ui-reader-width: 760px;
-  --ui-reader-title-size: 26px;
-  --ui-reader-body-size: 14.5px;
-  --ui-reader-leading: 1.85;
-  --color-bg-primary: var(--color-bg);
-  --color-accent-contrast: #fff;
-  --color-scrollbar-track: transparent;
-}
-
-[data-ui-theme="paper"] {
-  --color-sidebar-bg: #faf9f6;
-  --color-sidebar-hover: #f3f1ec;
-  --color-sidebar-active: #eeebe5;
-  --color-titlebar-bg: #faf9f6;
-  --color-main-bg: #faf9f6;
-  --color-statusbar-bg: #faf9f6;
-  --color-list-bg: #faf9f6;
-  --color-reader-bg: #fff;
-  --color-reader-surface: #fff;
-  --color-border: #e8e4db;
-  --color-border-strong: #d8d3c7;
-  --color-text-primary: #23211d;
-  --color-text-secondary: #655f56;
-  --color-text-tertiary: #827b70;
-  --color-accent: #b8432a;
-  --color-accent-soft: #f3e3dd;
-  --color-bg: #fff;
-  --color-bg-hover: #f3f1ec;
-  --color-bg-secondary: #f3f1ec;
-  --color-scrollbar-thumb: #c8c1b5;
-  --color-scrollbar-thumb-hover: #a59b8a;
-  --color-success: #52795e;
-  --color-warning: #9a7024;
-  --color-error: #b73526;
-}
-
-[data-ui-theme="paper"][data-theme="dark"] {
-  --color-sidebar-bg: #1e1d1a;
-  --color-sidebar-hover: #2b2924;
-  --color-sidebar-active: #34312b;
-  --color-titlebar-bg: #1e1d1a;
-  --color-main-bg: #22211d;
-  --color-statusbar-bg: #1e1d1a;
-  --color-list-bg: #22211d;
-  --color-reader-bg: #272520;
-  --color-reader-surface: #272520;
-  --color-border: #39362f;
-  --color-border-strong: #514b40;
-  --color-text-primary: #efeae0;
-  --color-text-secondary: #bdb5a6;
-  --color-text-tertiary: #a49b8b;
-  --color-accent: #ed967b;
-  --color-accent-soft: #49312a;
-  --color-accent-contrast: #241a14;
-  --color-bg: #272520;
-  --color-bg-hover: #302d27;
-  --color-bg-secondary: #34312b;
-  --color-scrollbar-thumb: #5e574b;
-  --color-scrollbar-thumb-hover: #847866;
-  --color-success: #90bb9c;
-  --color-warning: #dfb76e;
-  --color-error: #f29b8c;
-}
-
-[data-ui-theme="clay"] {
-  --font-ui: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
-  --font-display: var(--font-ui);
-  --font-reading: var(--font-ui);
-  --ui-line-height: 1.6;
+  --ui-titlebar-height: 40px;
+  --ui-pane-header-height: 56px;
+  --ui-statusbar-height: 28px;
   --ui-sidebar-width: 244px;
-  --ui-list-width: 380px;
-  --ui-radius-sm: 8px;
-  --ui-radius-md: 12px;
-  --ui-radius-lg: 18px;
-  --ui-shadow-sm: 0 2px 7px rgb(104 58 30 / 7%), 0 1px 2px rgb(104 58 30 / 4%);
-  --ui-shadow-md: 0 5px 18px rgb(104 58 30 / 9%), 0 1px 3px rgb(104 58 30 / 6%);
-  --ui-reader-title-size: 27px;
-  --ui-reader-body-size: 14px;
-  --ui-reader-leading: 1.8;
-  --color-sidebar-bg: #fbf2ea;
-  --color-sidebar-hover: #f1e4d9;
-  --color-sidebar-active: #fff;
-  --color-titlebar-bg: #fdf7f2;
-  --color-main-bg: #fdfaf7;
-  --color-statusbar-bg: #faf3ec;
-  --color-list-bg: #fffdfb;
-  --color-reader-bg: #fdfaf7;
-  --color-reader-surface: #fff;
-  --color-border: #efe2d7;
-  --color-border-strong: #dcc7b7;
-  --color-text-primary: #2a211c;
-  --color-text-secondary: #756257;
-  --color-text-tertiary: #8a7669;
-  --color-accent: #b35c39;
-  --color-accent-soft: #f9e9df;
-  --color-bg: #fff;
-  --color-bg-hover: #f8f0e9;
-  --color-bg-secondary: #f1e8df;
-  --color-scrollbar-thumb: #d6bda9;
-  --color-scrollbar-thumb-hover: #b99980;
-  --color-success: #557362;
-  --color-warning: #9b6925;
-  --color-error: #b24830;
-}
-
-[data-ui-theme="clay"][data-theme="dark"] {
-  --color-sidebar-bg: #281f1b;
-  --color-sidebar-hover: #392a23;
-  --color-sidebar-active: #463128;
-  --color-titlebar-bg: #241c18;
-  --color-main-bg: #221b18;
-  --color-statusbar-bg: #241c18;
-  --color-list-bg: #2a211c;
-  --color-reader-bg: #221b18;
-  --color-reader-surface: #30251f;
-  --color-border: #46342a;
-  --color-border-strong: #634937;
-  --color-text-primary: #f5e8dd;
-  --color-text-secondary: #c6ae9c;
-  --color-text-tertiary: #b49a85;
-  --color-accent: #efa47b;
-  --color-accent-soft: #503126;
-  --color-accent-contrast: #291b14;
-  --color-bg: #30251f;
-  --color-bg-hover: #3b2d25;
-  --color-bg-secondary: #443128;
-  --color-scrollbar-thumb: #705240;
-  --color-scrollbar-thumb-hover: #967256;
-  --color-success: #a2c5ae;
-  --color-warning: #e6bc77;
-  --color-error: #f6a28d;
-  --ui-shadow-sm: 0 2px 7px rgb(0 0 0 / 14%);
-  --ui-shadow-md: 0 5px 18px rgb(0 0 0 / 22%);
-}
-
-[data-ui-theme="glass"] {
-  --font-ui: "SF Pro Text", "Helvetica Neue", "PingFang SC", "Segoe UI", sans-serif;
-  --font-display: var(--font-ui);
-  --font-reading: var(--font-ui);
-  --ui-sidebar-width: 236px;
-  --ui-list-width: 368px;
-  --ui-radius-sm: 5px;
-  --ui-radius-md: 8px;
-  --ui-radius-lg: 10px;
-  --ui-shadow-sm: inset 0 1px 0 rgb(255 255 255 / 5%);
-  --ui-shadow-md: 0 0 20px -8px rgb(108 140 255 / 28%);
-  --ui-reader-width: 820px;
-  --ui-reader-gutter: clamp(20px, 2.5vw, 34px);
+  --ui-list-width: 376px;
+  --ui-mail-row-height: 88px;
+  --ui-reader-gutter: clamp(24px, 3.4vw, 44px);
+  --ui-reader-width: 740px;
   --ui-reader-title-size: 24px;
-  --ui-reader-body-size: 13.5px;
-  --ui-reader-leading: 1.78;
-  --color-sidebar-bg: #edf0f7;
-  --color-sidebar-hover: #e3e8f2;
-  --color-sidebar-active: #dae3fc;
-  --color-titlebar-bg: #edf0f7;
-  --color-main-bg: #f5f7fc;
-  --color-statusbar-bg: #edf0f7;
-  --color-list-bg: #f5f7fc;
-  --color-reader-bg: #fff;
-  --color-reader-surface: #fff;
-  --color-border: #d8deeb;
-  --color-border-strong: #bac7e0;
-  --color-text-primary: #192238;
-  --color-text-secondary: #53617b;
-  --color-text-tertiary: #6a7893;
-  --color-accent: #3d5fcd;
-  --color-accent-soft: #e4ebff;
-  --color-bg: #fff;
-  --color-bg-hover: #e9edf7;
-  --color-bg-secondary: #e0e6f3;
-  --color-scrollbar-thumb: #bec9e1;
-  --color-scrollbar-thumb-hover: #8d9fc8;
-  --color-success: #218455;
-  --color-warning: #99601d;
-  --color-error: #c14248;
-}
-
-[data-ui-theme="glass"][data-theme="dark"] {
-  --color-sidebar-bg: #101216;
-  --color-sidebar-hover: #1b1f26;
-  --color-sidebar-active: #202944;
-  --color-titlebar-bg: #101216;
-  --color-main-bg: #0a0b0d;
-  --color-statusbar-bg: #101216;
-  --color-list-bg: #15181d;
-  --color-reader-bg: #1b1f26;
-  --color-reader-surface: #1b1f26;
-  --color-border: #2b3039;
-  --color-border-strong: #3c4554;
-  --color-text-primary: #eef1f5;
-  --color-text-secondary: #b9c0cc;
-  --color-text-tertiary: #8f9aad;
-  --color-accent: #6c8cff;
-  --color-accent-soft: rgb(108 140 255 / 14%);
-  --color-accent-contrast: #11192e;
-  --color-bg: #1b1f26;
-  --color-bg-hover: #232833;
-  --color-bg-secondary: #2a303c;
-  --color-scrollbar-thumb: #3d4759;
-  --color-scrollbar-thumb-hover: #596985;
-  --color-success: #57d38c;
-  --color-warning: #f0b45f;
-  --color-error: #ff8585;
-}
-
-[data-ui-theme="editorial"] {
-  --font-ui: "Helvetica Neue", "PingFang SC", "Segoe UI", sans-serif;
-  --font-display: var(--font-serif);
-  --font-reading: var(--font-serif);
-  --ui-sidebar-width: 208px;
-  --ui-list-width: 344px;
-  --ui-radius-sm: 0px;
-  --ui-radius-md: 0px;
-  --ui-radius-lg: 0px;
-  --ui-reader-width: 720px;
-  --ui-reader-gutter: clamp(22px, 3vw, 46px);
-  --ui-reader-title-size: 33px;
   --ui-reader-body-size: 15px;
-  --ui-reader-leading: 1.75;
-  --color-sidebar-bg: #f4f2ee;
-  --color-sidebar-hover: #ebe8e2;
-  --color-sidebar-active: #fff;
-  --color-titlebar-bg: #fff;
-  --color-main-bg: #fff;
-  --color-statusbar-bg: #fff;
-  --color-list-bg: #fff;
-  --color-reader-bg: #fff;
-  --color-reader-surface: #fff;
-  --color-border: #d9d5cc;
-  --color-border-strong: #1c1c1c;
-  --color-text-primary: #111;
-  --color-text-secondary: #56534e;
-  --color-text-tertiary: #7a756d;
-  --color-accent: #c8341f;
-  --color-accent-soft: #f6e6e1;
-  --color-bg: #fff;
-  --color-bg-hover: #f4f2ee;
-  --color-bg-secondary: #ebe8e2;
-  --color-scrollbar-thumb: #c3bdb1;
-  --color-scrollbar-thumb-hover: #918878;
-  --color-success: #456c50;
-  --color-warning: #8d661e;
-  --color-error: #c8341f;
+  --ui-reader-leading: 1.82;
+
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 12px;
+
+  --ui-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ui-motion-fast: 150ms;
+  --ui-motion-base: 190ms;
+
+  --ui-shadow-sm: 0 1px 2px rgb(20 37 56 / 6%), 0 2px 6px rgb(20 37 56 / 4%);
+  --ui-shadow-md: 0 6px 20px rgb(20 37 56 / 10%), 0 2px 6px rgb(20 37 56 / 5%);
+  --ui-shadow-lg: 0 18px 44px rgb(12 24 38 / 22%), 0 4px 14px rgb(12 24 38 / 10%);
+
+  --color-sidebar-bg: #ebf1f4;
+  --color-sidebar-hover: #dfe9ef;
+  --color-sidebar-active: #d6e6f0;
+  --color-titlebar-bg: #ebf1f4;
+  --color-main-bg: #f7fafb;
+  --color-statusbar-bg: #ebf1f4;
+  --color-list-bg: #f7fafb;
+  --color-reader-bg: #ffffff;
+  --color-reader-surface: #ffffff;
+  --color-bg: #ffffff;
+  --color-bg-primary: #ffffff;
+  --color-bg-hover: #edf3f6;
+  --color-bg-secondary: #e3ecf1;
+  --color-border: #d4e0e7;
+  --color-border-strong: #b6c9d5;
+
+  --color-text-primary: #142538;
+  --color-text-secondary: #435a70;
+  --color-text-tertiary: #526a80;
+
+  --color-accent: #155e8a;
+  --color-accent-hover: #104c71;
+  --color-accent-soft: #dfecf3;
+  --color-accent-contrast: #ffffff;
+  --color-active-border: #b7d3e3;
+  --color-row-selected-bg: #ebf4fa;
+  --color-row-selected-border: #a6cadf;
+
+  --color-signal: #b84a24;
+  --color-signal-bg: #fdf4ee;
+  --color-signal-border: #edd0be;
+  --color-signal-text: #843115;
+
+  --color-success: #1b6e56;
+  --color-warning: #9a5710;
+  --color-error: #b83327;
+  --color-danger: #b83327;
+
+  --color-backdrop: rgb(14 23 33 / 44%);
+  --color-scrollbar-track: transparent;
+  --color-scrollbar-thumb: #bfd0db;
+  --color-scrollbar-thumb-hover: #90abc0;
 }
 
-[data-ui-theme="editorial"][data-theme="dark"] {
-  --color-sidebar-bg: #22211f;
-  --color-sidebar-hover: #302e2a;
-  --color-sidebar-active: #37342e;
-  --color-titlebar-bg: #191918;
-  --color-main-bg: #191918;
-  --color-statusbar-bg: #191918;
-  --color-list-bg: #191918;
-  --color-reader-bg: #1d1c1a;
-  --color-reader-surface: #1d1c1a;
-  --color-border: #454139;
-  --color-border-strong: #d8d0c3;
-  --color-text-primary: #f3efe7;
-  --color-text-secondary: #c4bdb1;
-  --color-text-tertiary: #a69d8e;
-  --color-accent: #ff9782;
-  --color-accent-soft: #432b25;
-  --color-accent-contrast: #261913;
-  --color-bg: #1d1c1a;
-  --color-bg-hover: #302e2a;
-  --color-bg-secondary: #37342e;
-  --color-scrollbar-thumb: #5d564a;
-  --color-scrollbar-thumb-hover: #8c806c;
-  --color-success: #98c69f;
-  --color-warning: #deb66e;
-  --color-error: #ff9782;
-}
+[data-theme="dark"],
+[data-ui-theme="harbor"][data-theme="dark"] {
+  --ui-shadow-sm: 0 2px 6px rgb(4 10 18 / 28%);
+  --ui-shadow-md: 0 8px 24px rgb(4 10 18 / 40%);
+  --ui-shadow-lg: 0 22px 52px rgb(2 8 15 / 56%);
 
-[data-ui-theme="minimal"] {
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
-  --font-display: var(--font-ui);
-  --font-reading: var(--font-ui);
-  --ui-font-size: 12.5px;
-  --ui-line-height: 1.5;
-  --ui-sidebar-width: 200px;
-  --ui-list-width: 360px;
-  --ui-radius-sm: 3px;
-  --ui-radius-md: 4px;
-  --ui-radius-lg: 5px;
-  --ui-reader-width: 780px;
-  --ui-reader-gutter: clamp(16px, 2vw, 26px);
-  --ui-reader-title-size: 18px;
-  --ui-reader-body-size: 13.5px;
-  --ui-reader-leading: 1.7;
-  --color-sidebar-bg: #f4f5f7;
-  --color-sidebar-hover: #ebedf0;
-  --color-sidebar-active: #14161a;
-  --color-titlebar-bg: #f4f5f7;
-  --color-main-bg: #fff;
-  --color-statusbar-bg: #f4f5f7;
-  --color-list-bg: #fff;
-  --color-reader-bg: #fff;
-  --color-reader-surface: #fff;
-  --color-border: #dfe2e7;
-  --color-border-strong: #b9bfc9;
-  --color-text-primary: #14161a;
-  --color-text-secondary: #59616d;
-  --color-text-tertiary: #707a8b;
-  --color-accent: #2f6bff;
-  --color-accent-soft: #eef3ff;
-  --color-bg: #fff;
-  --color-bg-hover: #f4f5f7;
-  --color-bg-secondary: #ebedf0;
-  --color-scrollbar-thumb: #bfc5d0;
-  --color-scrollbar-thumb-hover: #929baa;
-  --color-success: #148446;
-  --color-warning: #946e00;
-  --color-error: #c82b21;
-}
+  --color-sidebar-bg: #0e1721;
+  --color-sidebar-hover: #162433;
+  --color-sidebar-active: #1c3145;
+  --color-titlebar-bg: #0e1721;
+  --color-main-bg: #131e2a;
+  --color-statusbar-bg: #0e1721;
+  --color-list-bg: #131e2a;
+  --color-reader-bg: #172432;
+  --color-reader-surface: #172432;
+  --color-bg: #172432;
+  --color-bg-primary: #172432;
+  --color-bg-hover: #1e2e3f;
+  --color-bg-secondary: #223548;
+  --color-border: #25384b;
+  --color-border-strong: #38516a;
 
-[data-ui-theme="minimal"][data-theme="dark"] {
-  --color-sidebar-bg: #191c21;
-  --color-sidebar-hover: #252a32;
-  --color-sidebar-active: #e7ebf2;
-  --color-titlebar-bg: #191c21;
-  --color-main-bg: #101318;
-  --color-statusbar-bg: #191c21;
-  --color-list-bg: #101318;
-  --color-reader-bg: #14181e;
-  --color-reader-surface: #14181e;
-  --color-border: #2e3540;
-  --color-border-strong: #566175;
-  --color-text-primary: #e7ebf2;
-  --color-text-secondary: #b3bccb;
-  --color-text-tertiary: #909eb3;
-  --color-accent: #8bafff;
-  --color-accent-soft: #1b2c4e;
-  --color-accent-contrast: #0f1d38;
-  --color-bg: #14181e;
-  --color-bg-hover: #202630;
-  --color-bg-secondary: #29313d;
-  --color-scrollbar-thumb: #465269;
-  --color-scrollbar-thumb-hover: #657793;
-  --color-success: #75d49a;
-  --color-warning: #e4bc68;
-  --color-error: #ff968c;
+  --color-text-primary: #ebf2f7;
+  --color-text-secondary: #a8bfd2;
+  --color-text-tertiary: #88a4bc;
+
+  --color-accent: #62b3e3;
+  --color-accent-hover: #7bc3ec;
+  --color-accent-soft: #1b3449;
+  --color-accent-contrast: #08131d;
+  --color-active-border: #335b7d;
+  --color-row-selected-bg: #1c3349;
+  --color-row-selected-border: #3d6d94;
+
+  --color-signal: #ee936e;
+  --color-signal-bg: #2a1d19;
+  --color-signal-border: #5a382c;
+  --color-signal-text: #f6baa0;
+
+  --color-success: #5cc49f;
+  --color-warning: #ebb567;
+  --color-error: #f18c82;
+  --color-danger: #f18c82;
+
+  --color-backdrop: rgb(3 9 16 / 64%);
+  --color-scrollbar-thumb: #31485e;
+  --color-scrollbar-thumb-hover: #476684;
 }
 
 html[data-ui-theme],
@@ -365,6 +132,8 @@ html[data-ui-theme],
   font-family: var(--font-ui);
   font-size: var(--ui-font-size);
   line-height: var(--ui-line-height);
+  color: var(--color-text-primary);
+  background: var(--color-main-bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -375,8 +144,22 @@ html[data-ui-theme],
   font-family: inherit;
 }
 
-[data-ui-theme] button:not(:disabled) { cursor: pointer; }
-[data-ui-theme] button:disabled { cursor: not-allowed; }
+[data-ui-theme] input,
+[data-ui-theme] textarea {
+  caret-color: var(--color-accent);
+}
+
+[data-ui-theme] a {
+  text-underline-offset: 3px;
+}
+
+[data-ui-theme] button:not(:disabled) {
+  cursor: pointer;
+}
+
+[data-ui-theme] button:disabled {
+  cursor: not-allowed;
+}
 
 [data-ui-theme] :is(button, a, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--color-accent);
@@ -386,4 +169,17 @@ html[data-ui-theme],
 [data-ui-theme] ::selection {
   background: var(--color-accent-soft);
   color: var(--color-text-primary);
+}
+
+html[data-theme-switching] {
+  --ui-motion-fast: 0ms;
+  --ui-motion-base: 0ms;
+}
+
+html[data-theme-switching] .sidebar-compose-button,
+html[data-theme-switching] .app-statusbar-icon-btn,
+html[data-theme-switching] .settings-choice-card,
+html[data-theme-switching] .settings-button,
+html[data-theme-switching] .mail-row {
+  transition: none;
 }

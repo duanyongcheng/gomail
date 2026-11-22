@@ -197,7 +197,7 @@ function GoogleOAuthConfigPanel({
           </div>
 
           {config.keyringError && (
-            <p role="alert" style={{ margin: 0, color: "#dc3545" }}>
+            <p role="alert" style={{ margin: 0, color: "var(--color-error)" }}>
               {t(
                 "googleOAuth.keyringLocked",
                 "Saved Google OAuth configuration could not be decrypted because the profile keyring is unavailable. Unlock your keyring, or save new credentials / clear the saved override.",
@@ -284,12 +284,12 @@ function GoogleOAuthConfigPanel({
       )}
 
       {statusMessage && (
-        <p role="status" style={{ margin: 0, color: "#15803d" }}>
+        <p role="status" style={{ margin: 0, color: "var(--color-accent)" }}>
           {statusMessage}
         </p>
       )}
       {error && (
-        <p role="alert" style={{ margin: 0, color: "#dc3545" }}>
+        <p role="alert" style={{ margin: 0, color: "var(--color-error)" }}>
           {error}
         </p>
       )}

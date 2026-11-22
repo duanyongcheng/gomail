@@ -17,13 +17,13 @@ export default function TrustedSenders() {
   const [selected, setSelected] = useState<string | null>(null);
   const candidate = selected ?? activeAccountId;
   const accountId = accounts.some((a) => a.id === candidate) ? candidate! : accounts[0]?.id ?? "";
-  return <section aria-labelledby="trusted-senders-title">
-    <h3 id="trusted-senders-title" style={{ fontSize: 14, fontWeight: 600 }}>{t("privacy.trustedSenders", "Trusted Senders")}</h3>
-    <p style={{ fontSize: 12 }}>{t("privacy.trustScope", "Trust is an exact-address preference for one account, not verification of the sender. Images-only trust still blocks trackers.")}</p>
+  return <section aria-labelledby="trusted-senders-title" style={{ marginTop: 24 }}>
+    <h3 id="trusted-senders-title" className="settings-section-title" style={{ marginTop: 0 }}>{t("privacy.trustedSenders", "Trusted Senders")}</h3>
+    <p className="settings-section-desc">{t("privacy.trustScope", "Trust is an exact-address preference for one account, not verification of the sender. Images-only trust still blocks trackers.")}</p>
     <select aria-label={t("privacy.trustAccount", "Trust account")} value={accountId} style={inputStyle} onChange={(e) => setSelected(e.target.value)} disabled={!accounts.length}>
       {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_label || a.email}</option>)}
     </select>
-    {accountId ? <TrustManager key={accountId} accountId={accountId} /> : <p>{t("privacy.selectTrustAccount", "Add an account to manage trusted senders.")}</p>}
+    {accountId ? <TrustManager key={accountId} accountId={accountId} /> : <p className="settings-section-desc" style={{ marginTop: 10 }}>{t("privacy.selectTrustAccount", "Add an account to manage trusted senders.")}</p>}
   </section>;
 }
 
@@ -65,12 +65,12 @@ function TrustManager({ accountId }: { accountId: string }) {
   }
   return <div style={{ fontSize: 13 }}>
     <form onSubmit={(e) => { e.preventDefault(); void change(); }} style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0" }}>
-      <input aria-label={t("privacy.senderAddress", "Sender email address")} type="email" required value={email} maxLength={320} disabled={busy} style={{ ...inputStyle, flex: 1, minWidth: 170 }} onChange={(e) => setEmail(e.target.value)} />
+      <input aria-label={t("privacy.senderAddress", "Sender email address")} placeholder="sender@example.com" type="email" required value={email} maxLength={320} disabled={busy} style={{ ...inputStyle, flex: 1, minWidth: 170 }} onChange={(e) => setEmail(e.target.value)} />
       <select aria-label={t("privacy.trustLevel", "Trust level")} value={level} disabled={busy} onChange={(e) => setLevel(e.target.value as "images" | "all")} style={{ ...inputStyle, width: "auto" }}>
         <option value="images">{t("privacy.trustImages", "Trust images")}</option>
         <option value="all">{t("privacy.trustAll", "Trust sender")}</option>
       </select>
-      <button style={buttonStyle} disabled={busy || !email.trim()}>{t("privacy.saveTrust", "Save trust")}</button>
+      <button type="submit" className="settings-button settings-button--primary" disabled={busy || !email.trim()}>{t("privacy.saveTrust", "Save trust")}</button>
     </form>
     {error && <p role="alert">{error}</p>}
     {loading ? <p role="status">{t("common.loading", "Loading...")}</p> : loadError ? <p role="alert">{t("privacy.loadTrustedFailed", "Failed to load trusted senders")} <button onClick={() => setVersion((v) => v + 1)}>{t("common.retry", "Retry")}</button></p> : senders.length === 0 ? <p>{t("privacy.noTrustedSenders", "No trusted senders yet. Trust a sender from the privacy banner in a message.")}</p> : <ul style={{ listStyle: "none", padding: 0 }}>

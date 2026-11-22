@@ -15,11 +15,7 @@ var uiThemeSelftestMatrix = []struct {
 	id        string
 	rowHeight int
 }{
-	{"paper", 88},
-	{"clay", 96},
-	{"glass", 84},
-	{"editorial", 100},
-	{"minimal", 68},
+	{"harbor", 88},
 }
 
 func uiThemeSelftestCheck(theme, mode string) string {
@@ -85,7 +81,7 @@ func uiThemeOpenAppearance(ctx context.Context, window *mygo.Window) bool {
   if(!tab||tab.disabled)return false;
   tab.click();return true;
 })()`, 5*time.Second) &&
-		waitSelftestPage(ctx, window, `document.querySelectorAll('[data-app-theme-option]').length===5`, 5*time.Second)
+		waitSelftestPage(ctx, window, `document.querySelectorAll('[data-app-theme-option]').length===1`, 5*time.Second)
 }
 
 func uiThemeChooseScript(theme, mode, messageTheme string) string {
@@ -110,20 +106,19 @@ func uiThemeRenderedScript(theme, mode string, rowHeight int) string {
   const scroll=detail?.querySelector('.app-reader-scroll');
   const namespace=localStorage.getItem('pebble:profile-storage-migrated');
   const stored=namespace?'pebble:profile:'+namespace+':pebble-app-theme':null;
-  if(root.dataset.uiTheme!==%s||root.dataset.theme!==%s||!stored||localStorage.getItem(stored)!==%s)return false;
+  if(root.dataset.uiTheme!==%s||root.dataset.theme!==%s||root.hasAttribute('data-theme-switching')||!stored||localStorage.getItem(stored)!==%s)return false;
   if(parseFloat(css.getPropertyValue('--ui-mail-row-height'))!==%d||!rows.length||!detail||!title||!sheet||!scroll)return false;
   if(document.body.innerText.includes('Something went wrong')||document.body.innerText.includes('发生了一些错误'))return false;
   if(document.documentElement.scrollWidth>innerWidth+1||scroll.scrollWidth>scroll.clientWidth+2)return false;
   const box=detail.getBoundingClientRect(),row=rows[0].getBoundingClientRect();
   if(box.width<200||box.right>innerWidth+2||box.left<0||row.height<%d-12||row.height>%d+80)return false;
   const size=parseFloat(getComputedStyle(title).fontSize);
-  const expected={paper:26,clay:27,glass:24,editorial:33,minimal:18};
+  const expected={harbor:24};
   if(Math.abs(size-expected[%s])>1)return false;
-  if((%s==='paper'||%s==='editorial')&&!/Songti|Serif|Georgia|Iowan/i.test(getComputedStyle(title).fontFamily))return false;
-  if(%s==='clay'&&parseFloat(getComputedStyle(sheet).borderRadius)<12)return false;
+  if(!getComputedStyle(title).fontFamily)return false;
   return true;
 })()`, strconv.Quote(theme), strconv.Quote(mode), strconv.Quote(theme), rowHeight,
-		rowHeight, rowHeight, strconv.Quote(theme), strconv.Quote(theme), strconv.Quote(theme), strconv.Quote(theme))
+		rowHeight, rowHeight, strconv.Quote(theme))
 }
 
 func uiThemeNarrowReaderScript(width int) string {
@@ -147,7 +142,7 @@ func uiThemeNarrowPickerScript(width int) string {
   if(innerWidth!==%d||!picker||!panel)return false;
   panel.scrollTop=0;
   const box=picker.getBoundingClientRect();
-  return picker.querySelectorAll('[data-app-theme-option]').length===5&&box.width>100&&
+  return picker.querySelectorAll('[data-app-theme-option]').length===1&&box.width>100&&
     box.left>=0&&box.right<=innerWidth+1&&picker.scrollWidth<=picker.clientWidth+1&&
     panel.scrollWidth<=panel.clientWidth+1&&document.documentElement.scrollWidth<=innerWidth+1;
 })()`, width)
@@ -168,7 +163,7 @@ func selftestUIResponsiveThemes(ctx context.Context, window *mygo.Window, checks
 		}
 	}()
 	if !uiThemeOpenAppearance(ctx, window) ||
-		!waitSelftestPage(ctx, window, uiThemeChooseScript("clay", "light", "app"), 5*time.Second) ||
+		!waitSelftestPage(ctx, window, uiThemeChooseScript("harbor", "light", "app"), 5*time.Second) ||
 		!waitSelftestPage(ctx, window, uiThemeOpenInbox, 5*time.Second) ||
 		!waitSelftestPage(ctx, window, uiThemeSelectMessage, 5*time.Second) {
 		return
@@ -205,7 +200,7 @@ func selftestUIThemes(ctx context.Context, window *mygo.Window, checks map[strin
 			checks[uiThemeSelftestCheck(theme.id, mode)] = false
 		}
 	}
-	checks["interface theme picker exposes five live previews"] = false
+	checks["interface theme picker exposes unified live preview"] = false
 	checks["interface theme selftest restores initial appearance"] = false
 	checks["interface theme selftest restores settings tab"] = false
 	checks["interface theme selftest restores native window bounds"] = false
@@ -260,14 +255,16 @@ func selftestUIThemes(ctx context.Context, window *mygo.Window, checks map[strin
 				capture("ui-theme-failure.png")
 				return
 			}
-			if theme.id == "glass" && mode == "dark" {
-				checks["interface theme picker exposes five live previews"] = waitSelftestPage(ctx, window, `(() => {
+			if theme.id == "harbor" && mode == "dark" {
+				checks["interface theme picker exposes unified live preview"] = waitSelftestPage(ctx, window, `(() => {
   const picker=document.querySelector('.app-theme-picker');
   const panel=document.querySelector('.settings-panel-scroll');if(panel)panel.scrollTop=0;
-  return picker?.querySelectorAll('[role="radio"]').length===5&&
-    picker.querySelectorAll('[aria-checked="true"]').length===1&&
-    picker.querySelector('[data-app-theme-option="glass"]')?.getAttribute('aria-checked')==='true'&&
-    document.documentElement.dataset.theme==='dark';
+  const darkBtn=document.querySelector('[data-color-mode="dark"]');
+  return picker?.querySelectorAll('[data-app-theme-option]').length===1&&
+    picker.querySelector('[data-app-theme-option="harbor"]')?.getAttribute('data-active')==='true'&&
+    darkBtn?.getAttribute('aria-pressed')==='true'&&
+    document.documentElement.dataset.theme==='dark'&&
+    !document.documentElement.hasAttribute('data-theme-switching');
 })()`, 5*time.Second)
 				capture("ui-theme-picker.png")
 			}
@@ -278,8 +275,8 @@ func selftestUIThemes(ctx context.Context, window *mygo.Window, checks map[strin
 			}
 			checks[uiThemeSelftestCheck(theme.id, mode)] = waitSelftestPage(ctx, window,
 				uiThemeRenderedScript(theme.id, mode, theme.rowHeight), 5*time.Second)
-			if theme.id == "glass" && mode == "dark" {
-				checks["interface theme glass dark sidebar uses dark layers"] = waitSelftestPage(ctx, window,
+			if theme.id == "harbor" && mode == "dark" {
+				checks["interface theme harbor dark sidebar uses dark layers"] = waitSelftestPage(ctx, window,
 					uiThemeGlassDarkSidebarScript(), 5*time.Second)
 			}
 			capture("ui-" + theme.id + "-" + mode + ".png")

@@ -31,7 +31,26 @@ export function roleFromAllAccountsFolderId(folderId: string | null | undefined)
   return SYSTEM_ROLE_ORDER.includes(role as FolderRole) ? role as FolderRole : null;
 }
 
-export function buildAllAccountsFolders(folders: Folder[]): Folder[] {
+/**
+ * Whether a folder is a non-mailbox provider system label (such as Gmail's
+ * `CATEGORY_*`, `CHAT`, `IMPORTANT`, `STARRED`, or `UNREAD`).
+ *
+ * Standard mailbox destinations (`inbox`, `sent`, `archive`, `drafts`, `trash`,
+ * `spam`) carry a `role` and always belong in the sidebar. User-created labels
+ * have `is_system === false` and belong there too. Only system labels without
+ * a mailbox role are auxiliary metadata labels that stay hidden unless opted in.
+ */
+export function isAuxiliarySystemLabel(folder: Folder): boolean {
+  if (folder.role) return false;
+  if (folder.folder_type !== "label" && folder.folder_type !== "category") return false;
+  return folder.is_system;
+}
+
+export function buildAllAccountsFolders(
+  folders: Folder[],
+  options?: { showSystemLabels?: boolean },
+): Folder[] {
+  const showSystemLabels = options?.showSystemLabels ?? false;
   const roles = new Set(folders.map((folder) => folder.role).filter(Boolean) as FolderRole[]);
   const virtualFolders = SYSTEM_ROLE_ORDER
     .filter((role) => roles.has(role))
@@ -49,18 +68,30 @@ export function buildAllAccountsFolders(folders: Folder[]): Folder[] {
     }));
 
   const customFolders = folders
-    .filter((folder) => !folder.role)
-    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+    .filter((folder) => !folder.role && (showSystemLabels || !isAuxiliarySystemLabel(folder)))
+    .sort(
+      (a, b) =>
+        Number(isAuxiliarySystemLabel(a)) - Number(isAuxiliarySystemLabel(b)) ||
+        a.sort_order - b.sort_order ||
+        a.name.localeCompare(b.name),
+    );
 
   return [...virtualFolders, ...customFolders];
 }
 
-export function sortFoldersForSidebar(folders: Folder[]): Folder[] {
+export function sortFoldersForSidebar(
+  folders: Folder[],
+  options?: { showSystemLabels?: boolean },
+): Folder[] {
+  const showSystemLabels = options?.showSystemLabels ?? false;
   const firstFolderByRole = new Map<FolderRole, Folder>();
   const customFolders: Folder[] = [];
 
   for (const folder of folders) {
     if (!folder.role) {
+      if (!showSystemLabels && isAuxiliarySystemLabel(folder)) {
+        continue;
+      }
       customFolders.push(folder);
       continue;
     }
@@ -76,7 +107,12 @@ export function sortFoldersForSidebar(folders: Folder[]): Folder[] {
 
   return [
     ...systemFolders,
-    ...customFolders.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
+    ...customFolders.sort(
+      (a, b) =>
+        Number(isAuxiliarySystemLabel(a)) - Number(isAuxiliarySystemLabel(b)) ||
+        a.sort_order - b.sort_order ||
+        a.name.localeCompare(b.name),
+    ),
   ];
 }
 

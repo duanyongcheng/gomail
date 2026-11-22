@@ -487,7 +487,7 @@ export default function RulesTab() {
 
         {/* Error */}
         {error && (
-          <p role="alert" style={{ margin: 0, fontSize: "12px", color: "#ef4444" }}>{error}</p>
+          <p role="alert" style={{ margin: 0, fontSize: "12px", color: "var(--color-error)" }}>{error}</p>
         )}
 
         {/* Buttons */}
@@ -585,7 +585,7 @@ export default function RulesTab() {
             color: "var(--color-text-secondary)",
           }}
         >
-          <p style={{ color: "var(--color-error, #e53e3e)", fontSize: "14px", margin: 0 }}>
+          <p style={{ color: "var(--color-error)", fontSize: "14px", margin: 0 }}>
             {t("rules.fetchError", "Failed to load rules")}
           </p>
           <p style={{ fontSize: "13px", margin: 0 }}>{fetchError}</p>
@@ -736,8 +736,8 @@ export default function RulesTab() {
                         cursor: "pointer",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.color = "#ef4444";
-                        e.currentTarget.style.backgroundColor = "rgba(239,68,68,0.08)";
+                        e.currentTarget.style.color = "var(--color-error)";
+                        e.currentTarget.style.backgroundColor = "var(--color-signal-bg)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.color = "var(--color-text-secondary)";

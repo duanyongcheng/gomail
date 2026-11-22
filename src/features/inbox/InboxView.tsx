@@ -122,28 +122,20 @@ export default function InboxView() {
     else setSelectedMessage(null);
   });
 
-  const emptyStateStyle: React.CSSProperties = {
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    height: "100%", gap: "16px", color: "var(--color-text-secondary)",
-  };
-  const primaryButtonStyle: React.CSSProperties = {
-    marginTop: "8px", padding: "8px 20px", borderRadius: "6px",
-    border: "none", backgroundColor: "var(--color-accent)", color: "#fff",
-    fontSize: "13px", fontWeight: 600, cursor: "pointer",
-  };
-
   // Nothing configured at all — welcome / setup prompt.
   if (accounts.length === 0) {
     return (
-      <div className="fade-in" style={emptyStateStyle}>
-        <Mail size={48} strokeWidth={1.2} />
-        <p style={{ fontSize: "16px", fontWeight: 500, color: "var(--color-text-primary)", margin: 0 }}>
+      <div className="fade-in mail-state-center">
+        <div className="mail-reader-empty-mark" aria-hidden="true">
+          <Mail size={32} strokeWidth={1.3} />
+        </div>
+        <p className="mail-state-center-title">
           {t("inbox.welcome", "Welcome to Pebble")}
         </p>
-        <p style={{ fontSize: "13px", margin: 0 }}>
+        <p className="mail-state-center-hint">
           {t("inbox.addAccountHint", "Add an email account to get started")}
         </p>
-        <button onClick={() => setActiveView("settings")} style={primaryButtonStyle}>
+        <button onClick={() => setActiveView("settings")} className="mail-state-primary-btn">
           {t("settings.addAccount", "Add Account")}
         </button>
       </div>
@@ -158,22 +150,20 @@ export default function InboxView() {
     // No folders at all: this mailbox has never finished a sync. Asking the user
     // to add an account they already configured would send them in circles.
     return (
-      <div className="fade-in" style={emptyStateStyle}>
-        <Mail size={48} strokeWidth={1.2} />
-        <p style={{ fontSize: "16px", fontWeight: 500, color: "var(--color-text-primary)", margin: 0 }}>
+      <div className="fade-in mail-state-center">
+        <div className="mail-reader-empty-mark" aria-hidden="true">
+          <Mail size={32} strokeWidth={1.3} />
+        </div>
+        <p className="mail-state-center-title">
           {t("inbox.mailboxNotSynced", "This mailbox has not synced yet")}
         </p>
-        <p style={{ fontSize: "13px", margin: 0, textAlign: "center", maxWidth: "340px" }}>
+        <p className="mail-state-center-hint">
           {t("inbox.mailboxNotSyncedHint", "No folders were found for it locally. Sync now to fetch its mail.")}
         </p>
         <button
           onClick={syncMailbox}
           disabled={syncingMailbox}
-          style={{
-            ...primaryButtonStyle,
-            cursor: syncingMailbox ? "default" : "pointer",
-            opacity: syncingMailbox ? 0.6 : 1,
-          }}
+          className="mail-state-primary-btn"
         >
           {syncingMailbox
             ? t("inbox.syncing", "Syncing...")
@@ -187,9 +177,8 @@ export default function InboxView() {
     <div className={`mail-workspace${detailOpen ? " mail-workspace--detail-open" : ""}`}>
       <section className="mail-list-panel" aria-label={folderTitle}>
         <header className="mail-list-heading">
-          <div className="mail-list-kicker">{mailboxLabel}</div>
           <div className="mail-list-title-row">
-            <h1 className="mail-list-title">{folderTitle}</h1>
+            <h1 className="mail-list-title" title={mailboxLabel}>{folderTitle}</h1>
             <span
               className="mail-list-count"
               title={loadedCountLabel}
@@ -229,7 +218,7 @@ export default function InboxView() {
             key={account.id}
             type="button"
             onClick={() => useComposeStore.getState().openCompose("new", null, { gmailDraftsAccountId: account.id })}
-            style={{ padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 4, background: "var(--color-bg-primary)", color: "var(--color-text-primary)", fontSize: 12 }}
+            className="mail-toolbar-chip"
             title={account.email}
           >
             {t("cloudDrafts.manage", "Manage Gmail drafts")}{draftAccounts.length > 1 ? `: ${account.email}` : ""}
@@ -239,11 +228,7 @@ export default function InboxView() {
               <button
                 disabled={!isFeatureAvailable("permanentDelete")}
                 onClick={() => { if (isFeatureAvailable("permanentDelete")) setShowTrashConfirm(true); }}
-                style={{
-                  background: "none", border: "1px solid var(--color-border)", cursor: "pointer",
-                  padding: "4px 10px", borderRadius: "4px", color: "var(--color-text-secondary)",
-                  display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", marginRight: "4px",
-                }}
+                className="mail-toolbar-chip"
                 title={isFeatureAvailable("permanentDelete") ? t("messageActions.emptyTrash", "Empty Trash") : unavailableReason()}
               >
                 <Trash2 size={14} />

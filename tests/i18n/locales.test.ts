@@ -41,8 +41,12 @@ describe("locale files", () => {
 
     expect(en.settings.folderCounts).toBe("Folder Counts");
     expect(en.settings.showUnreadCount).toBe("Show unread count badges in sidebar");
+    expect(en.settings.systemLabels).toBe("System Labels");
+    expect(en.settings.showSystemLabels).toBe("Show system labels in sidebar (e.g. CATEGORY_*, IMPORTANT, STARRED, UNREAD)");
     expect(zh.settings.folderCounts).toBe("文件夹计数");
     expect(zh.settings.showUnreadCount).toBe("在侧边栏显示未读数徽章");
+    expect(zh.settings.systemLabels).toBe("系统标签");
+    expect(zh.settings.showSystemLabels).toBe("在侧边栏显示系统标签（如 CATEGORY_*、IMPORTANT、STARRED、UNREAD）");
   });
 
   it("translates selected-text actions in English and Chinese", () => {

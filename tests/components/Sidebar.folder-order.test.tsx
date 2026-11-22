@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -112,6 +112,7 @@ describe("Sidebar folder order", () => {
       activeView: "inbox",
       previousView: "inbox",
       showFolderUnreadCount: false,
+      showSystemLabels: false,
       backgroundImage: null,
     });
     useMailStore.setState({
@@ -162,6 +163,83 @@ describe("Sidebar folder order", () => {
       "Trash",
       "Spam",
     ]);
+  });
+
+  it("hides Gmail auxiliary system labels by default and reveals them when opted in", () => {
+    mocks.accounts = [{
+      id: "account-1",
+      email: "user@gmail.com",
+      display_name: "User",
+      provider: "gmail",
+      color: null,
+      created_at: 1,
+      updated_at: 1,
+    }];
+    const gmailLabel = (id: string, role: Folder["role"], isSystem: boolean, name = id): Folder => ({
+      id: `account-1:label:${id}`,
+      account_id: "account-1",
+      remote_id: id,
+      name,
+      folder_type: "label",
+      role,
+      parent_id: null,
+      color: null,
+      is_system: isSystem,
+      sort_order: 0,
+    });
+    mocks.folders = [
+      gmailLabel("INBOX", "inbox", true, "INBOX"),
+      gmailLabel("SENT", "sent", true, "SENT"),
+      gmailLabel("DRAFT", "drafts", true, "DRAFT"),
+      gmailLabel("TRASH", "trash", true, "TRASH"),
+      gmailLabel("SPAM", "spam", true, "SPAM"),
+      gmailLabel("CATEGORY_FORUMS", null, true),
+      gmailLabel("CATEGORY_PROMOTIONS", null, true),
+      gmailLabel("CHAT", null, true),
+      gmailLabel("IMPORTANT", null, true),
+      gmailLabel("STARRED", null, true),
+      gmailLabel("UNREAD", null, true),
+      gmailLabel("Label_custom", null, false, "Projects"),
+    ];
+    useMailStore.setState({ activeFolderId: "account-1:label:INBOX" });
+
+    renderSidebar();
+
+    const group = screen.getByTestId("account-folders-account-1");
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Inbox",
+      "Sent",
+      "Drafts",
+      "Trash",
+      "Spam",
+      "Projects",
+    ]);
+
+    act(() => {
+      useUIStore.setState({ showSystemLabels: true });
+      useMailStore.setState({ activeFolderId: "account-1:label:STARRED" });
+    });
+
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Inbox",
+      "Sent",
+      "Drafts",
+      "Trash",
+      "Spam",
+      "Projects",
+      "CATEGORY_FORUMS",
+      "CATEGORY_PROMOTIONS",
+      "CHAT",
+      "IMPORTANT",
+      "STARRED",
+      "UNREAD",
+    ]);
+
+    // Hiding system labels while one is open falls back cleanly to Inbox.
+    act(() => {
+      useUIStore.setState({ showSystemLabels: false });
+    });
+    expect(useMailStore.getState().activeFolderId).toBe("account-1:label:INBOX");
   });
 
   it("keeps the account list translucent when an app background is active", () => {

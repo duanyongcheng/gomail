@@ -23,60 +23,42 @@ export default function PrivacyTab() {
 
   return (
     <div>
-      <h2 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "20px" }}>
+      <h2 className="settings-section-title settings-section-title--first" style={{ fontSize: "16px" }}>
         {t("privacy.settingsTitle", "Privacy & Tracking")}
       </h2>
 
       {/* Global privacy mode */}
       <div style={{ marginBottom: "24px" }}>
-        <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "8px" }}>
+        <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "10px" }}>
           {t("privacy.defaultMode", "Default privacy mode")}
         </label>
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button
+            type="button"
+            aria-pressed={privacyMode === "strict"}
             onClick={() => handlePrivacyModeChange("strict")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "1px solid var(--color-border)",
-              backgroundColor: privacyMode === "strict" ? "var(--color-accent)" : "var(--color-bg)",
-              color: privacyMode === "strict" ? "#fff" : "var(--color-text-primary)",
-              cursor: "pointer",
-              fontSize: "13px",
-            }}
+            className={`settings-button${privacyMode === "strict" ? " settings-button--primary" : ""}`}
           >
             {t("privacy.strict", "Strict")}
           </button>
           <button
+            type="button"
+            aria-pressed={privacyMode === "relaxed"}
             onClick={() => handlePrivacyModeChange("relaxed")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "1px solid var(--color-border)",
-              backgroundColor: privacyMode === "relaxed" ? "var(--color-accent)" : "var(--color-bg)",
-              color: privacyMode === "relaxed" ? "#fff" : "var(--color-text-primary)",
-              cursor: "pointer",
-              fontSize: "13px",
-            }}
+            className={`settings-button${privacyMode === "relaxed" ? " settings-button--primary" : ""}`}
           >
             {t("privacy.relaxed", "Relaxed")}
           </button>
           <button
+            type="button"
+            aria-pressed={privacyMode === "off"}
             onClick={() => handlePrivacyModeChange("off")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "1px solid var(--color-border)",
-              backgroundColor: privacyMode === "off" ? "var(--color-accent)" : "var(--color-bg)",
-              color: privacyMode === "off" ? "#fff" : "var(--color-text-primary)",
-              cursor: "pointer",
-              fontSize: "13px",
-            }}
+            className={`settings-button${privacyMode === "off" ? " settings-button--primary" : ""}`}
           >
             {t("privacy.off", "Off")}
           </button>
         </div>
-        <p style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "6px" }}>
+        <p className="settings-section-desc" style={{ marginTop: "8px", marginBottom: 0 }}>
           {privacyMode === "strict"
             ? t("privacy.strictDesc", "Block all external images and trackers by default. You can load images per-message.")
             : privacyMode === "relaxed"
@@ -86,15 +68,9 @@ export default function PrivacyTab() {
       </div>
 
       {/* Tracker blocking info */}
-      <div style={{
-        padding: "12px 16px",
-        borderRadius: "6px",
-        backgroundColor: "var(--color-bg-hover)",
-        marginBottom: "24px",
-        fontSize: "13px",
-      }}>
+      <div className={`settings-callout${privacyMode === "off" ? " settings-callout--signal" : ""}`} style={{ marginBottom: "24px" }}>
         <strong>{t("privacy.trackerBlocking", "Tracker blocking")}</strong>
-        <p style={{ margin: "4px 0 0", color: "var(--color-text-secondary)", fontSize: "12px" }}>
+        <p style={{ margin: "4px 0 0", color: "inherit", opacity: 0.85, fontSize: "12.5px" }}>
           {privacyMode === "off"
             ? t("privacy.trackerBlockingOff", "Tracker blocking is disabled in Off mode. All images and trackers are loaded directly.")
             : t("privacy.trackerBlockingDesc", "Known tracking pixels and tracker domains are blocked unless privacy is Off or the sender is fully trusted.")}

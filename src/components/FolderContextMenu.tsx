@@ -148,6 +148,7 @@ export default function FolderContextMenu({
   return createPortal(
     <div
       ref={ref}
+      className="folder-menu-surface"
       role="menu"
       aria-label={label}
       aria-busy={busy}
@@ -155,17 +156,8 @@ export default function FolderContextMenu({
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={handleKeyDown}
       style={{
-        position: "fixed",
         left: placement.x,
         top: placement.y,
-        minWidth: "208px",
-        padding: "4px",
-        borderRadius: "8px",
-        border: "1px solid var(--color-border)",
-        backgroundColor: "var(--color-bg)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-        zIndex: 1200,
-        color: "var(--color-text-primary)",
       }}
     >
       {items.map((item, index) => {
@@ -174,6 +166,7 @@ export default function FolderContextMenu({
           <button
             key={item.id}
             type="button"
+            className={`folder-menu-item${item.destructive ? " folder-menu-item--destructive" : ""}`}
             role="menuitem"
             disabled={disabled}
             data-testid={`folder-context-menu-${item.id}`}
@@ -184,24 +177,6 @@ export default function FolderContextMenu({
               item.onSelect();
             }}
             onMouseEnter={() => setActiveIndex(index)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              padding: "7px 8px",
-              border: "none",
-              borderRadius: "6px",
-              backgroundColor: "transparent",
-              color: item.destructive
-                ? "var(--color-danger)"
-                : "var(--color-text-primary)",
-              cursor: disabled ? "default" : "pointer",
-              opacity: disabled ? 0.45 : 1,
-              fontSize: "12.5px",
-              fontFamily: "inherit",
-              textAlign: "left",
-            }}
           >
             <span style={{ display: "inline-flex", flexShrink: 0, width: 14 }}>
               {busy && index === activeIndex ? <Loader size={14} className="spinner" /> : item.icon}

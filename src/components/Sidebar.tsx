@@ -107,6 +107,7 @@ export default function Sidebar() {
   const setActiveFolderId = useMailStore((s) => s.setActiveFolderId);
 
   const showUnread = useUIStore((s) => s.showFolderUnreadCount);
+  const showSystemLabels = useUIStore((s) => s.showSystemLabels);
   const { data: accounts = EMPTY_ACCOUNTS } = useAccountsQuery();
 
   // Every mailbox's folders are read at once, because every mailbox is drawn at
@@ -147,10 +148,10 @@ export default function Sidebar() {
       byAccount.get(folder.account_id)?.push(folder);
     }
     for (const [accountId, list] of byAccount) {
-      byAccount.set(accountId, sortFoldersForSidebar(list));
+      byAccount.set(accountId, sortFoldersForSidebar(list, { showSystemLabels }));
     }
     return byAccount;
-  }, [accounts, folders]);
+  }, [accounts, folders, showSystemLabels]);
 
   /**
    * The column's groups: the combined mailbox first when there is more than one
@@ -791,6 +792,7 @@ function SidebarButton({
   trailing?: React.ReactNode;
 }) {
   const classes = ["sidebar-row"];
+  if (isActive) classes.push("sidebar-row--active");
   if (collapsed) classes.push("sidebar-row--collapsed");
   if (className) classes.push(className);
 

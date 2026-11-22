@@ -42,6 +42,8 @@ vi.mock("react-i18next", () => ({
         "settings.startHiddenToTray": "Start hidden to tray",
         "settings.folderCounts": "Folder Counts",
         "settings.showUnreadCount": "Show unread count badges in sidebar",
+        "settings.systemLabels": "System Labels",
+        "settings.showSystemLabels": "Show system labels in sidebar (e.g. CATEGORY_*, IMPORTANT, STARRED, UNREAD)",
       };
       return labels[key] ?? fallback ?? key;
     },
@@ -56,6 +58,7 @@ describe("GeneralTab realtime mode", () => {
       pollInterval: 15,
       realtimeMode: "realtime",
       showFolderUnreadCount: false,
+      showSystemLabels: false,
       notificationsEnabled: false,
       keepRunningInBackground: true,
       startHiddenToTray: false,
@@ -127,5 +130,19 @@ describe("GeneralTab realtime mode", () => {
     expect((checkbox as HTMLInputElement).disabled).toBe(true);
     expect(useUIStore.getState().startHiddenToTray).toBe(false);
     expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBeNull();
+  });
+
+  it("defaults sidebar system labels to unchecked and persists toggling them", () => {
+    render(<GeneralTab />);
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Show system labels in sidebar (e.g. CATEGORY_*, IMPORTANT, STARRED, UNREAD)",
+    }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+
+    fireEvent.click(checkbox);
+
+    expect(useUIStore.getState().showSystemLabels).toBe(true);
+    expect(localStorage.getItem("pebble-show-system-labels")).toBe("true");
   });
 });

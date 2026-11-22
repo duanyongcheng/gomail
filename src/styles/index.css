@@ -7,41 +7,41 @@
 }
 
 :root {
-  --color-sidebar-bg: #f8f7f5;
-  --color-sidebar-hover: #eeedeb;
-  --color-sidebar-active: #e5e4e2;
-  --color-titlebar-bg: #f8f7f5;
-  --color-main-bg: #ffffff;
-  --color-statusbar-bg: #f8f7f5;
-  --color-border: #e5e4e2;
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #6b6b6b;
-  --color-accent: #d4714e;
+  --color-sidebar-bg: #ebf1f4;
+  --color-sidebar-hover: #dfe9ef;
+  --color-sidebar-active: #d6e6f0;
+  --color-titlebar-bg: #ebf1f4;
+  --color-main-bg: #f7fafb;
+  --color-statusbar-bg: #ebf1f4;
+  --color-border: #d4e0e7;
+  --color-text-primary: #142538;
+  --color-text-secondary: #435a70;
+  --color-accent: #155e8a;
   --color-bg: #ffffff;
-  --color-bg-hover: rgba(0,0,0,0.05);
-  --color-bg-secondary: rgba(0,0,0,0.06);
+  --color-bg-hover: #edf3f6;
+  --color-bg-secondary: #e3ecf1;
   --color-scrollbar-track: transparent;
-  --color-scrollbar-thumb: rgba(26, 26, 26, 0.22);
-  --color-scrollbar-thumb-hover: rgba(26, 26, 26, 0.38);
+  --color-scrollbar-thumb: #bfd0db;
+  --color-scrollbar-thumb-hover: #90abc0;
 }
 
 [data-theme="dark"] {
-  --color-sidebar-bg: #1e1e1e;
-  --color-sidebar-hover: #2a2a2a;
-  --color-sidebar-active: #333333;
-  --color-titlebar-bg: #1e1e1e;
-  --color-main-bg: #141414;
-  --color-statusbar-bg: #1e1e1e;
-  --color-border: #2e2e2e;
-  --color-text-primary: #e0e0e0;
-  --color-text-secondary: #aaaaaa;
-  --color-accent: #d4714e;
-  --color-bg: #1a1a1a;
-  --color-bg-hover: rgba(255,255,255,0.06);
-  --color-bg-secondary: rgba(255,255,255,0.08);
+  --color-sidebar-bg: #0e1721;
+  --color-sidebar-hover: #162433;
+  --color-sidebar-active: #1c3145;
+  --color-titlebar-bg: #0e1721;
+  --color-main-bg: #131e2a;
+  --color-statusbar-bg: #0e1721;
+  --color-border: #25384b;
+  --color-text-primary: #ebf2f7;
+  --color-text-secondary: #a8bfd2;
+  --color-accent: #62b3e3;
+  --color-bg: #172432;
+  --color-bg-hover: #1e2e3f;
+  --color-bg-secondary: #223548;
   --color-scrollbar-track: transparent;
-  --color-scrollbar-thumb: rgba(255, 255, 255, 0.22);
-  --color-scrollbar-thumb-hover: rgba(255, 255, 255, 0.38);
+  --color-scrollbar-thumb: #31485e;
+  --color-scrollbar-thumb-hover: #476684;
 }
 
 html, body, #root {
@@ -116,7 +116,7 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-  color: color-mix(in srgb, var(--color-text-secondary) 72%, transparent);
+  color: var(--color-text-tertiary, var(--color-text-secondary));
 }
 
 input[type="checkbox"],
@@ -800,8 +800,13 @@ option {
   color: var(--msg-meta-color, var(--color-text-secondary));
 }
 
-.message-detail-icon-button:hover {
+.message-detail-icon-button:hover:not(:disabled) {
   background: var(--color-bg-hover);
+}
+
+.message-detail-icon-button:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
 }
 
 .message-detail-icon-button[aria-pressed="true"] {
@@ -1563,8 +1568,10 @@ textarea:focus-visible {
 
 .compose-quoted-reply-content blockquote {
   margin: 0;
-  padding-left: 12px;
-  border-left: 3px solid color-mix(in srgb, var(--color-text-secondary) 24%, transparent);
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--ui-radius-sm, 6px);
+  background: var(--color-list-bg);
 }
 
 .compose-quoted-reply-content p {
@@ -1995,17 +2002,6 @@ textarea:focus-visible {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.contacts-eyebrow,
-.contact-dialog-kicker {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
 }
 
 .contacts-title-row {
@@ -2629,9 +2625,10 @@ textarea:focus-visible {
 
 .contact-form-error {
   margin: 14px 0 0;
-  padding: 9px 10px;
-  border-left: 3px solid var(--color-danger);
-  background: color-mix(in srgb, var(--color-danger) 7%, transparent);
+  padding: 9px 12px;
+  border: 1px solid var(--color-signal-border, var(--color-danger));
+  border-radius: var(--ui-radius-md, 8px);
+  background: var(--color-signal-bg, color-mix(in srgb, var(--color-danger) 7%, transparent));
   color: var(--color-danger);
   font-size: 12px;
 }

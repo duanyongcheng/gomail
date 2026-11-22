@@ -1240,32 +1240,21 @@ export function messageThemeContentCss(theme: MessageTheme): string {
   // The dark UI's pale accent is not readable on the guard's white mail sheet.
   const sheetLinks = theme.id === "app" ? `
         :host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content a {
-          color: #315fbd;
+          color: #155e8a;
         }` : "";
   // These defaults never outrank the sender's inline styles or alter sanitizing.
   const interfaceProse = theme.id === "app" ? `
-        ${doubled} p { margin: 0 0 1.1em; }
-        ${doubled} ul, ${doubled} ol { margin: 0 0 1.1em; padding-left: 22px; }
+        ${doubled} p { margin: 0 0 1.15em; }
+        ${doubled} ul, ${doubled} ol { margin: 0 0 1.15em; padding-left: 22px; }
         ${doubled} li { margin-bottom: .35em; }
         ${doubled} blockquote {
           margin: 20px 0;
-          padding: 2px 0 2px 15px;
-          border-left: 2px solid var(--color-border);
-        }
-        ${doubled} code { font-family: var(--font-mono, monospace); font-size: .9em; }
-        :host-context([data-ui-theme="clay"]) .pebble-email-content.pebble-email-content blockquote,
-        :host-context([data-ui-theme="glass"]) .pebble-email-content.pebble-email-content blockquote,
-        :host-context([data-ui-theme="minimal"]) .pebble-email-content.pebble-email-content blockquote {
           padding: 12px 16px;
+          border: 1px solid var(--color-border);
           border-radius: var(--ui-radius-md, 8px);
           background: color-mix(in srgb, currentColor 4%, transparent);
         }
-        :host-context([data-ui-theme="clay"]) .pebble-email-content.pebble-email-content blockquote,
-        :host-context([data-ui-theme="glass"]) .pebble-email-content.pebble-email-content blockquote,
-        :host-context([data-ui-theme="editorial"]) .pebble-email-content.pebble-email-content blockquote {
-          border-left-color: var(--color-accent);
-        }
-        :host-context([data-ui-theme="editorial"]) .pebble-email-content.pebble-email-content blockquote { font-style: italic; }
+        ${doubled} code { font-family: var(--font-mono, monospace); font-size: .9em; }
       ` : "";
   // A template with a display face of its own (Claude's serif) lends it to the
   // sender's headings. Only headings the sender left unstyled are affected — an

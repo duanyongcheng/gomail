@@ -98,60 +98,42 @@ export default function ConfirmDialog({
 
   return (
     <div
+      className="overlay-backdrop overlay-backdrop--dialog"
       role="dialog"
       aria-modal="true"
       aria-busy={busy || undefined}
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-message"
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1100,
-      }}
     >
       <div
         ref={dialogRef}
+        className="confirm-dialog-surface"
         style={{
-          width: "380px",
           backgroundColor: "var(--color-sidebar-bg)",
           color: "var(--color-text-primary)",
           border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
         }}
       >
         <h3
           id="confirm-dialog-title"
-          style={{ margin: 0, fontSize: "15px", fontWeight: 600, color: "var(--color-text-primary)" }}
+          className="confirm-dialog-title"
         >
           {title}
         </h3>
         <p
           id="confirm-dialog-message"
-          style={{ margin: 0, fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}
+          className="confirm-dialog-message"
         >
           {message}
         </p>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <div className="confirm-dialog-actions">
           <button
             ref={cancelRef}
+            type="button"
+            className="confirm-dialog-btn"
             onClick={() => { if (!busy) onCancel(); }}
             aria-disabled={busy || undefined}
             style={{
-              padding: "7px 16px",
-              borderRadius: "6px",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "transparent",
-              color: "var(--color-text-primary)",
-              fontSize: "13px",
               cursor: busy ? "wait" : "pointer",
               opacity: busy ? 0.65 : 1,
             }}
@@ -160,17 +142,12 @@ export default function ConfirmDialog({
           </button>
           <button
             ref={confirmRef}
+            type="button"
+            className={`confirm-dialog-btn ${destructive ? "confirm-dialog-btn--destructive" : "confirm-dialog-btn--primary"}`}
             onClick={() => { if (!busy && !confirmDisabled) onConfirm(); }}
             disabled={confirmDisabled}
             aria-disabled={busy || confirmDisabled || undefined}
             style={{
-              padding: "7px 16px",
-              borderRadius: "6px",
-              border: "none",
-              backgroundColor: destructive ? "#ef4444" : "var(--color-accent)",
-              color: "#fff",
-              fontSize: "13px",
-              fontWeight: 600,
               cursor: busy ? "wait" : confirmDisabled ? "not-allowed" : "pointer",
               opacity: busy || confirmDisabled ? 0.65 : 1,
             }}

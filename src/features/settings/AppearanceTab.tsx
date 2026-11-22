@@ -93,11 +93,11 @@ export default function AppearanceTab() {
     <div className="appearance-settings">
       <h3 className="appearance-section-title">{t("appThemes.title", "Interface theme")}</h3>
       <p className="appearance-section-description">
-        {t("appThemes.description", "Five visual directions for the same mailbox. Color mode and message templates stay independent.")}
+        {t("appThemes.description", "Unified Harbor Chartroom workspace design. Color mode and message templates stay independent.")}
       </p>
       <AppThemePicker activeTheme={appTheme} onSelect={setAppTheme} />
       <h3 className="appearance-section-title appearance-section-title--spaced">{t("appThemes.colorMode", "Color mode")}</h3>
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+      <div className="settings-choice-grid">
         {THEMES.map((th) => (
           <button
             key={th.id}
@@ -105,40 +105,31 @@ export default function AppearanceTab() {
             data-color-mode={th.id}
             aria-pressed={theme === th.id}
             onClick={() => setTheme(th.id)}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: "16px",
-              borderRadius: "var(--ui-radius-md)",
-              border: theme === th.id ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-              backgroundColor: theme === th.id ? "var(--color-bg-hover)" : "transparent",
-              cursor: "pointer",
-              textAlign: "left",
-              color: "var(--color-text-primary)",
-            }}
+            className="settings-choice-card"
+            style={{ minWidth: 0, borderRadius: "var(--ui-radius-md)" }}
           >
-            <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>{t(th.labelKey)}</div>
-            <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{t(th.descKey)}</div>
+            <div className="settings-choice-card-title">{t(th.labelKey)}</div>
+            <div className="settings-choice-card-desc">{t(th.descKey)}</div>
           </button>
         ))}
       </div>
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "6px", marginTop: "32px" }}>
+      <h3 className="appearance-section-title appearance-section-title--spaced">
         {t("settings.messageTheme", "Message theme")}
       </h3>
-      <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
+      <p className="appearance-section-description">
         {t(
           "settings.messageThemeDesc",
           "Visual template for the message detail view. Also switchable from the palette icon inside a message.",
         )}
-      </div>
+      </p>
       <div
         role="radiogroup"
         aria-label={t("settings.messageTheme", "Message theme")}
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(min(250px, 100%), 1fr))",
-          gap: "8px",
+          gap: "10px",
         }}
       >
         {MESSAGE_THEMES.map((option) => (
@@ -151,41 +142,29 @@ export default function AppearanceTab() {
         ))}
       </div>
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+      <h3 className="appearance-section-title appearance-section-title--spaced">
         {t("settings.language")}
       </h3>
-      <div style={{ display: "flex", gap: "12px" }}>
+      <div className="settings-choice-grid">
         {LANGUAGES.map((l) => (
           <button
             key={l.id}
+            type="button"
+            aria-pressed={language === l.id}
             onClick={() => setLanguage(l.id)}
-            style={{
-              flex: 1,
-              padding: "16px",
-              borderRadius: "8px",
-              border: language === l.id ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-              backgroundColor: language === l.id ? "var(--color-bg-hover)" : "transparent",
-              cursor: "pointer",
-              textAlign: "left",
-              color: "var(--color-text-primary)",
-            }}
+            className="settings-choice-card"
           >
-            <div style={{ fontWeight: 600, fontSize: "13px" }}>{l.label}</div>
+            <div className="settings-choice-card-title">{l.label}</div>
           </button>
         ))}
       </div>
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+      <h3 className="appearance-section-title appearance-section-title--spaced">
         {t("settings.backgroundImage", "Background image")}
       </h3>
-      {!isFeatureAvailable("backgroundImage") ? <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{unavailableReason()}</p> : <div
-        style={{
-          border: "1px solid var(--color-border)",
-          borderRadius: "8px",
-          padding: "14px",
-          display: "grid",
-          gap: "12px",
-        }}
+      {!isFeatureAvailable("backgroundImage") ? <p className="appearance-section-description">{unavailableReason()}</p> : <div
+        className="settings-callout"
+        style={{ display: "grid", gap: "12px" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
           <div
@@ -194,7 +173,7 @@ export default function AppearanceTab() {
               width: "64px",
               height: "42px",
               flexShrink: 0,
-              borderRadius: "6px",
+              borderRadius: "var(--ui-radius-sm)",
               border: "1px solid var(--color-border)",
               backgroundColor: "var(--color-bg-secondary)",
               backgroundImage: backgroundImage ? `url("${backgroundImageUrl(backgroundImage.path)}")` : undefined,
@@ -234,19 +213,7 @@ export default function AppearanceTab() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "7px 12px",
-              borderRadius: "6px",
-              border: "1px solid var(--color-accent)",
-              backgroundColor: uploading ? "var(--color-bg-hover)" : "var(--color-accent)",
-              color: uploading ? "var(--color-text-secondary)" : "#fff",
-              cursor: uploading ? "default" : "pointer",
-              fontSize: "13px",
-              fontWeight: 600,
-            }}
+            className="settings-button settings-button--primary"
           >
             <Upload size={14} />
             {uploading ? t("common.saving", "Saving...") : t("settings.chooseBackgroundImage", "Choose background image")}
@@ -257,18 +224,7 @@ export default function AppearanceTab() {
               aria-label={t("settings.removeBackgroundImage", "Remove background image")}
               onClick={handleRemoveBackgroundImage}
               disabled={uploading}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "7px 12px",
-                borderRadius: "6px",
-                border: "1px solid var(--color-border)",
-                backgroundColor: "transparent",
-                color: "var(--color-text-secondary)",
-                cursor: uploading ? "default" : "pointer",
-                fontSize: "13px",
-              }}
+              className="settings-button"
             >
               <Trash2 size={14} />
               {t("common.remove", "Remove")}
@@ -289,16 +245,9 @@ export default function AppearanceTab() {
                     <button
                       key={fit.id}
                       type="button"
+                      aria-pressed={selected}
                       onClick={() => setBackgroundImageFit(fit.id)}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "6px",
-                        border: selected ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-                        backgroundColor: selected ? "var(--color-bg-hover)" : "transparent",
-                        color: "var(--color-text-primary)",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                      }}
+                      className={`settings-button${selected ? " settings-button--primary" : ""}`}
                     >
                       {t(fit.labelKey, fit.fallback)}
                     </button>
@@ -322,7 +271,7 @@ export default function AppearanceTab() {
         )}
 
         {error && (
-          <div role="alert" style={{ color: "#ef4444", fontSize: "12px" }}>
+          <div role="alert" style={{ color: "var(--color-error)", fontSize: "12px" }}>
             {error}
           </div>
         )}

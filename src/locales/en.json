@@ -1,19 +1,11 @@
 {
   "appThemes": {
     "title": "Interface theme",
-    "description": "Five visual directions for the same mailbox. Color mode and message templates stay independent.",
+    "description": "Unified Harbor Chartroom interface designed for comfortable reading and effortless scanning. Color mode and message templates stay independent.",
     "colorMode": "Color mode",
     "selected": "Selected",
-    "paper": "Quiet Paper",
-    "paperDesc": "Warm paper, serif headings and fine rules. A quiet place for long reads.",
-    "clay": "Warm Clay",
-    "clayDesc": "Terracotta warmth, soft corners and gently raised cards.",
-    "glass": "Midnight Glass",
-    "glassDesc": "Layered panels, electric blue and precise, compact information.",
-    "editorial": "Editorial",
-    "editorialDesc": "Magazine-like typography, bold rules and a red editorial mark.",
-    "minimal": "Minimal Tool",
-    "minimalDesc": "Neutral surfaces, tight rows and a single blue accent. Just the essentials."
+    "harbor": "Harbor Chartroom",
+    "harborDesc": "Layered chartroom panes, high-contrast reading surface, marine-cerulean focus, and terracotta privacy strip—adapting cleanly across light and dark modes."
   },
   "cloudDrafts": {
     "notice": "Autosave is encrypted on this device only; not synced to Gmail automatically. Upload saved changes explicitly. Sending a linked draft consumes its Gmail copy only after Gmail accepts the send. Do not edit the same draft in Gmail and Pebble at the same time.",
@@ -362,6 +354,8 @@
     "quitOnClose": "Quit app when window is closed",
     "folderCounts": "Folder Counts",
     "showUnreadCount": "Show unread count badges in sidebar",
+    "systemLabels": "System Labels",
+    "showSystemLabels": "Show system labels in sidebar (e.g. CATEGORY_*, IMPORTANT, STARRED, UNREAD)",
     "defaultMailClient": "Default Email Client",
     "setDefaultMailClient": "Set Pebble as default email app",
     "setDefaultMailClientHint": "Opens Windows Default Apps settings where you can select Pebble for email.",
@@ -471,6 +465,7 @@
   },
   "pendingOps": {
     "title": "Remote Writes",
+    "queueHeading": "Background write queue",
     "description": "Queued mail changes are retried in the background until the provider accepts them.",
     "accountFilter": "Account",
     "allAccounts": "All accounts",

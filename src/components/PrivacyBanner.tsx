@@ -28,44 +28,47 @@ export default function PrivacyBanner({ rendered, onLoadImages, onTrustSender, b
 
   return (
     <div className="privacy-banner">
-      <Shield size={14} className="privacy-banner-icon" />
+      <span className="privacy-banner-beacon" aria-hidden="true" />
+      <Shield size={14} className="privacy-banner-icon" aria-hidden="true" />
       {error && <span role="alert" style={{ width: "100%" }}>{error}</span>}
-      <span style={{ flex: 1 }}>
+      <span className="privacy-banner-text">
         {t("privacy.blocked", { items: parts.join(` ${t("privacy.and")} `) })}
       </span>
-      {rendered.images_blocked > 0 && (
-        <>
-          <button
-            className="privacy-banner-button"
-            onClick={onLoadImages}
-            disabled={busy}
-          >
-            {t("privacy.loadImages")}
-          </button>
-          <button
-            className="privacy-banner-button"
-            onClick={() => onTrustSender("images")}
-            disabled={busy}
-            title={t(
-              "privacy.trustImagesHint",
-              "Always load images from this sender. Trackers stay blocked.",
-            )}
-          >
-            {t("privacy.trustImages", "Trust images")}
-          </button>
-        </>
-      )}
-      <button
-        className="privacy-banner-button"
-        onClick={() => onTrustSender("all")}
-        disabled={busy}
-        title={t(
-          "privacy.trustAllHint",
-          "Fully trust this sender: load images and stop stripping trackers.",
+      <div className="privacy-banner-actions">
+        {rendered.images_blocked > 0 && (
+          <>
+            <button
+              className="privacy-banner-button"
+              onClick={onLoadImages}
+              disabled={busy}
+            >
+              {t("privacy.loadImages")}
+            </button>
+            <button
+              className="privacy-banner-button"
+              onClick={() => onTrustSender("images")}
+              disabled={busy}
+              title={t(
+                "privacy.trustImagesHint",
+                "Always load images from this sender. Trackers stay blocked.",
+              )}
+            >
+              {t("privacy.trustImages", "Trust images")}
+            </button>
+          </>
         )}
-      >
-        {t("privacy.trustAll", "Trust sender")}
-      </button>
+        <button
+          className="privacy-banner-button"
+          onClick={() => onTrustSender("all")}
+          disabled={busy}
+          title={t(
+            "privacy.trustAllHint",
+            "Fully trust this sender: load images and stop stripping trackers.",
+          )}
+        >
+          {t("privacy.trustAll", "Trust sender")}
+        </button>
+      </div>
     </div>
   );
 }

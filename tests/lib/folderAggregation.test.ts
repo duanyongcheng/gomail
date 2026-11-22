@@ -5,6 +5,7 @@ import {
   buildAllAccountsFolders,
   folderIdsForSelection,
   folderLeafName,
+  isAuxiliarySystemLabel,
   roleFromAllAccountsFolderId,
   sortFoldersForSidebar,
   unreadCountForFolder,
@@ -117,6 +118,77 @@ describe("folder aggregation", () => {
       "trash",
       "spam",
       "project",
+    ]);
+  });
+
+  it("hides auxiliary system labels by default while keeping mailbox roles and custom labels", () => {
+    const label = (
+      id: string,
+      role: Folder["role"],
+      isSystem: boolean,
+      name = id,
+    ): Folder => ({
+      id: `a1:label:${id}`,
+      account_id: "a1",
+      remote_id: id,
+      name,
+      folder_type: "label",
+      role,
+      parent_id: null,
+      color: null,
+      is_system: isSystem,
+      sort_order: 0,
+    });
+
+    const folders = [
+      label("INBOX", "inbox", true, "INBOX"),
+      label("SENT", "sent", true, "SENT"),
+      label("DRAFT", "drafts", true, "DRAFT"),
+      label("TRASH", "trash", true, "TRASH"),
+      label("SPAM", "spam", true, "SPAM"),
+      label("CATEGORY_FORUMS", null, true),
+      label("CATEGORY_PERSONAL", null, true),
+      label("CATEGORY_PROMOTIONS", null, true),
+      label("CATEGORY_SOCIAL", null, true),
+      label("CATEGORY_UPDATES", null, true),
+      label("CHAT", null, true),
+      label("IMPORTANT", null, true),
+      label("STARRED", null, true),
+      label("UNREAD", null, true),
+      label("Label_work", null, false, "Work"),
+    ];
+
+    expect(isAuxiliarySystemLabel(folders[0])).toBe(false);
+    expect(isAuxiliarySystemLabel(folders[5])).toBe(true);
+    expect(isAuxiliarySystemLabel(folders[folders.length - 1])).toBe(false);
+
+    expect(sortFoldersForSidebar(folders).map((f) => f.remote_id)).toEqual([
+      "INBOX",
+      "SENT",
+      "DRAFT",
+      "TRASH",
+      "SPAM",
+      "Label_work",
+    ]);
+
+    expect(
+      sortFoldersForSidebar(folders, { showSystemLabels: true }).map((f) => f.remote_id),
+    ).toEqual([
+      "INBOX",
+      "SENT",
+      "DRAFT",
+      "TRASH",
+      "SPAM",
+      "Label_work",
+      "CATEGORY_FORUMS",
+      "CATEGORY_PERSONAL",
+      "CATEGORY_PROMOTIONS",
+      "CATEGORY_SOCIAL",
+      "CATEGORY_UPDATES",
+      "CHAT",
+      "IMPORTANT",
+      "STARRED",
+      "UNREAD",
     ]);
   });
 });

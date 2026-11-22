@@ -56,6 +56,12 @@ export function shadowEmailCss(theme?: MessageTheme | null): string {
           scrollbar-color: var(--color-scrollbar-thumb) transparent;
           scrollbar-width: thin;
         }
+        pre.pebble-plain-text-email {
+          font-family: inherit;
+          font-size: inherit;
+          line-height: inherit;
+          margin: 0;
+        }
         pre::-webkit-scrollbar {
           width: 10px;
           height: 10px;

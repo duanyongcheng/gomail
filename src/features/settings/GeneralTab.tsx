@@ -130,23 +130,29 @@ export default function GeneralTab() {
 
   const showUnreadCount = useUIStore((s) => s.showFolderUnreadCount);
   const setShowUnreadCount = useUIStore((s) => s.setShowFolderUnreadCount);
+  const showSystemLabels = useUIStore((s) => s.showSystemLabels);
+  const setShowSystemLabels = useUIStore((s) => s.setShowSystemLabels);
 
   const toggleUnreadCount = useCallback(() => {
     setShowUnreadCount(!showUnreadCount);
   }, [showUnreadCount, setShowUnreadCount]);
 
+  const toggleSystemLabels = useCallback(() => {
+    setShowSystemLabels(!showSystemLabels);
+  }, [showSystemLabels, setShowSystemLabels]);
+
   return (
     <div>
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>
+      <h3 className="settings-section-title settings-section-title--first">
         {t("settings.realtimeMode", "Realtime Mode")}
       </h3>
-      <p style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "12px", marginTop: 0 }}>
+      <p className="settings-section-desc">
         {t("settings.realtimeModeDesc", "Choose how aggressively Pebble checks for new mail.")}
       </p>
       <div
         role="group"
         aria-label={t("settings.realtimeMode", "Realtime Mode")}
-        style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+        className="settings-choice-grid"
       >
         {REALTIME_OPTIONS.map((option) => {
           const selected = realtimeMode === option.mode;
@@ -158,22 +164,10 @@ export default function GeneralTab() {
               aria-label={label}
               aria-pressed={selected}
               onClick={() => setRealtimeMode(option.mode)}
-              style={{
-                flex: "1 1 180px",
-                minWidth: 0,
-                padding: "8px 10px",
-                borderRadius: "6px",
-                border: selected ? "2px solid var(--color-accent)" : "1px solid var(--color-border)",
-                backgroundColor: selected ? "var(--color-bg-hover)" : "transparent",
-                cursor: "pointer",
-                textAlign: "left",
-                color: "var(--color-text-primary)",
-              }}
+              className="settings-choice-card"
             >
-              <span style={{ display: "block", fontSize: "13px", fontWeight: selected ? 600 : 500, lineHeight: 1.3 }}>
-                {label}
-              </span>
-              <span style={{ display: "block", marginTop: "4px", fontSize: "12px", lineHeight: 1.35, color: "var(--color-text-secondary)" }}>
+              <span className="settings-choice-card-title">{label}</span>
+              <span className="settings-choice-card-desc">
                 {t(option.descriptionKey, option.descriptionFallback)}
               </span>
             </button>
@@ -181,19 +175,10 @@ export default function GeneralTab() {
         })}
       </div>
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+      <h3 className="settings-section-title">
         {t("settings.notifications")}
       </h3>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: "13px",
-          color: "var(--color-text-primary)",
-        }}
-      >
+      <label className="settings-checkbox-row">
         <input type="checkbox" disabled={!isFeatureAvailable("notifications")} title={unavailableReason()} checked={isFeatureAvailable("notifications") && notificationsEnabled} onChange={toggleNotifications} />
         <span>{t("settings.enableNotifications")}</span>
       </label>
@@ -203,38 +188,20 @@ export default function GeneralTab() {
         onClick={handleTestNotification}
         disabled={!isFeatureAvailable("notifications") || !notificationsEnabled || testingNotification}
         title={!isFeatureAvailable("notifications") ? unavailableReason() : undefined}
-        style={{
-          marginTop: "12px",
-          padding: "8px 12px",
-          borderRadius: "6px",
-          border: "1px solid var(--color-border)",
-          backgroundColor: notificationsEnabled ? "var(--color-bg)" : "var(--color-bg-hover)",
-          color: notificationsEnabled ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-          cursor: notificationsEnabled && !testingNotification ? "pointer" : "not-allowed",
-          fontSize: "13px",
-        }}
+        className="settings-button"
+        style={{ marginTop: "12px" }}
       >
         {testingNotification
           ? t("settings.testNotificationSending", "Sending test notification...")
           : t("settings.testNotification", "Send test notification")}
       </button>
 
-      {!isFeatureAvailable("notifications") && <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{unavailableReason()}</p>}
+      {!isFeatureAvailable("notifications") && <p className="settings-section-desc" style={{ marginTop: "8px" }}>{unavailableReason()}</p>}
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+      <h3 className="settings-section-title">
         {t("settings.startupBehavior", "Startup Behavior")}
       </h3>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: "13px",
-          color: "var(--color-text-primary)",
-          marginBottom: "10px",
-        }}
-      >
+      <label className="settings-checkbox-row">
         <input
           type="checkbox"
           disabled={!isFeatureAvailable("autostart")}
@@ -244,16 +211,7 @@ export default function GeneralTab() {
         />
         <span>{t("settings.launchAtStartup", "Launch Pebble at system startup")}</span>
       </label>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: "13px",
-          color: "var(--color-text-primary)",
-        }}
-      >
+      <label className="settings-checkbox-row">
         <input
           type="checkbox"
           disabled={!isFeatureAvailable("startHidden")}
@@ -264,21 +222,12 @@ export default function GeneralTab() {
         <span>{t("settings.startHiddenToTray", "Start hidden to tray")}</span>
       </label>
 
-      {(!isFeatureAvailable("autostart") || !isFeatureAvailable("startHidden")) && <p style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>{unavailableReason()}</p>}
+      {(!isFeatureAvailable("autostart") || !isFeatureAvailable("startHidden")) && <p className="settings-section-desc" style={{ marginTop: "8px" }}>{unavailableReason()}</p>}
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+      <h3 className="settings-section-title">
         {t("settings.closeBehavior", "Close Behavior")}
       </h3>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: "13px",
-          color: "var(--color-text-primary)",
-        }}
-      >
+      <label className="settings-checkbox-row">
         <input
           type="checkbox"
           checked={quitOnClose}
@@ -287,19 +236,10 @@ export default function GeneralTab() {
         <span>{t("settings.quitOnClose", "Quit app when window is closed")}</span>
       </label>
 
-      <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+      <h3 className="settings-section-title">
         {t("settings.folderCounts", "Folder Counts")}
       </h3>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: "13px",
-          color: "var(--color-text-primary)",
-        }}
-      >
+      <label className="settings-checkbox-row">
         <input
           type="checkbox"
           checked={showUnreadCount}
@@ -308,9 +248,21 @@ export default function GeneralTab() {
         <span>{t("settings.showUnreadCount", "Show unread count badges in sidebar")}</span>
       </label>
 
+      <h3 className="settings-section-title">
+        {t("settings.systemLabels", "System Labels")}
+      </h3>
+      <label className="settings-checkbox-row">
+        <input
+          type="checkbox"
+          checked={showSystemLabels}
+          onChange={toggleSystemLabels}
+        />
+        <span>{t("settings.showSystemLabels", "Show system labels in sidebar (e.g. CATEGORY_*, IMPORTANT, STARRED, UNREAD)")}</span>
+      </label>
+
       {navigator.userAgent.includes("Windows") && (
         <>
-          <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "16px", marginTop: "32px" }}>
+          <h3 className="settings-section-title">
             {t("settings.defaultMailClient", "Default Email Client")}
           </h3>
           <button
@@ -321,20 +273,11 @@ export default function GeneralTab() {
               if (!isCommandAvailable("open_default_mail_settings")) return;
               void openDefaultMailSettings().catch(() => addToast({ message: unavailableReason(), type: "error" }));
             }}
-            style={{
-              padding: "8px 18px",
-              fontSize: "13px",
-              fontWeight: 500,
-              border: "1px solid var(--color-border)",
-              borderRadius: "6px",
-              cursor: "pointer",
-              background: "var(--color-bg-secondary)",
-              color: "var(--color-text-primary)",
-            }}
+            className="settings-button"
           >
             {t("settings.setDefaultMailClient", "Set Pebble as default email app")}
           </button>
-          <p style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "6px" }}>
+          <p className="settings-section-desc" style={{ marginTop: "8px" }}>
             {t("settings.setDefaultMailClientHint", "Opens Windows Default Apps settings where you can select Pebble for email.")}
           </p>
         </>

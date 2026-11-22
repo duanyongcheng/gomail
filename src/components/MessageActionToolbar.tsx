@@ -214,27 +214,33 @@ export default function MessageActionToolbar({
         ))}
         {/* Kanban button + picker */}
         <div style={{ position: "relative" }}>
-          <button
-            disabled={!isFeatureAvailable("kanban")}
-            onClick={() => { if (isFeatureAvailable("kanban")) setShowKanbanPicker(true); }}
-            title={isFeatureAvailable("kanban") ? t("messageActions.addToKanban") : unavailableReason()}
-            aria-label={t("messageActions.addToKanban")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "6px 8px",
-              borderRadius: "4px",
-              color: inKanban ? "var(--color-accent)" : "var(--color-text-secondary)",
-              display: "flex",
-              alignItems: "center",
-              transition: "background-color 0.12s ease, color 0.12s ease",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-bg-hover)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-          >
-            <LayoutGrid size={16} />
-          </button>
+          {(() => {
+            const kanbanAvailable = isFeatureAvailable("kanban");
+            return (
+              <button
+                disabled={!kanbanAvailable}
+                onClick={() => { if (kanbanAvailable) setShowKanbanPicker(true); }}
+                title={kanbanAvailable ? t("messageActions.addToKanban") : unavailableReason()}
+                aria-label={t("messageActions.addToKanban")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: kanbanAvailable ? "pointer" : "default",
+                  padding: "6px 8px",
+                  borderRadius: "4px",
+                  color: inKanban ? "var(--color-accent)" : "var(--color-text-secondary)",
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "background-color 0.12s ease, color 0.12s ease",
+                  opacity: kanbanAvailable ? 1 : 0.32,
+                }}
+                onMouseEnter={kanbanAvailable ? (e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--color-bg-hover)"; } : undefined}
+                onMouseLeave={kanbanAvailable ? (e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; } : undefined}
+              >
+                <LayoutGrid size={16} />
+              </button>
+            );
+          })()}
           {isFeatureAvailable("kanban") && showKanbanPicker && (
             <div
               onClick={(e) => e.stopPropagation()}

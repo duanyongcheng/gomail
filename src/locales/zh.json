@@ -1,19 +1,11 @@
 {
   "appThemes": {
     "title": "界面主题",
-    "description": "同一个邮箱，五种视觉风格。明暗模式与邮件阅读模板可独立选择。",
+    "description": "统一采用海图阅览室界面设计，兼顾清爽阅读与清晰扫描。明暗模式与邮件阅读模板仍可独立选择。",
     "colorMode": "明暗模式",
     "selected": "使用中",
-    "paper": "静纸",
-    "paperDesc": "暖白纸、衬线标题与细分隔线，为长邮件留一处安静。",
-    "clay": "暖陶",
-    "clayDesc": "陶土暖色、柔和圆角与轻轻浮起的卡片。",
-    "glass": "午夜玻璃",
-    "glassDesc": "分层面板、电光蓝与紧凑精确的信息呈现。",
-    "editorial": "编辑部",
-    "editorialDesc": "杂志式排版、醒目粗线与一抹编辑红。",
-    "minimal": "极简工具",
-    "minimalDesc": "中性界面、紧凑列表与单一蓝色强调，只保留必要。"
+    "harbor": "海图阅览室",
+    "harborDesc": "海图灰蓝层次分栏、高对比阅读区、海蓝主强调与赤陶隐私提示条，随明暗模式自适应切换。"
   },
   "cloudDrafts": {
     "notice": "自动保存仅在本机加密，不会自动同步 Gmail。请主动上传已保存的修改；发送已关联的草稿时，Gmail 接受发送后才会移除其云端副本。请勿同时在 Gmail 和 Pebble 编辑同一份草稿。",
@@ -362,6 +354,8 @@
     "quitOnClose": "关闭窗口时退出应用",
     "folderCounts": "文件夹计数",
     "showUnreadCount": "在侧边栏显示未读数徽章",
+    "systemLabels": "系统标签",
+    "showSystemLabels": "在侧边栏显示系统标签（如 CATEGORY_*、IMPORTANT、STARRED、UNREAD）",
     "defaultMailClient": "默认邮件客户端",
     "setDefaultMailClient": "将 Pebble 设为默认邮件应用",
     "setDefaultMailClientHint": "打开 Windows 默认应用设置，在其中选择 Pebble 作为默认邮件应用。",
@@ -471,6 +465,7 @@
   },
   "pendingOps": {
     "title": "远端写回",
+    "queueHeading": "后台写回队列",
     "description": "已排队的邮件变更会在后台重试，直到服务商接受为止。",
     "accountFilter": "账户",
     "allAccounts": "全部账户",
