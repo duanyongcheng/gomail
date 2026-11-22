@@ -26,6 +26,7 @@ import { useConfirmStore } from "../stores/confirm.store";
 import { useMailStore } from "../stores/mail.store";
 import { useShortcutStore } from "../stores/shortcut.store";
 import { useToastStore } from "../stores/toast.store";
+import { isUpdateReminderVisible, useUpdateStore } from "../stores/update.store";
 import { useAccountsQuery, useFoldersForAccountsQuery, invalidateUnreadViews } from "../hooks/queries";
 import { useFolderUnreadCountsForAccounts } from "../hooks/queries/useFolderUnreadCounts";
 import { useAccountUnreadCounts } from "../hooks/queries/useAccountUnreadCounts";
@@ -108,6 +109,7 @@ export default function Sidebar() {
 
   const showUnread = useUIStore((s) => s.showFolderUnreadCount);
   const showSystemLabels = useUIStore((s) => s.showSystemLabels);
+  const hasUpdateDot = useUpdateStore((s) => isUpdateReminderVisible(s));
   const { data: accounts = EMPTY_ACCOUNTS } = useAccountsQuery();
 
   // Every mailbox's folders are read at once, because every mailbox is drawn at
@@ -746,6 +748,7 @@ export default function Sidebar() {
           label={t("sidebar.settings", "Settings")}
           isActive={activeView === "settings"}
           collapsed={sidebarCollapsed}
+          indicatorDot={hasUpdateDot}
           onClick={() => safeSetActiveView("settings")}
         />
         <SidebarButton
@@ -777,7 +780,7 @@ export default function Sidebar() {
 // Reusable sidebar row. Hover, selection and focus come from `.sidebar-row`, so
 // every destination in the sidebar behaves the same way.
 function SidebarButton({
-  icon, label, badge, isActive, collapsed, onClick, disabled, className, trailing,
+  icon, label, badge, isActive, collapsed, onClick, disabled, className, trailing, indicatorDot,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -790,6 +793,8 @@ function SidebarButton({
   className?: string;
   /** Rendered after the label, before the count. */
   trailing?: React.ReactNode;
+  /** Subtle status dot (e.g. update available on Settings). */
+  indicatorDot?: boolean;
 }) {
   const classes = ["sidebar-row"];
   if (isActive) classes.push("sidebar-row--active");
@@ -811,7 +816,9 @@ function SidebarButton({
         {icon}
         {/* With the labels gone the count has nowhere to go, so a dot carries
             the one bit that still matters: this folder has mail waiting. */}
-        {collapsed && badge != null && badge > 0 && <span className="sidebar-unread-dot" />}
+        {(indicatorDot || (collapsed && badge != null && badge > 0)) && (
+          <span className="sidebar-unread-dot" />
+        )}
       </span>
       {!collapsed && <span className="sidebar-row-label">{label}</span>}
       {!collapsed && trailing}

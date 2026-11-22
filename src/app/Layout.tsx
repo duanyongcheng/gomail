@@ -22,6 +22,7 @@ import { useNotificationOpenNavigation } from "./useNotificationOpenNavigation";
 import { useCloseToBackground } from "./useCloseToBackground";
 import { useTrayI18n } from "./useTrayI18n";
 import { useMailtoOpen } from "./useMailtoOpen";
+import { useAutoUpdateCheck } from "./useAutoUpdateCheck";
 import AppBackground from "./AppBackground";
 
 const loadSettingsView = () => import("../features/settings/SettingsView");
@@ -99,6 +100,7 @@ export default function Layout() {
   useCloseToBackground();
   useTrayI18n();
   useMailtoOpen();
+  useAutoUpdateCheck();
 
   // Re-register commands when language changes
   useEffect(() => {
@@ -223,8 +225,8 @@ class ViewErrorBoundary extends Component<
             onClick={() => this.setState({ error: null })}
             style={{
               padding: "6px 16px", cursor: "pointer",
-              backgroundColor: "var(--color-accent)", color: "#fff",
-              border: "none", borderRadius: 6, fontSize: 13,
+              backgroundColor: "var(--color-accent)", color: "var(--color-accent-contrast)",
+              border: "none", borderRadius: "var(--ui-radius-md)", fontSize: 13, fontWeight: 600,
             }}
           >
             {i18next.t("errorBoundary.retry", "Retry")}

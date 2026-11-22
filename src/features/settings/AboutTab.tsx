@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
-import { invoke } from "@tauri-apps/api/core";
-import { Copy, RefreshCw, X } from "lucide-react";
+import { CheckCircle2, Copy, Download, ExternalLink, RefreshCw, RotateCw, X } from "lucide-react";
 import iconUrl from "@/assets/app-icon.png";
 import { readAppLog, type AppLogSnapshot } from "@/lib/api";
 import { openExternalLink } from "@/lib/external-links";
 import { isCommandAvailable, unavailableReason } from "@/lib/availability";
+import { useUpdateStore } from "@/stores/update.store";
 
 const REPO = "duanyongcheng/pebble-go";
 const RELEASES_URL = `https://github.com/${REPO}/releases`;
@@ -16,11 +16,18 @@ function openUrl(url: string) {
   void openExternalLink(url);
 }
 
-interface UpdateState {
-  status: "idle" | "checking" | "latest" | "available" | "error";
-  latestVersion?: string;
-  releaseUrl?: string;
-  error?: string;
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function formatReleaseDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString();
 }
 
 type DiagnosticLogState =
@@ -34,17 +41,39 @@ const DIAGNOSTIC_LOG_MAX_BYTES = 64 * 1024;
 
 export default function AboutTab() {
   const { t } = useTranslation();
-  const updatesAvailable = isCommandAvailable("check_for_update");
   const diagnosticsAvailable = isCommandAvailable("read_app_log");
-  const [appVersion, setAppVersion] = useState<string>("");
-  const [update, setUpdate] = useState<UpdateState>({ status: "idle" });
+  const [fallbackVersion, setFallbackVersion] = useState<string>("");
   const [diagnosticLog, setDiagnosticLog] = useState<DiagnosticLogState | null>(null);
   const diagnosticClickCount = useRef(0);
   const diagnosticClickTimer = useRef<number | null>(null);
 
+  const currentVersion = useUpdateStore((s) => s.currentVersion);
+  const canAutoUpdate = useUpdateStore((s) => s.canAutoUpdate);
+  const updateState = useUpdateStore((s) => s.state);
+  const availableVersion = useUpdateStore((s) => s.availableVersion);
+  const releaseNotes = useUpdateStore((s) => s.releaseNotes);
+  const releaseDate = useUpdateStore((s) => s.releaseDate);
+  const releaseUrl = useUpdateStore((s) => s.releaseUrl);
+  const installedVersion = useUpdateStore((s) => s.installedVersion);
+  const downloaded = useUpdateStore((s) => s.downloaded);
+  const total = useUpdateStore((s) => s.total);
+  const percent = useUpdateStore((s) => s.percent);
+  const updateError = useUpdateStore((s) => s.error);
+  const autoCheckUpdates = useUpdateStore((s) => s.autoCheckUpdates);
+  const skippedVersion = useUpdateStore((s) => s.skippedVersion);
+  const hydrateStatus = useUpdateStore((s) => s.hydrateStatus);
+  const checkForUpdates = useUpdateStore((s) => s.checkForUpdates);
+  const installUpdate = useUpdateStore((s) => s.installUpdate);
+  const relaunchToUpdate = useUpdateStore((s) => s.relaunchToUpdate);
+  const setAutoCheckUpdates = useUpdateStore((s) => s.setAutoCheckUpdates);
+  const skipVersion = useUpdateStore((s) => s.skipVersion);
+
   useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => setAppVersion("0.1.5"));
-  }, []);
+    void hydrateStatus();
+    getVersion().then((v) => {
+      if (v) setFallbackVersion(v);
+    }).catch(() => {});
+  }, [hydrateStatus]);
 
   useEffect(() => () => {
     if (diagnosticClickTimer.current !== null) {
@@ -52,31 +81,9 @@ export default function AboutTab() {
     }
   }, []);
 
-  async function handleCheckUpdate() {
-    if (!updatesAvailable) return;
-    setUpdate({ status: "checking" });
-    try {
-      const info = await invoke<{
-        latest_version: string;
-        release_url: string;
-        is_newer: boolean;
-      }>("check_for_update", { currentVersion: appVersion });
-      if (info.is_newer) {
-        setUpdate({
-          status: "available",
-          latestVersion: info.latest_version,
-          releaseUrl: info.release_url,
-        });
-      } else {
-        setUpdate({ status: "latest", latestVersion: info.latest_version });
-      }
-    } catch (err) {
-      setUpdate({
-        status: "error",
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
+  const appVersion = currentVersion || fallbackVersion;
+  const formattedDate = formatReleaseDate(releaseDate);
+  const isBusy = updateState === "checking" || updateState === "downloading";
 
   async function loadDiagnosticLog() {
     if (!diagnosticsAvailable) return;
@@ -114,20 +121,8 @@ export default function AboutTab() {
 
   return (
     <div>
-      <h2
-        style={{
-          fontSize: "18px",
-          fontWeight: 600,
-          color: "var(--color-text-primary)",
-          marginTop: 0,
-          marginBottom: "24px",
-        }}
-      >
-        {t("about.title", "About")}
-      </h2>
-
       {/* App info */}
-      <div style={{ marginBottom: "24px" }}>
+      <div style={{ marginBottom: "28px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" }}>
           <button
             type="button"
@@ -150,14 +145,14 @@ export default function AboutTab() {
               src={iconUrl}
               alt=""
               draggable={false}
-              style={{ width: "56px", height: "56px", borderRadius: "12px" }}
+              style={{ width: "56px", height: "56px", objectFit: "contain" }}
             />
           </button>
           <div>
-            <div style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+            <div style={{ fontSize: "17px", fontWeight: 650, color: "var(--color-text-primary)" }}>
               Pebble Go
             </div>
-            <div style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
+            <div style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginTop: "2px", fontVariantNumeric: "tabular-nums" }}>
               {t("about.version", "Version")} {appVersion || "..."}
             </div>
           </div>
@@ -166,13 +161,13 @@ export default function AboutTab() {
         <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7, margin: "0 0 8px" }}>
           {t(
             "about.goDescription",
-            "A local-first Gmail desktop client built with Go, MyGO and React. Mail, search and encrypted drafts stay on your device. Sync and queued Gmail writes contact your provider; clicked web links open in your default browser.",
+            "A local-first Gmail desktop client built with Go, MyGO and React. Mail, search and encrypted drafts stay on your device. Sync, queued writes and optional signed update checks contact only their configured endpoints; clicked web links open in your default browser.",
           )}
         </p>
         <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.7, margin: "0 0 8px" }}>
           {t(
             "about.goFeatures",
-            "Supports Gmail, local search, conversations, encrypted local drafts, explicit Gmail draft copies and a durable send outbox. Other providers, Kanban, snooze, rules, AI, translation and backup are not available yet.",
+            "Supports Gmail, Outlook, IMAP/POP3, local search, conversations, encrypted local drafts, explicit Gmail draft copies, durable send outbox, and signed incremental updates.",
           )}
         </p>
         <p style={{ fontSize: "12px", color: "var(--color-text-tertiary, var(--color-text-secondary))", lineHeight: 1.5, margin: 0 }}>
@@ -180,96 +175,234 @@ export default function AboutTab() {
         </p>
       </div>
 
-      {/* Check for updates */}
-      <div style={{ marginBottom: "24px" }}>
-        <h3
-          style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            marginTop: 0,
-            marginBottom: "12px",
-          }}
-        >
+      {/* Updates */}
+      <div style={{ marginBottom: "28px" }}>
+        <h3 className="settings-section-title settings-section-title--first" style={{ marginBottom: "12px" }}>
           {t("about.updates", "Updates")}
         </h3>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <label className="settings-checkbox-row" style={{ marginBottom: "14px" }}>
+          <input
+            type="checkbox"
+            checked={autoCheckUpdates}
+            onChange={(e) => setAutoCheckUpdates(e.target.checked)}
+          />
+          <span>{t("about.autoCheckUpdates", "Automatically check for updates")}</span>
+        </label>
+
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
           <button
             type="button"
             className="settings-button"
-            onClick={handleCheckUpdate}
-            disabled={!updatesAvailable || update.status === "checking"}
-            title={!updatesAvailable ? unavailableReason() : undefined}
+            onClick={() => void checkForUpdates({ manual: true })}
+            disabled={isBusy || updateState === "installed"}
             style={{
-              cursor: update.status === "checking" ? "wait" : undefined,
+              cursor: updateState === "checking" ? "wait" : undefined,
             }}
           >
-            {update.status === "checking"
+            <RefreshCw
+              size={14}
+              aria-hidden="true"
+              style={{ animation: updateState === "checking" ? "spin 0.9s linear infinite" : undefined }}
+            />
+            {updateState === "checking"
               ? t("about.checking", "Checking...")
               : t("about.checkUpdate", "Check for updates")}
           </button>
 
-          {update.status === "latest" && (
-            <span style={{ fontSize: "13px", color: "var(--color-accent)" }}>
+          {updateState === "up_to_date" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--color-success)" }}>
+              <CheckCircle2 size={14} aria-hidden="true" />
               {t("about.upToDate", "You're on the latest version")}
             </span>
           )}
         </div>
 
-        {!updatesAvailable && (
-          <p style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
-            {unavailableReason()}
-          </p>
-        )}
+        {updateState === "available" && availableVersion && (
+          <div className="settings-callout about-update-card" style={{ marginTop: "14px" }}>
+            <div className="about-update-card-head">
+              <div>
+                <div className="about-update-card-title">
+                  {t("about.newVersion", "New version available: {{version}}", {
+                    version: `v${availableVersion}`,
+                  })}
+                </div>
+                <div className="about-update-card-meta">
+                  {formattedDate && <span>{formattedDate}</span>}
+                  {skippedVersion === availableVersion && (
+                    <span>{t("about.versionSkipped", "Skipped for background reminders")}</span>
+                  )}
+                </div>
+              </div>
+              <span className="about-update-badge">
+                {canAutoUpdate
+                  ? t("about.incrementalSupported", "Incremental update")
+                  : t("about.manualUpdateBadge", "Manual download")}
+              </span>
+            </div>
 
-        {update.status === "available" && (
-          <div
-            className="settings-callout"
-            style={{
-              marginTop: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-            }}
-          >
-            <span>
-              {t("about.newVersion", "New version available: {{version}}", {
-                version: update.latestVersion,
-              })}
-            </span>
-            <button
-              type="button"
-              className="settings-button settings-button--primary"
-              onClick={() => openUrl(update.releaseUrl || RELEASES_URL)}
-            >
-              {t("about.download", "Download")}
-            </button>
+            <p className="about-update-hint">
+              {canAutoUpdate
+                ? t(
+                    "about.incrementalHint",
+                    "Downloads only the signed delta patch when available, verifies its signature, and installs cleanly for restart.",
+                  )
+                : t(
+                    "about.manualHint",
+                    "This installation cannot update itself (for example a package-manager or read-only install). Download the latest installer from GitHub Releases.",
+                  )}
+            </p>
+
+            {releaseNotes && (
+              <pre className="about-release-notes scroll-region">{releaseNotes}</pre>
+            )}
+
+            <div className="about-update-actions">
+              {canAutoUpdate ? (
+                <button
+                  type="button"
+                  className="settings-button settings-button--primary"
+                  onClick={() => void installUpdate()}
+                >
+                  <Download size={14} aria-hidden="true" />
+                  {t("about.downloadAndInstall", "Download & install")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="settings-button settings-button--primary"
+                  onClick={() => openUrl(releaseUrl || RELEASES_URL)}
+                >
+                  <ExternalLink size={14} aria-hidden="true" />
+                  {t("about.download", "Download")}
+                </button>
+              )}
+
+              {canAutoUpdate && (
+                <button
+                  type="button"
+                  className="settings-button"
+                  onClick={() => openUrl(releaseUrl || RELEASES_URL)}
+                >
+                  <ExternalLink size={14} aria-hidden="true" />
+                  {t("about.viewRelease", "View release")}
+                </button>
+              )}
+
+              {skippedVersion !== availableVersion && (
+                <button
+                  type="button"
+                  className="settings-button"
+                  onClick={() => skipVersion(availableVersion)}
+                >
+                  {t("about.skipVersion", "Skip this version")}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        {update.status === "error" && (
+        {updateState === "downloading" && (
+          <div className="settings-callout about-update-card" style={{ marginTop: "14px" }}>
+            <div className="about-update-card-head">
+              <div className="about-update-card-title">
+                {t("about.downloadingVersion", "Downloading v{{version}}...", {
+                  version: availableVersion ?? "",
+                })}
+              </div>
+              <span className="about-update-progress-text">
+                {total > 0
+                  ? `${formatBytes(downloaded)} / ${formatBytes(total)} · ${percent}%`
+                  : `${percent}%`}
+              </span>
+            </div>
+            <div
+              className="about-update-progress-track"
+              role="progressbar"
+              aria-label={t("about.downloadProgressLabel", "Update download progress")}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+            >
+              <div className="about-update-progress-fill" style={{ width: `${percent}%` }} />
+            </div>
+            <p className="about-update-hint" style={{ margin: 0 }}>
+              {t(
+                "about.verifyingHint",
+                "Verifying Ed25519 signature and preparing update without interrupting your current session.",
+              )}
+            </p>
+          </div>
+        )}
+
+        {updateState === "installed" && installedVersion && (
+          <div className="settings-callout about-update-card" style={{ marginTop: "14px" }}>
+            <div className="about-update-card-head">
+              <div className="about-update-card-title" style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
+                <CheckCircle2 size={16} aria-hidden="true" style={{ color: "var(--color-success)" }} />
+                {t("about.installedTitle", "v{{version}} is ready to install", {
+                  version: installedVersion,
+                })}
+              </div>
+            </div>
+            <p className="about-update-hint">
+              {t(
+                "about.installedHint",
+                "The signed update has been verified and staged. Restart Pebble Go now, or keep working and apply it automatically next time you launch.",
+              )}
+            </p>
+            <div className="about-update-actions">
+              <button
+                type="button"
+                className="settings-button settings-button--primary"
+                onClick={() => void relaunchToUpdate()}
+              >
+                <RotateCw size={14} aria-hidden="true" />
+                {t("about.restartNow", "Restart now")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {updateState === "error" && updateError && (
           <div
-            className="settings-callout settings-callout--signal"
-            style={{ marginTop: "12px" }}
+            role="alert"
+            className="settings-callout settings-callout--signal about-update-card"
+            style={{ marginTop: "14px" }}
           >
-            {t("about.checkFailed", "Failed to check for updates")}: {update.error}
+            <div>
+              {t("about.checkFailed", "Failed to check for updates")}: {updateError}
+            </div>
+            <div className="about-update-actions">
+              <button
+                type="button"
+                className="settings-button"
+                onClick={() => {
+                  if (availableVersion && canAutoUpdate) {
+                    void installUpdate();
+                  } else {
+                    void checkForUpdates({ manual: true });
+                  }
+                }}
+              >
+                {t("common.retry", "Retry")}
+              </button>
+              <button
+                type="button"
+                className="settings-button"
+                onClick={() => openUrl(releaseUrl || RELEASES_URL)}
+              >
+                <ExternalLink size={14} aria-hidden="true" />
+                {t("about.download", "Download")}
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* Links */}
       <div>
-        <h3
-          style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            marginTop: 0,
-            marginBottom: "12px",
-          }}
-        >
+        <h3 className="settings-section-title" style={{ marginTop: 0, marginBottom: "12px" }}>
           {t("about.links", "Links")}
         </h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>

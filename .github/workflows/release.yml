@@ -79,6 +79,8 @@ jobs:
     env:
       CGO_ENABLED: "0"
       PEBBLE_VERSION: ${{ needs.prepare.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -95,7 +97,7 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build macOS bundles and DMGs
+      - name: Build macOS bundles, DMGs, and signed updates
         run: go tool mygo build -platform darwin/arm64,darwin/amd64 -o build -sign - -skip-notarize
 
       - name: Verify app bundle signatures
@@ -107,15 +109,25 @@ jobs:
       - name: Collect macOS release artifacts
         run: |
           set -euo pipefail
+          shopt -s nullglob
           mkdir -p dist-release
-          cp build/darwin-arm64/*.dmg dist-release/
-          cp build/darwin-amd64/*.dmg dist-release/
+          for target in darwin-arm64 darwin-amd64; do
+            files=(
+              build/"$target"/*.dmg
+              build/"$target"/*.tar.gz
+              build/"$target"/*.delta
+              build/"$target"/update-*.json
+            )
+            if [[ "${#files[@]}" -gt 0 ]]; then
+              cp "${files[@]}" dist-release/
+            fi
+          done
           ls -la dist-release
 
       - uses: actions/upload-artifact@v4
         with:
           name: pebble-go-macos
-          path: dist-release/*.dmg
+          path: dist-release/*
           if-no-files-found: error
 
   windows:
@@ -125,6 +137,8 @@ jobs:
     env:
       CGO_ENABLED: "0"
       PEBBLE_VERSION: ${{ needs.prepare.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -141,7 +155,7 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build Windows NSIS installers
+      - name: Build Windows NSIS installers and signed updates
         run: go tool mygo build -platform windows/amd64,windows/arm64 -o build
 
       - name: Collect Windows release artifacts
@@ -149,14 +163,17 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path dist-release | Out-Null
-          Copy-Item "build/windows-amd64/*Setup*.exe" dist-release/
-          Copy-Item "build/windows-arm64/*Setup*.exe" dist-release/
+          foreach ($target in @("windows-amd64", "windows-arm64")) {
+            foreach ($pattern in @("*Setup*.exe", "*.tar.gz", "*.delta", "update-*.json")) {
+              Get-ChildItem -Path "build/$target/$pattern" -ErrorAction SilentlyContinue | Copy-Item -Destination dist-release/
+            }
+          }
           Get-ChildItem dist-release
 
       - uses: actions/upload-artifact@v4
         with:
           name: pebble-go-windows
-          path: dist-release/*.exe
+          path: dist-release/*
           if-no-files-found: error
 
   linux:
@@ -166,6 +183,8 @@ jobs:
     env:
       CGO_ENABLED: "0"
       PEBBLE_VERSION: ${{ needs.prepare.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -182,23 +201,34 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build Linux packages
+      - name: Build Linux packages and signed updates
         run: go tool mygo build -platform linux/amd64,linux/arm64 -o build
 
       - name: Collect Linux release artifacts
         run: |
           set -euo pipefail
+          shopt -s nullglob
           mkdir -p dist-release
-          cp build/linux-amd64/*.deb build/linux-amd64/*.tar.gz dist-release/
-          cp build/linux-arm64/*.deb build/linux-arm64/*.tar.gz dist-release/
+          for target in linux-amd64 linux-arm64; do
+            files=(
+              build/"$target"/*.deb
+              build/"$target"/*.tar.gz
+              build/"$target"/*.delta
+              build/"$target"/update-*.json
+            )
+            if [[ "${#files[@]}" -gt 0 ]]; then
+              cp "${files[@]}" dist-release/
+            fi
+          done
+          if [[ -f build/linux-amd64/install.sh ]]; then
+            cp build/linux-amd64/install.sh dist-release/install.sh
+          fi
           ls -la dist-release
 
       - uses: actions/upload-artifact@v4
         with:
           name: pebble-go-linux
-          path: |
-            dist-release/*.deb
-            dist-release/*.tar.gz
+          path: dist-release/*
           if-no-files-found: error
 
   publish:
@@ -223,12 +253,15 @@ jobs:
           exes=(*.exe)
           debs=(*.deb)
           tarballs=(*.tar.gz)
-          if [[ "${#dmgs[@]}" -lt 2 || "${#exes[@]}" -lt 2 || "${#debs[@]}" -lt 2 || "${#tarballs[@]}" -lt 2 ]]; then
-            echo "Missing expected platform artifacts (dmg=${#dmgs[@]}, exe=${#exes[@]}, deb=${#debs[@]}, tar.gz=${#tarballs[@]})" >&2
+          deltas=(*.delta)
+          manifests=(update-*.json)
+          scripts=(install.sh)
+          if [[ "${#dmgs[@]}" -lt 2 || "${#exes[@]}" -lt 2 || "${#debs[@]}" -lt 2 || "${#tarballs[@]}" -lt 6 || "${#manifests[@]}" -lt 6 ]]; then
+            echo "Missing expected platform or updater artifacts (dmg=${#dmgs[@]}, exe=${#exes[@]}, deb=${#debs[@]}, tar.gz=${#tarballs[@]}, manifests=${#manifests[@]})" >&2
             ls -la
             exit 1
           fi
-          files=("${dmgs[@]}" "${exes[@]}" "${debs[@]}" "${tarballs[@]}")
+          files=("${dmgs[@]}" "${exes[@]}" "${debs[@]}" "${tarballs[@]}" "${deltas[@]}" "${manifests[@]}" "${scripts[@]}")
           sha256sum "${files[@]}" > SHA256SUMS.txt
           sha256sum --check --strict SHA256SUMS.txt
           cat SHA256SUMS.txt
@@ -247,5 +280,5 @@ jobs:
               --title "Pebble Go $RELEASE_TAG" \
               --generate-notes
           fi
-          gh release upload "$RELEASE_TAG" release-artifacts/* --repo "$GH_REPO"
+          gh release upload "$RELEASE_TAG" release-artifacts/* --clobber --repo "$GH_REPO"
           gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --draft=false

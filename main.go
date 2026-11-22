@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	stdruntime "runtime"
 	"sync"
 
 	"github.com/duanyongcheng/pebble-go/internal/app"
@@ -25,6 +26,9 @@ var outboxChanged = mygo.NewEvent[struct{}]("mail:outbox-changed")
 var foldersChanged = mygo.NewEvent[app.AccountRequest]("mail:folders-changed")
 var accountChanged = mygo.NewEvent[app.AccountRequest]("mail:account-changed")
 var trustChanged = mygo.NewEvent[app.SenderRequest]("mail:trusted-senders-changed")
+var updateProgress = mygo.NewEvent[desktop.UpdateProgress]("app:update-progress")
+var updateStatus = mygo.NewEvent[desktop.UpdateStatus]("app:update-status")
+var openUpdates = mygo.NewEvent[struct{}]("app:open-updates")
 
 // Shared with the isolated packaged selftest, which replaces the URL opener
 // before the page is created and exercises this same lifecycle controller.
@@ -57,7 +61,10 @@ func main() {
 	mygo.App.OnActivate(func(bool) { lifecycle.Restore() })
 	mygo.App.OnSecondInstance(func([]string, string) { lifecycle.Restore() })
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
-	mygo.Bind(&app.MicrosoftService{Runtime: runtime}, &app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService)
+	updateService := desktop.NewUpdateService(ctx, "duanyongcheng/pebble-go", os.Getenv("PEBBLE_SELFTEST") == "1")
+	updateService.OnStatus = func(st desktop.UpdateStatus) { _ = updateStatus.Broadcast(st) }
+	updateService.OnProgress = func(p desktop.UpdateProgress) { _ = updateProgress.Broadcast(p) }
+	mygo.Bind(&app.MicrosoftService{Runtime: runtime}, &app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService, updateService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog
@@ -151,7 +158,34 @@ func main() {
 					window.Destroy()
 					return
 				}
-				mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{{Role: mygo.RoleAppMenu}, {Role: mygo.RoleEditMenu}}))
+				if stdruntime.GOOS == "darwin" {
+					mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
+						{
+							Label: "Pebble Go",
+							Submenu: []*mygo.MenuItem{
+								{Role: mygo.RoleAbout},
+								{
+									Label: "Check for Updates…",
+									Click: func(*mygo.MenuItem, *mygo.Window) {
+										lifecycle.Restore()
+										_ = openUpdates.Broadcast(struct{}{})
+									},
+								},
+								mygo.Separator(),
+								{Role: mygo.RoleServices},
+								mygo.Separator(),
+								{Role: mygo.RoleHide},
+								{Role: mygo.RoleHideOthers},
+								{Role: mygo.RoleUnhide},
+								mygo.Separator(),
+								{Role: mygo.RoleQuit},
+							},
+						},
+						{Role: mygo.RoleEditMenu},
+					}))
+				} else {
+					mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{{Role: mygo.RoleAppMenu}, {Role: mygo.RoleEditMenu}}))
+				}
 				if os.Getenv("PEBBLE_SELFTEST") == "1" {
 					// Close before the first frontend preference RPC can run. The
 					// page may finish bootstrap but must not show itself again.

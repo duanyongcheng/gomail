@@ -755,6 +755,31 @@ export interface UpdateAccountRequest {
   proxyPort?: number;
 }
 
+/** UpdateProgress streams download and install progress to the frontend. */
+export interface UpdateProgress {
+  phase: string;
+  version: string;
+  downloaded: number;
+  total: number;
+  percent: number;
+}
+
+/** UpdateStatus is the full thread-safe snapshot exposed to the frontend. */
+export interface UpdateStatus {
+  currentVersion: string;
+  canAutoUpdate: boolean;
+  state: string;
+  availableVersion?: string;
+  releaseNotes?: string;
+  releaseDate?: string;
+  releaseUrl?: string;
+  installedVersion?: string;
+  downloaded?: number;
+  total?: number;
+  percent?: number;
+  error?: string;
+}
+
 export interface WindowRequest {
   action: string;
   width: number;
@@ -1149,6 +1174,35 @@ export const AppService = {
   },
 } as const;
 
+/**
+ * UpdateService manages update checks, signed delta/archive installation via
+ * mygo.Updater, and read-only GitHub release fallback when self-update is unavailable.
+ */
+export const UpdateService = {
+  /**
+   * Check queries for a newer version. Uses mygo.Updater when self-update is enabled,
+   * and falls back to read-only GitHub Releases lookup otherwise.
+   */
+  check(arg0: Empty): Promise<UpdateStatus> {
+    return call("UpdateService.Check", arg0);
+  },
+  /**
+   * Install downloads, verifies, and stages the pending signed update (preferring
+   * bsdiff delta patches automatically when available via mygo.Updater).
+   */
+  install(arg0: Empty): Promise<UpdateStatus> {
+    return call("UpdateService.Install", arg0);
+  },
+  /** Relaunch restarts Pebble Go into an already-installed update. */
+  relaunch(arg0: Empty): Promise<Empty> {
+    return call("UpdateService.Relaunch", arg0);
+  },
+  /** Status returns the current update state and capabilities without making network requests. */
+  status(arg0: Empty): Promise<UpdateStatus> {
+    return call("UpdateService.Status", arg0);
+  },
+} as const;
+
 // ---- Events ----
 
 /** Events sent by the Go side. Subscribe with `events.name.on(listener)`. */
@@ -1163,4 +1217,7 @@ export const events = {
   mailFoldersChanged: event<AccountRequest>("mail:folders-changed"),
   mailAccountChanged: event<AccountRequest>("mail:account-changed"),
   mailTrustedSendersChanged: event<SenderRequest>("mail:trusted-senders-changed"),
+  appUpdateProgress: event<UpdateProgress>("app:update-progress"),
+  appUpdateStatus: event<UpdateStatus>("app:update-status"),
+  appOpenUpdates: event<{}>("app:open-updates"),
 } as const;
