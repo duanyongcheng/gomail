@@ -3,7 +3,7 @@ import { defineConfig } from "mygo-cli";
 export default defineConfig({
   name: "Pebble Go",
   identifier: "dev.bary.pebble.go",
-  version: (process.env.PEBBLE_VERSION || "0.2.1").replace(/^v/, ""),
+  version: (process.env.PEBBLE_VERSION || "0.2.2").replace(/^v/, ""),
   devUrl: "http://localhost:5173",
   devCommand: "bun run dev:web",
   buildCommand: "bun run build:web",
