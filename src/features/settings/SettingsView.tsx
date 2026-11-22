@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { isSettingsTabAvailable, unavailableReason } from "@/lib/availability";
 import { useUIStore, type SettingsTab } from "@/stores/ui.store";
+import { isUpdateReminderVisible, useUpdateStore } from "@/stores/update.store";
 import AccountsTab from "./AccountsTab";
 import GeneralTab from "./GeneralTab";
 import ProxyTab from "./ProxyTab";
@@ -60,6 +61,7 @@ export default function SettingsView() {
     });
   }, [activeTab, compactNavigation]);
   const setSettingsTab = useUIStore((s) => s.setSettingsTab);
+  const hasUpdateDot = useUpdateStore((s) => isUpdateReminderVisible(s));
 
   function handleTabChange(id: SettingsTab) {
     setSettingsTab(id);
@@ -102,7 +104,10 @@ export default function SettingsView() {
               document.getElementById(`settings-tab-${availableTabs[nextIndex]}`)?.focus();
             }}
           >
-            {t(TAB_LABEL_KEYS[id])}
+            <span>{t(TAB_LABEL_KEYS[id])}</span>
+            {id === "about" && hasUpdateDot && (
+              <span className="settings-navigation-dot" aria-hidden="true" />
+            )}
           </button>
         ))}
       </div>

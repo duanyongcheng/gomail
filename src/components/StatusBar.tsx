@@ -3,10 +3,11 @@ import { isFeatureAvailable } from "@/lib/availability";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { listen } from "@tauri-apps/api/event";
-import { AlertCircle, AppWindow, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, AppWindow, ArrowUpCircle, Clock, Download, RefreshCw, RotateCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUIStore, type RealtimeStatus } from "../stores/ui.store";
 import { useMailStore } from "@/stores/mail.store";
+import { isUpdateReminderVisible, useUpdateStore } from "@/stores/update.store";
 import { stopSync } from "@/lib/api";
 import { useSyncMutation } from "@/hooks/mutations/useSyncMutation";
 import { refreshMessageFlagViews } from "@/hooks/mutations/messageFlagsMutation";
@@ -56,6 +57,19 @@ export default function StatusBar() {
   const keepRunningInBackground = useUIStore((s) => s.keepRunningInBackground);
   const setKeepRunningInBackground = useUIStore((s) => s.setKeepRunningInBackground);
   const activeAccountId = useMailStore((s) => s.activeAccountId);
+  const updateState = useUpdateStore((s) => s.state);
+  const updateAvailableVersion = useUpdateStore((s) => s.availableVersion);
+  const updateInstalledVersion = useUpdateStore((s) => s.installedVersion);
+  const updatePercent = useUpdateStore((s) => s.percent);
+  const updateSkippedVersion = useUpdateStore((s) => s.skippedVersion);
+  const updateDismissedVersion = useUpdateStore((s) => s.dismissedVersion);
+  const showUpdateReminder = isUpdateReminderVisible({
+    state: updateState,
+    availableVersion: updateAvailableVersion,
+    installedVersion: updateInstalledVersion,
+    skippedVersion: updateSkippedVersion,
+    dismissedVersion: updateDismissedVersion,
+  });
   const syncMutation = useSyncMutation();
   const queryClient = useQueryClient();
   const { data: pendingOpsSummary } = usePendingMailOpsSummary(activeAccountId);
@@ -290,6 +304,41 @@ export default function StatusBar() {
       )}
 
       <span className="ml-auto flex items-center gap-1">
+        {showUpdateReminder && (
+          <button
+            type="button"
+            className="app-statusbar-update-pill"
+            onClick={() => {
+              const ui = useUIStore.getState();
+              ui.setSettingsTab("about");
+              ui.setActiveView("settings");
+            }}
+            title={
+              updateState === "installed" && updateInstalledVersion
+                ? t("about.restartReady", "Version v{{version}} is ready to install on restart", { version: updateInstalledVersion })
+                : updateState === "downloading"
+                  ? t("about.downloadingProgress", "Downloading update ({{percent}}%)", { percent: updatePercent })
+                  : t("about.newVersion", "New version available: {{version}}", { version: `v${updateAvailableVersion ?? ""}` })
+            }
+          >
+            {updateState === "installed" ? (
+              <>
+                <RotateCw aria-hidden="true" size={11} />
+                <span>{t("about.statusRestart", "Restart for v{{version}}", { version: updateInstalledVersion ?? "" })}</span>
+              </>
+            ) : updateState === "downloading" ? (
+              <>
+                <Download aria-hidden="true" size={11} />
+                <span>{t("about.statusUpdating", "Updating {{percent}}%", { percent: updatePercent })}</span>
+              </>
+            ) : (
+              <>
+                <ArrowUpCircle aria-hidden="true" size={11} />
+                <span>{t("about.statusAvailable", "Update v{{version}}", { version: updateAvailableVersion ?? "" })}</span>
+              </>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setKeepRunningInBackground(!keepRunningInBackground)}

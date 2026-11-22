@@ -89,7 +89,7 @@ bun run build -skip-dmg -skip-notarize
 GitHub Actions workflows are included in `.github/workflows/`:
 
 - **[ci.yml](.github/workflows/ci.yml):** Runs `bun run check` and verifies generated bindings (`src/mygo.ts`) on pushes and pull requests to `master`.
-- **[release.yml](.github/workflows/release.yml):** Builds installers across **macOS** (`darwin/arm64`, `darwin/amd64` `.dmg`, ad-hoc signed), **Windows** (`windows/amd64`, `windows/arm64` NSIS `Setup .exe`), and **Linux** (`linux/amd64`, `linux/arm64` `.deb` and `.tar.gz`), generates `SHA256SUMS.txt`, and publishes a GitHub Release when pushing a `v*` tag (e.g. `git tag v0.1.0 && git push origin v0.1.0`) or manually triggering via `workflow_dispatch`. No `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` secrets are required or embedded in release builds.
+- **[release.yml](.github/workflows/release.yml):** Builds installers across **macOS** (`darwin/arm64`, `darwin/amd64` `.dmg`, ad-hoc signed), **Windows** (`windows/amd64`, `windows/arm64` NSIS `Setup .exe`), and **Linux** (`linux/amd64`, `linux/arm64` `.deb`, `.tar.gz`, and `install.sh`), signs update archives, bsdiff incremental delta patches (for up to the 3 previous signed versions), and per-platform `update-<target>.json` manifests using `MYGO_UPDATER_PRIVATE_KEY`, generates `SHA256SUMS.txt`, and publishes a GitHub Release when pushing a `v*` tag (e.g. `git tag v0.2.1 && git push origin v0.2.1`) or manually triggering via `workflow_dispatch`. No `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` secrets are required or embedded in release builds.
 
 ---
 
