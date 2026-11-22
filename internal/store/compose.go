@@ -34,7 +34,8 @@ func (db *DB) HasEncryptedData(ctx context.Context) (bool, error) {
 		OR EXISTS(SELECT 1 FROM compose_attachments)
 		OR EXISTS(SELECT 1 FROM outbox WHERE data IS NOT NULL)
 		OR EXISTS(SELECT 1 FROM email_signatures)
-		OR EXISTS(SELECT 1 FROM gmail_draft_copies)`).Scan(&has)
+		OR EXISTS(SELECT 1 FROM gmail_draft_copies)
+		OR EXISTS(SELECT 1 FROM google_oauth_settings)`).Scan(&has)
 	return has, err
 }
 func (db *DB) ComposeAccountExists(ctx context.Context, account string) (bool, error) {

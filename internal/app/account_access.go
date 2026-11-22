@@ -45,8 +45,12 @@ func (r *Runtime) restoreAccounts() error {
 	if err != nil {
 		return err
 	}
+	oauthRaw, err := r.DB.GoogleOAuthSettings(r.Context)
+	if err != nil {
+		return err
+	}
 	var keyErr error
-	if has {
+	if has || len(oauthRaw) > 0 {
 		if r.Keyring == nil {
 			keyErr = errors.New("Account keyring unavailable")
 		} else {
@@ -62,8 +66,20 @@ func (r *Runtime) restoreAccounts() error {
 		}
 		r.globalProxy = settings.Proxy
 	}
-	cfg := oauth.Google()
 	var failures []error
+	if len(oauthRaw) > 0 {
+		if keyErr != nil {
+			r.googleOAuth = nil
+			r.googleOAuthLocked = true
+			failures = append(failures, &domain.AccessError{State: domain.ConnectionCredentialsUnavailable})
+		} else if err := r.decryptGoogleOAuthLocked(oauthRaw); err != nil {
+			failures = append(failures, err)
+		}
+	} else {
+		r.googleOAuth = nil
+		r.googleOAuthLocked = false
+	}
+	cfg := r.googleOAuthConfigLocked()
 	for _, a := range accounts {
 		if a.Provider != "gmail" {
 			c := &accountConnection{state: domain.ConnectionAvailable}
@@ -90,7 +106,7 @@ func (r *Runtime) restoreAccounts() error {
 		c := &accountConnection{state: domain.ConnectionAvailable}
 		r.connections[a.ID] = c
 		switch {
-		case keyErr != nil:
+		case keyErr != nil || r.googleOAuthLocked:
 			c.state = domain.ConnectionCredentialsUnavailable
 		case cfg.ClientID == "":
 			c.state = domain.ConnectionConfigurationRequired
@@ -212,7 +228,7 @@ func (s *AccountService) Connections(ctx context.Context, _ Empty) ([]AccountCon
 	out := []AccountConnection{}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	configured := oauth.Google().ClientID != ""
+	configured := r.googleOAuthConfigLocked().ClientID != ""
 	for _, account := range accounts {
 		state := domain.ConnectionReauthRequired
 		if c := r.connections[account.ID]; c != nil {
@@ -267,7 +283,7 @@ func (s *AccountService) Reconnect(ctx context.Context, request AccountRequest) 
 		return Empty{}, errors.New("Another Google sign-in is already in progress.")
 	}
 	defer r.authFlowMu.Unlock()
-	cfg := oauth.Google()
+	cfg := r.googleOAuthConfig()
 	if cfg.ClientID == "" {
 		return Empty{}, &domain.AccessError{State: domain.ConnectionConfigurationRequired}
 	}
@@ -401,7 +417,7 @@ func (s *AccountService) login(ctx context.Context, request LoginRequest) (domai
 		return domain.Account{}, errors.New("Another Google sign-in is already in progress.")
 	}
 	defer r.authFlowMu.Unlock()
-	cfg := oauth.Google()
+	cfg := r.googleOAuthConfig()
 	if cfg.ClientID == "" {
 		return domain.Account{}, &domain.AccessError{State: domain.ConnectionConfigurationRequired}
 	}

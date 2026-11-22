@@ -25,8 +25,8 @@ app_path="$project_root/build/darwin-$arch/Pebble Go.app"
 printf 'Building Pebble Go locally for darwin/%s\n' "$arch"
 bun install --frozen-lockfile
 
-# Reuse the OAuth-safe build wrapper. MyGO generates bindings and builds the
-# frontend, then stages the bundle before replacing the previous build.
+# MyGO generates bindings and builds the frontend, then stages the bundle before
+# replacing the previous build. OAuth credentials are never embedded at build time.
 bun run build -platform "darwin/$arch" -o build -skip-dmg -skip-notarize -sign -
 
 printf '\nVerifying app signature...\n'

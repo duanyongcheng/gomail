@@ -58,6 +58,8 @@ type Runtime struct {
 	composeMu         sync.Mutex
 	providerFactories map[string]ProviderFactory
 	globalProxy       *mailnet.Proxy
+	googleOAuth       *storedGoogleOAuth
+	googleOAuthLocked bool
 }
 
 type SyncComplete struct {
@@ -118,9 +120,12 @@ type OAuthStatus struct {
 type AccountService struct{ Runtime *Runtime }
 
 func (s *AccountService) Status(Empty) OAuthStatus {
-	configured := oauth.Google().ClientID != ""
+	cfg, locked := s.Runtime.googleOAuthStatus()
+	configured := cfg.ClientID != ""
 	message := ""
-	if !configured {
+	if locked {
+		message = "Google OAuth 配置已加密，请先解锁系统钥匙串"
+	} else if !configured {
 		message = "未配置 Google OAuth client ID"
 	}
 	return OAuthStatus{Configured: configured, Message: message}

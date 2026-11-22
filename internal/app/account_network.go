@@ -8,7 +8,6 @@ import (
 
 	"github.com/duanyongcheng/pebble-go/internal/domain"
 	"github.com/duanyongcheng/pebble-go/internal/mailnet"
-	"github.com/duanyongcheng/pebble-go/internal/oauth"
 )
 
 type AccountNetworkRequest struct {
@@ -87,7 +86,7 @@ func (s *AccountService) SetAccountNetwork(ctx context.Context, request AccountN
 		g.state = old.state
 	}
 	r.connections[a.ID] = g
-	if err := r.installGmailLocked(a.ID, oauth.Google(), g); err != nil {
+	if err := r.installGmailLocked(a.ID, r.googleOAuthConfigLocked(), g); err != nil {
 		g.state = domain.ConnectionCredentialsUnavailable
 		return Empty{}, errors.New("Network setting saved; account credentials require attention")
 	}

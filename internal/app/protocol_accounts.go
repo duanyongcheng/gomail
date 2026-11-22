@@ -14,7 +14,6 @@ import (
 
 	"github.com/duanyongcheng/pebble-go/internal/domain"
 	"github.com/duanyongcheng/pebble-go/internal/mailnet"
-	"github.com/duanyongcheng/pebble-go/internal/oauth"
 	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
 	"github.com/duanyongcheng/pebble-go/internal/store"
 )
@@ -604,7 +603,7 @@ func (s *AccountService) SetNetwork(ctx context.Context, request NetworkSettings
 				g.state = old.state
 			}
 			r.connections[a.ID] = g
-			if err := r.installGmailLocked(a.ID, oauth.Google(), g); err != nil {
+			if err := r.installGmailLocked(a.ID, r.googleOAuthConfigLocked(), g); err != nil {
 				g.state = domain.ConnectionCredentialsUnavailable
 			}
 			continue

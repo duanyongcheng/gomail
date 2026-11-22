@@ -12,6 +12,7 @@ import { realtimePreferenceToPollInterval, useUIStore } from "@/stores/ui.store"
 import { inputStyle, labelStyle } from "../styles/form";
 import ProtocolAccountForm from "@/features/settings/ProtocolAccountForm";
 import MicrosoftAccountForm from "@/features/settings/MicrosoftAccountForm";
+import GoogleOAuthConfig from "@/features/settings/GoogleOAuthConfig";
 
 const FOLDER_REFRESH_ATTEMPTS = 5;
 const FOLDER_REFRESH_INTERVAL_MS = 2000;
@@ -149,6 +150,16 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
           {!statusLoaded && !statusError && <p role="status">{t("common.loading", "Loading...")}</p>}
           {statusLoaded && !configured && <p role="status">{t("accountConnection.notConfigured", "Configure Google OAuth before reconnecting.")}</p>}
           {statusError && <p role="alert">{t("accountConnection.loadFailed", "Could not load account connection status.")} <button onClick={() => setRetry((value) => value + 1)}>{t("common.retry", "Retry")}</button></p>}
+          <GoogleOAuthConfig
+            onBusy={(value) => { busy.current = value; setLoading(value); }}
+            onChanged={(next) => {
+              if (!alive.current) return;
+              setConfigured(next.configured);
+              setStatusLoaded(true);
+              setStatusError(false);
+              setError(null);
+            }}
+          />
           {error && <p role="alert">{error}</p>}
           </>}
           {!isFeatureAvailable("outlook") && <p>Outlook — {unavailableReason()}</p>}

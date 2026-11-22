@@ -1229,5 +1229,29 @@
     "statusExpiresIn": "约 {{minutes}} 分钟后自动续期",
     "statusRenewsNextSync": "下次同步时自动续期",
     "statusTenant": "租户：{{tenant}}"
+  },
+  "googleOAuth": {
+    "title": "Google OAuth",
+    "toggle": "配置 Google OAuth",
+    "notice": "在此配置你自己的 Google Cloud 桌面端 OAuth Client ID 及可选 Client Secret。配置将使用当前 profile 的系统钥匙串加密保存，保存后立即生效、无需重启。更换 Client ID 后，已有 Gmail 账号会保留本地邮件和草稿，点击重新连接即可完成新授权。",
+    "clientId": "Google Client ID",
+    "clientIdPlaceholder": "your-desktop-client-id.apps.googleusercontent.com",
+    "clientSecret": "Google Client Secret（可选）",
+    "secretPlaceholder": "可选的桌面端 Client Secret",
+    "secretSavedPlaceholder": "已保存（留空则保持原值不变）",
+    "clearSecret": "清除已保存的 Client Secret",
+    "save": "保存 Google OAuth 配置",
+    "saving": "保存中...",
+    "clear": "清除应用内配置",
+    "clearing": "清除中...",
+    "saved": "Google OAuth 配置已保存并生效。",
+    "cleared": "已清除应用内 Google OAuth 配置。",
+    "loadFailed": "无法读取 Google OAuth 配置。",
+    "keyringLocked": "由于系统钥匙串不可用，无法解密已保存的 Google OAuth 配置。请先解锁钥匙串，或重新保存/清除应用内配置。",
+    "sourceApp": "当前生效来源：应用内配置",
+    "sourceEnv": "当前生效来源：环境变量",
+    "sourceNone": "当前生效来源：未配置",
+    "secretStatusSet": "Client Secret：已配置",
+    "secretStatusEmpty": "Client Secret：未设置"
   }
 }

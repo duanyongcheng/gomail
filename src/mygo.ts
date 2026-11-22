@@ -266,6 +266,21 @@ export interface GmailLabelsView {
   pending: GmailLabelChange | null;
 }
 
+/**
+ * GoogleOAuthConfig is the safe status and settings projection exposed to the UI.
+ * Plaintext client secrets are never returned to the frontend.
+ */
+export interface GoogleOAuthConfig {
+  configured: boolean;
+  source: string;
+  clientId: string;
+  hasSecret: boolean;
+  hasAppConfig: boolean;
+  appClientId: string;
+  appHasSecret: boolean;
+  keyringError: boolean;
+}
+
 export interface IMAPSyncFolders {
   folders: Folder[];
   selected_remote_ids: string[];
@@ -586,6 +601,12 @@ export interface SaveDraftRequest {
   renderedSource?: string;
 }
 
+export interface SaveGoogleOAuthConfigRequest {
+  clientId: string;
+  clientSecret: string;
+  keepExistingSecret: boolean;
+}
+
 export interface SaveProtocolRequest {
   accountId: string;
   revision: string;
@@ -781,11 +802,17 @@ export const AccountService = {
   cancelReconnect(request: AccountRequest): Promise<Empty> {
     return call("AccountService.CancelReconnect", request);
   },
+  clearGoogleOAuthConfig(arg0: Empty): Promise<GoogleOAuthConfig> {
+    return call("AccountService.ClearGoogleOAuthConfig", arg0);
+  },
   connections(arg0: Empty): Promise<AccountConnection[]> {
     return call("AccountService.Connections", arg0);
   },
   delete(request: AccountRequest): Promise<Empty> {
     return call("AccountService.Delete", request);
+  },
+  googleOAuthConfig(arg0: Empty): Promise<GoogleOAuthConfig> {
+    return call("AccountService.GoogleOAuthConfig", arg0);
   },
   list(arg0: Empty): Promise<Account[]> {
     return call("AccountService.List", arg0);
@@ -804,6 +831,9 @@ export const AccountService = {
   },
   reconnect(request: AccountRequest): Promise<Empty> {
     return call("AccountService.Reconnect", request);
+  },
+  saveGoogleOAuthConfig(request: SaveGoogleOAuthConfigRequest): Promise<GoogleOAuthConfig> {
+    return call("AccountService.SaveGoogleOAuthConfig", request);
   },
   saveProtocol(request: SaveProtocolRequest): Promise<Account> {
     return call("AccountService.SaveProtocol", request);

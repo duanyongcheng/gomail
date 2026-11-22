@@ -42,6 +42,7 @@ import ProtocolAccountForm from "./ProtocolAccountForm";
 import MicrosoftAccountForm from "./MicrosoftAccountForm";
 import ProtocolFolders from "./ProtocolFolders";
 import GmailNetwork from "./GmailNetwork";
+import GoogleOAuthConfig from "./GoogleOAuthConfig";
 
 /**
  * One of the two arrows that move an account up or down the list.
@@ -477,6 +478,8 @@ export default function AccountsTab() {
           })}
         </div>
       )}
+
+      <GoogleOAuthConfig />
 
       {accounts.some((account) => account.provider === "gmail") && (
         <>

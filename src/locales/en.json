@@ -1229,5 +1229,29 @@
     "statusExpiresIn": "Token renews in about {{minutes}} min",
     "statusRenewsNextSync": "Token renews on the next sync",
     "statusTenant": "Tenant: {{tenant}}"
+  },
+  "googleOAuth": {
+    "title": "Google OAuth",
+    "toggle": "Configure Google OAuth",
+    "notice": "Configure your own Google Cloud Desktop OAuth Client ID and optional Client Secret. Saved credentials are encrypted with your profile keyring and take effect immediately without restarting. Changing Client ID requires existing Gmail accounts to reconnect while keeping your local mail and drafts.",
+    "clientId": "Google Client ID",
+    "clientIdPlaceholder": "your-desktop-client-id.apps.googleusercontent.com",
+    "clientSecret": "Google Client Secret (optional)",
+    "secretPlaceholder": "Optional desktop client secret",
+    "secretSavedPlaceholder": "Saved (leave blank to keep existing secret)",
+    "clearSecret": "Clear saved secret",
+    "save": "Save Google OAuth",
+    "saving": "Saving...",
+    "clear": "Clear in-app configuration",
+    "clearing": "Clearing...",
+    "saved": "Google OAuth configuration saved and applied.",
+    "cleared": "In-app Google OAuth configuration cleared.",
+    "loadFailed": "Could not load Google OAuth configuration.",
+    "keyringLocked": "Saved Google OAuth configuration could not be decrypted because the profile keyring is unavailable. Unlock your keyring, or save new credentials / clear the saved override.",
+    "sourceApp": "Active source: In-app configuration",
+    "sourceEnv": "Active source: Environment variable",
+    "sourceNone": "Active source: Not configured",
+    "secretStatusSet": "Client secret: configured",
+    "secretStatusEmpty": "Client secret: not set"
   }
 }

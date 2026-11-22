@@ -14,10 +14,6 @@ import (
 )
 
 func TestClientConfigPrecedenceAndScope(t *testing.T) {
-	oldID, oldSecret := googleClientID, googleClientSecret
-	defer func() { googleClientID = oldID; googleClientSecret = oldSecret }()
-	googleClientID = "built-client"
-	googleClientSecret = "built-secret"
 	for _, name := range []string{"GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"} {
 		old, exists := os.LookupEnv(name)
 		_ = os.Unsetenv(name)
@@ -29,21 +25,25 @@ func TestClientConfigPrecedenceAndScope(t *testing.T) {
 			}
 		})
 	}
-	if Google().ClientID != "built-client" || Google().ClientSecret != "built-secret" {
-		t.Fatal("build defaults missing")
+	if Google().ClientID != "" || Google().ClientSecret != "" || GoogleFallbackSource() != "none" {
+		t.Fatal("unexpected non-empty default Google OAuth credentials")
 	}
-	t.Setenv("GOOGLE_CLIENT_ID", "process-client")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "process-secret")
+	t.Setenv("GOOGLE_CLIENT_ID", " process-client ")
+	t.Setenv("GOOGLE_CLIENT_SECRET", " process-secret ")
 	cfg := Google()
-	if cfg.ClientID != "process-client" || cfg.ClientSecret != "process-secret" {
-		t.Fatal("environment did not override build values")
+	if cfg.ClientID != "process-client" || cfg.ClientSecret != "process-secret" || GoogleFallbackSource() != "env" {
+		t.Fatal("environment credentials not loaded")
 	}
 	if len(cfg.Scopes) != 4 || cfg.Scopes[0] != ModifyScope {
 		t.Fatal("wrong Gmail scopes")
 	}
 	t.Setenv("GOOGLE_CLIENT_ID", "")
-	if Google().ClientID != "" {
-		t.Fatal("explicit empty client did not disable packaged value")
+	if Google().ClientID != "" || GoogleFallbackSource() != "none" {
+		t.Fatal("explicit empty client did not clear Google OAuth config")
+	}
+	explicit := GoogleWithCredentials(" app-client ", " app-secret ")
+	if explicit.ClientID != "app-client" || explicit.ClientSecret != "app-secret" || len(explicit.Scopes) != 4 || explicit.Scopes[0] != ModifyScope {
+		t.Fatal("explicit Google credentials helper mismatch")
 	}
 }
 

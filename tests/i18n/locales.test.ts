@@ -11,7 +11,7 @@ describe("locale files", () => {
   it("keeps protocol, authorization, folder and proxy translations and interpolation fields aligned", () => {
     const en = readLocale("en");
     const zh = readLocale("zh");
-    for (const namespace of ["protocolAccount", "microsoftAccount", "protocolFolders", "connectionRoute"]) {
+    for (const namespace of ["protocolAccount", "microsoftAccount", "protocolFolders", "connectionRoute", "googleOAuth"]) {
       expect(Object.keys(zh[namespace]).sort()).toEqual(Object.keys(en[namespace]).sort());
       for (const key of Object.keys(en[namespace])) {
         const english = en[namespace][key];
