@@ -70,7 +70,7 @@ bun run build:local
 ./scripts/build-local.sh
 ```
 
-The script verifies `go`, `bun`, `node`, and `codesign`, installs dependencies with the frozen Bun lockfile, regenerates MyGO bindings, type-checks and builds the frontend, and packages an ad-hoc signed app for the current Mac architecture. It reuses local `.env` OAuth build variables without sourcing `.env` as shell code. DMG creation and notarization are skipped, and the bundle signature is verified with `codesign --verify --deep --strict`.
+The script verifies `go`, `bun`, `node`, and `codesign`, installs dependencies with the frozen Bun lockfile, regenerates MyGO bindings, type-checks and builds the frontend, and packages an ad-hoc signed app for the current Mac architecture. OAuth credentials are **never** embedded into packaged binaries. DMG creation and notarization are skipped, and the bundle signature is verified with `codesign --verify --deep --strict`.
 
 The output bundle is written to `build/darwin-<arch>/Pebble Go.app` (replacing the target directory after a successful build so stale DMGs are removed). For Apple Silicon:
 
@@ -78,28 +78,42 @@ The output bundle is written to `build/darwin-<arch>/Pebble Go.app` (replacing t
 open "build/darwin-arm64/Pebble Go.app"
 ```
 
-### Other Targets & Packaging
+### Other Targets & GitHub Releases Packaging
 
-For a DMG or other platform targets, run `bun run build` with MyGO flags, for example:
+For a DMG or other platform targets locally, run `bun run build` with MyGO flags, for example:
 
 ```sh
 bun run build -skip-dmg -skip-notarize
 ```
 
+GitHub Actions workflows are included in `.github/workflows/`:
+
+- **[ci.yml](.github/workflows/ci.yml):** Runs `bun run check` and verifies generated bindings (`src/mygo.ts`) on pushes and pull requests to `master`.
+- **[release.yml](.github/workflows/release.yml):** Builds installers across **macOS** (`darwin/arm64`, `darwin/amd64` `.dmg`, ad-hoc signed), **Windows** (`windows/amd64`, `windows/arm64` NSIS `Setup .exe`), and **Linux** (`linux/amd64`, `linux/arm64` `.deb` and `.tar.gz`), generates `SHA256SUMS.txt`, and publishes a GitHub Release when pushing a `v*` tag (e.g. `git tag v0.1.0 && git push origin v0.1.0`) or manually triggering via `workflow_dispatch`. No `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` secrets are required or embedded in release builds.
+
 ---
 
 ## OAuth Configuration
 
-Copy `.env.example` to `.env` if you want to configure local Gmail OAuth credentials:
+### In-App Google OAuth Configuration (Recommended)
+
+You can configure `GOOGLE_CLIENT_ID` and optional `GOOGLE_CLIENT_SECRET` directly inside the app via **Settings → Accounts → Configure Google OAuth** or inside the **Add Email Account** dialog:
+
+- Credentials are encrypted with your profile's OS keyring DEK (`dev.bary.pebble.go`) and stored locally in SQLite (`google_oauth_settings`, never in plaintext).
+- Changes take effect **immediately without restarting**: the Google sign-in button unlocks right away, matching Gmail accounts restore automatically, secret-only updates hot-rebuild Gmail providers, and switching to a different `Client ID` preserves all local mail/drafts while marking existing Gmail accounts for reconnection.
+- Precedence: **In-app saved configuration > Process environment variables (`.env` in dev)**. Clearing the in-app configuration immediately falls back to runtime environment variables (if any).
+
+### Runtime Environment Variables (Development Only)
+
+Copy `.env.example` to `.env` only if you want runtime defaults during local `bun run dev` development:
 
 ```dotenv
 GOOGLE_CLIENT_ID=your-desktop-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-desktop-client-secret
 ```
 
-- Bun loads `.env` during development. `bun run build` injects local values via `MYGO_LDFLAGS -X` (`github.com/duanyongcheng/pebble-go/internal/oauth`).
-- Process environment variables override packaged defaults; an explicitly empty process value disables a packaged default.
-- Without a Google client ID, the Google login button displays “未配置” and no authorization request is made.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are **never embedded** when packaging (`bun run build`, `./scripts/build-local.sh`, or GitHub Releases).
+- Without a configured Google Client ID, Google sign-in remains disabled until configured in-app or via runtime environment variables.
 - Gmail requests `gmail.modify` plus `openid email profile` using PKCE and a one-shot loopback callback in the system browser. User consent and real Google account verification are manual steps; automated checks use local fixtures only.
 - Microsoft setup accepts a native public-client ID, validated tenant/audience, and separate resource consent directly in the account form; no Microsoft client secret is used.
 
@@ -128,7 +142,7 @@ Inside a profile directory:
 ### Schema Migrations
 
 - **v1–v20:** Match the upstream Pebble Rust schema.
-- **v21–v32 (Go additions without altering v1–v20 tables):**
+- **v21–v33 (Go additions without altering v1–v20 tables):**
   - `v21`: FTS5 search cache.
   - `v22`: Account-scoped backfill reconciliation table.
   - `v23`: Persistent Gmail message download failures and retry timing.
@@ -141,6 +155,7 @@ Inside a profile directory:
   - `v30`: Gmail cloud-copy identities and durable write intents.
   - `v31`: Cloud-copy deletion/send lifecycle states and Outbox association.
   - `v32`: Provider/account/scope checkpoints, remote identity mappings, and explicit global network configuration.
+  - `v33`: Encrypted in-app Google OAuth client configuration.
 
 Unversioned PoC databases are rejected rather than silently rewritten.
 
