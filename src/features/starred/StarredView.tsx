@@ -66,27 +66,16 @@ export default function StarredView() {
 
   if (error && messages.length === 0) {
     return (
-      <div className="fade-in" style={{
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        height: "100%", gap: "12px", color: "var(--color-text-secondary)",
-      }}>
-        <Star size={40} strokeWidth={1.2} />
-        <p style={{ color: "var(--color-error, #e53e3e)", fontSize: "14px", margin: 0 }}>
+      <div className="fade-in mail-state-center">
+        <Star size={36} strokeWidth={1.3} />
+        <p className="mail-state-error">
           {t("starred.loadError", "Failed to load starred messages")}
         </p>
-        <p style={{ fontSize: "13px", margin: 0 }}>{extractErrorMessage(error)}</p>
+        <p className="mail-state-detail">{extractErrorMessage(error)}</p>
         <button
+          type="button"
+          className="mail-state-secondary-btn"
           onClick={() => refetch()}
-          style={{
-            marginTop: "4px",
-            padding: "6px 16px",
-            borderRadius: "4px",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "transparent",
-            color: "var(--color-accent)",
-            fontSize: "13px",
-            cursor: "pointer",
-          }}
         >
           {t("common.retry", "Retry")}
         </button>
@@ -96,45 +85,31 @@ export default function StarredView() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-text-secondary)" }}>
-        <Star size={20} className="spinner" style={{ marginRight: "8px" }} />
-        {t("common.loading", "Loading...")}
+      <div className="mail-state-center">
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+          <Star size={18} className="spinner" />
+          <span>{t("common.loading", "Loading...")}</span>
+        </div>
       </div>
     );
   }
 
   if (visibleMessages.length === 0 && !hasNextPage) {
     return (
-      <div className="fade-in" style={{
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        height: "100%", gap: "12px", color: "var(--color-text-secondary)",
-      }}>
-        <Star size={40} strokeWidth={1.2} />
-        <p style={{ fontSize: "14px", margin: 0 }}>{t("starred.empty", "No starred messages")}</p>
+      <div className="fade-in mail-state-center">
+        <Star size={36} strokeWidth={1.3} />
+        <p className="mail-state-detail">{t("starred.empty", "No starred messages")}</p>
       </div>
     );
   }
 
   return (
     <div className={`fade-in secondary-mail-workspace${scopedSelectedId ? " secondary-mail-workspace--detail-open" : ""}`}>
-      <div className="secondary-mail-list" style={{
-        borderRight: scopedSelectedId ? "1px solid var(--color-border)" : "none",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}>
-        <div className="secondary-mail-heading" style={{
-          padding: "12px 16px", borderBottom: "1px solid var(--color-border)",
-          fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)",
-          display: "flex", alignItems: "center", gap: "8px",
-        }}>
-          <Star size={16} />
-          {t("starred.title", "Starred Messages")}
-          <span style={{
-            fontSize: "12px", fontWeight: 400, color: "var(--color-text-secondary)",
-            backgroundColor: "var(--color-bg-secondary, rgba(0,0,0,0.06))",
-            padding: "2px 8px", borderRadius: "10px",
-          }}>
+      <div className="secondary-mail-list">
+        <div className="secondary-mail-heading">
+          <Star size={16} aria-hidden="true" />
+          <span>{t("starred.title", "Starred Messages")}</span>
+          <span className="secondary-mail-count">
             {totalCount}
           </span>
         </div>
@@ -176,15 +151,11 @@ export default function StarredView() {
             justifyContent: "center",
           }}>
             <button
+              type="button"
+              className="mail-state-secondary-btn"
               onClick={handleLoadMore}
               disabled={isFetchingNextPage || pendingActions > 0}
               style={{
-                padding: "6px 14px",
-                borderRadius: "4px",
-                border: "1px solid var(--color-border)",
-                backgroundColor: "transparent",
-                color: "var(--color-accent)",
-                fontSize: "13px",
                 cursor: isFetchingNextPage ? "default" : "pointer",
                 opacity: isFetchingNextPage ? 0.7 : 1,
               }}

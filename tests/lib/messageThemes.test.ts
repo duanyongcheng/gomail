@@ -590,10 +590,10 @@ describe("message theme content css", () => {
     }
   });
 
-  it("gives interface-native prose style-aware defaults without forcing sender colours", () => {
+  it("gives interface-native prose clean defaults without forcing sender colours", () => {
     const css = messageThemeContentCss(getMessageTheme("app"));
-    expect(css).toContain(':host-context([data-ui-theme="editorial"])');
-    expect(css).toContain("blockquote { font-style: italic; }");
+    expect(css).toContain("blockquote {");
+    expect(css).toContain("border: 1px solid var(--color-border)");
     expect(css).toContain("background: color-mix(in srgb, currentColor 4%, transparent)");
     expect(css).not.toContain("!important");
     expect(messageThemeContentCss(getMessageTheme("card"))).not.toContain("data-ui-theme");
@@ -603,7 +603,7 @@ describe("message theme content css", () => {
     const css = messageThemeContentCss(getMessageTheme("app"));
     const linkRule = ':host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content a';
     expect(css).toContain(linkRule);
-    expect(css).toContain("color: #315fbd;");
+    expect(css).toContain("color: #155e8a;");
     expect(css.indexOf(linkRule)).toBeGreaterThan(css.indexOf(MESSAGE_THEME_DARK_SHEET_CSS));
     expect(css).not.toContain("!important");
     expect(messageThemeContentCss(getMessageTheme("wechat"))).not.toContain(linkRule);

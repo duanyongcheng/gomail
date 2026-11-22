@@ -279,13 +279,13 @@ export function MessageThemeOption({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "10px",
+        gap: "12px",
         width: "100%",
         textAlign: "left",
-        padding: "7px 8px",
-        borderRadius: "6px",
-        border: selected ? "1px solid var(--color-accent)" : "1px solid transparent",
-        background: selected ? "var(--color-bg-hover)" : "none",
+        padding: "10px 12px",
+        borderRadius: "var(--ui-radius-md, 8px)",
+        border: selected ? "1px solid var(--color-accent)" : "1px solid var(--color-border)",
+        background: selected ? "var(--color-accent-soft)" : "var(--color-bg)",
         cursor: "pointer",
         color: "var(--color-text-primary)",
       }}

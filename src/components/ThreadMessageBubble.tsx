@@ -146,18 +146,32 @@ function ThreadBubble({ message, defaultExpanded = false, theme }: Props) {
       {expanded && (
         <div className="thread-message-bubble-content">
           {/* To/Cc line */}
-          <div style={{ fontSize: "12px", color: "var(--msg-meta-color, var(--color-text-secondary))", marginBottom: "8px" }}>
-            <div>
-              {t("thread.to")} {message.to_list?.map((r: { address: string }) => r.address).join(", ")}
-            </div>
-            {message.cc_list?.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              fontSize: "12.5px",
+              color: "var(--msg-meta-color, var(--color-text-secondary))",
+              paddingBottom: "12px",
+              marginBottom: "14px",
+              borderBottom: "1px solid var(--color-border)",
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div>
-                {t("thread.cc", "Cc:")} {message.cc_list.map((r: { address: string }) => r.address).join(", ")}
+                {t("thread.to")} {message.to_list?.map((r: { address: string }) => r.address).join(", ")}
               </div>
-            )}
+              {message.cc_list?.length > 0 && (
+                <div>
+                  {t("thread.cc", "Cc:")} {message.cc_list.map((r: { address: string }) => r.address).join(", ")}
+                </div>
+              )}
+            </div>
             <div
               aria-label={t("contacts.participantActions", "Contact actions")}
-              style={{ display: "flex", alignItems: "center", gap: "3px", marginTop: "5px" }}
+              style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}
             >
               {contactParticipants.map((participant) => (
                 <ContactAddressAction
@@ -179,9 +193,13 @@ function ThreadBubble({ message, defaultExpanded = false, theme }: Props) {
             <ShadowDomEmail html={rendered.html} theme={theme} />
           ) : (
             <pre style={{
-              fontSize: "var(--msg-body-size, 13px)", color: "var(--msg-body-color, var(--color-text-primary))",
-              whiteSpace: "pre-wrap", wordBreak: "break-word",
-              margin: 0, fontFamily: "var(--msg-body-font, inherit)", lineHeight: "var(--msg-body-line-height, 1.8)",
+              fontSize: "var(--msg-body-size, var(--ui-reader-body-size, 15px))",
+              color: "var(--msg-body-color, var(--color-text-primary))",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              margin: 0,
+              fontFamily: "var(--msg-body-font, var(--font-reading, inherit))",
+              lineHeight: "var(--msg-body-line-height, var(--ui-reader-leading, 1.82))",
             }}>
               {message.body_text}
             </pre>

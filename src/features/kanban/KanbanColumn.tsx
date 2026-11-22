@@ -22,34 +22,31 @@ export default function KanbanColumn({ id, title, cardIds, contextNotes, message
     <div
       style={{
         flex: 1,
-        minWidth: "240px",
+        minWidth: "260px",
         maxWidth: "380px",
         display: "flex",
         flexDirection: "column",
         height: "100%",
+        backgroundColor: "var(--color-sidebar-bg)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--ui-radius-lg)",
+        overflow: "hidden",
       }}
     >
       <div
         style={{
-          padding: "12px 16px",
-          fontWeight: 600,
-          fontSize: "14px",
+          padding: "12px 14px",
+          fontWeight: 650,
+          fontSize: "13.5px",
           color: "var(--color-text-primary)",
+          borderBottom: "1px solid var(--color-border)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
         <span>{title}</span>
-        <span
-          style={{
-            fontSize: "12px",
-            color: "var(--color-text-secondary)",
-            backgroundColor: "var(--color-bg-secondary, rgba(0,0,0,0.06))",
-            padding: "2px 8px",
-            borderRadius: "10px",
-          }}
-        >
+        <span className="secondary-mail-count">
           {cardIds.length}
         </span>
       </div>
@@ -58,10 +55,9 @@ export default function KanbanColumn({ id, title, cardIds, contextNotes, message
         className="scroll-region kanban-column-scroll"
         style={{
           flex: 1,
-          padding: "0 8px 8px",
+          padding: "10px",
           overflowY: "auto",
-          backgroundColor: isOver ? "var(--color-bg-hover, rgba(0,0,0,0.03))" : "transparent",
-          borderRadius: "8px",
+          backgroundColor: isOver ? "var(--color-accent-soft)" : "transparent",
           transition: "background-color 0.15s ease",
           minHeight: "100px",
         }}

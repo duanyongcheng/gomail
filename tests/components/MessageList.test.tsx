@@ -193,19 +193,13 @@ describe("MessageList", () => {
       selectedMessageIds: new Set(),
       batchMode: false,
     });
-    useUIStore.setState({ appTheme: "paper" });
+    useUIStore.setState({ appTheme: "harbor" });
   });
 
-  it("re-measures virtual rows when the interface density changes and retains message identity", () => {
+  it("uses the Harbor row height estimate and retains message identity", () => {
     render(<MessageList messages={[makeMessage("stable-id")]} selectedMessageId={null} onSelectMessage={vi.fn()} loading={false} />);
     expect(mocks.itemKey).toHaveBeenLastCalledWith("stable-id");
-    expect(mocks.estimateSize).toHaveBeenLastCalledWith(APP_THEMES.find((theme) => theme.id === "paper")?.rowHeight);
-    mocks.measure.mockClear();
-
-    act(() => useUIStore.setState({ appTheme: "minimal" }));
-
-    expect(mocks.estimateSize).toHaveBeenLastCalledWith(APP_THEMES.find((theme) => theme.id === "minimal")?.rowHeight);
-    expect(mocks.measure).toHaveBeenCalled();
+    expect(mocks.estimateSize).toHaveBeenLastCalledWith(APP_THEMES.find((theme) => theme.id === "harbor")?.rowHeight);
     expect(screen.getByTestId("message-stable-id")).toBeTruthy();
   });
 

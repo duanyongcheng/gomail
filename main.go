@@ -136,7 +136,7 @@ func main() {
 				if !mygo.App.IsPackaged() {
 					mygo.SetFrontend(os.DirFS("dist"))
 				}
-				window := mygo.NewWindow(mygo.WindowOptions{Title: "Pebble Go", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f8f7f5"})
+				window := mygo.NewWindow(mygo.WindowOptions{Title: "Pebble Go", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f7fafb"})
 				windowService.Window.Store(window)
 				// Click handlers route links through the validating typed service.
 				// Disable MyGO's default target=_blank Shell.OpenExternal fallback,

@@ -122,28 +122,68 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="account-setup-title" aria-busy={loading}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div ref={dialogRef} style={{ width: "min(480px, calc(100vw - 32px))", backgroundColor: "var(--color-bg)", borderRadius: 10, display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden" }}>
+    <div
+      className="overlay-backdrop overlay-backdrop--dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-setup-title"
+      aria-busy={loading}
+    >
+      <div
+        ref={dialogRef}
+        style={{
+          width: "min(480px, calc(100vw - 32px))",
+          backgroundColor: "var(--color-bg)",
+          border: "1px solid var(--color-border-strong)",
+          borderRadius: "var(--ui-radius-lg)",
+          boxShadow: "var(--ui-shadow-lg)",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "90vh",
+          overflow: "hidden",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, padding: "16px 20px", borderBottom: "1px solid var(--color-border)" }}>
-          <h2 id="account-setup-title" style={{ margin: 0, fontSize: 15 }}>{t("accountSetup.title", "Add Email Account")}</h2>
-          <button type="button" disabled={loading} onClick={() => void requestClose()} aria-label={t("common.close", "Close")}><X size={18} /></button>
+          <h2 id="account-setup-title" style={{ margin: 0, fontSize: 16, fontWeight: 650, color: "var(--color-text-primary)" }}>{t("accountSetup.title", "Add Email Account")}</h2>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void requestClose()}
+            aria-label={t("common.close", "Close")}
+            style={{
+              width: 30,
+              height: 30,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--ui-radius-sm)",
+              border: "1px solid transparent",
+              background: "transparent",
+              color: "var(--color-text-secondary)",
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
         <div className="scroll-region account-setup-scroll" style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto", padding: 20 }}>
-          <label style={labelStyle}>{t("accountSetup.provider", "Provider")} <select name="account-provider" aria-label={t("accountSetup.provider", "Provider")} value={provider} disabled={loading} onChange={(e) => setProvider(e.target.value)}>
+          <label style={labelStyle}>{t("accountSetup.provider", "Provider")} <select name="account-provider" aria-label={t("accountSetup.provider", "Provider")} style={{ ...inputStyle, marginTop: 4 }} value={provider} disabled={loading} onChange={(e) => setProvider(e.target.value)}>
             <option value="gmail">Gmail</option>
             {isFeatureAvailable("imap") && <option value="imap">IMAP / SMTP</option>}
             {isFeatureAvailable("pop3") && <option value="pop3">POP3 / SMTP</option>}
             {isFeatureAvailable("outlook") && <option value="outlook">Microsoft</option>}
           </select></label>
           {provider === "outlook" ? <MicrosoftAccountForm onBusy={(value) => { busy.current = value; setLoading(value); }} onSaved={async () => { await queryClient.invalidateQueries({ queryKey: accountsQueryKey }); if (alive.current) onClose(); }} /> : provider !== "gmail" ? <ProtocolAccountForm key={provider} provider={provider === "pop3" ? "pop3" : "imap"} onBusy={(value) => { busy.current = value; setLoading(value); }} onSaved={async () => { await queryClient.invalidateQueries({ queryKey: accountsQueryKey }); if (alive.current) onClose(); }} /> : <>
-          <label htmlFor="setup-account-label" style={labelStyle}>{t("accountSetup.accountLabel", "Account label")}</label>
+          <label htmlFor="setup-account-label" style={{ ...labelStyle, marginTop: 14 }}>{t("accountSetup.accountLabel", "Account label")}</label>
           <input ref={labelRef} id="setup-account-label" style={inputStyle} maxLength={120} disabled={loading}
             value={accountLabel} onChange={(event) => setAccountLabel(event.target.value)} />
-          <small>{t("accountSetup.accountLabelHelp", "Only used to identify this account in Pebble; never sent as your sender name.")}</small>
+          <small style={{ display: "block", marginTop: 6, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>{t("accountSetup.accountLabelHelp", "Only used to identify this account in Pebble; never sent as your sender name.")}</small>
           <div style={{ marginTop: 16 }}>
-            <button type="button" disabled={loading || !statusLoaded || !configured} onClick={() => void handleOAuth()}
-              style={{ padding: "10px 16px", borderRadius: 6, border: "1px solid var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text-primary)" }}>
+            <button
+              type="button"
+              className="settings-button settings-button--primary"
+              disabled={loading || !statusLoaded || !configured}
+              onClick={() => void handleOAuth()}
+            >
               {loading ? t("accountSetup.adding", "Signing in...") : t("accountSetup.signInGoogle", "Sign in with Google")}
             </button>
           </div>

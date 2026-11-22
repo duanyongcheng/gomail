@@ -15,8 +15,8 @@ func TestUIThemeSelftestMatrixMatchesRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	entries := regexp.MustCompile(`id: "([a-z]+)",\s+rowHeight: ([0-9]+)`).FindAllStringSubmatch(string(source), -1)
-	if len(entries) != len(uiThemeSelftestMatrix) || len(entries) != 5 {
-		t.Fatal("native theme coverage must include all five registry entries")
+	if len(entries) != len(uiThemeSelftestMatrix) || len(entries) != 1 {
+		t.Fatal("native theme coverage must match the unified registry entry")
 	}
 	seen := map[string]bool{}
 	for index, entry := range entries {
@@ -32,13 +32,13 @@ func TestUIThemeSelftestMatrixMatchesRegistry(t *testing.T) {
 			seen[name] = true
 		}
 	}
-	if len(seen) != 10 {
-		t.Fatal("both color modes must be checked for all five styles")
+	if len(seen) != 2 {
+		t.Fatal("both color modes must be checked for the unified Harbor Chartroom system")
 	}
 }
 
 func TestUIThemeSelftestChecksRealUIAndScopedStorage(t *testing.T) {
-	choose := uiThemeChooseScript("paper", "light", "app")
+	choose := uiThemeChooseScript("harbor", "light", "app")
 	for _, want := range []string{"data-app-theme-option", "data-message-theme-option", "theme.click()", "mode.click()", "message.click()"} {
 		if !strings.Contains(choose, want) {
 			t.Fatalf("theme selection does not exercise %q", want)
@@ -49,7 +49,7 @@ func TestUIThemeSelftestChecksRealUIAndScopedStorage(t *testing.T) {
 			t.Fatalf("theme selection bypasses production controls with %q", forbidden)
 		}
 	}
-	assertion := uiThemeRenderedScript("paper", "light", 88)
+	assertion := uiThemeRenderedScript("harbor", "light", 88)
 	for _, want := range []string{"pebble:profile-storage-migrated", "'pebble:profile:'+namespace+':pebble-app-theme'", "getBoundingClientRect()", "--ui-mail-row-height", "scroll.scrollWidth", "fontFamily"} {
 		if !strings.Contains(assertion, want) {
 			t.Fatalf("theme runtime oracle misses %q", want)

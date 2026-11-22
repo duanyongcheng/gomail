@@ -54,31 +54,43 @@ export default function OutboxPanel({ accountId = "" }: { accountId?: string }) 
         : action === "check" ? t("outbox.checkInconclusive", "Sent check is inconclusive. No resend was attempted.") : t("outbox.actionFailed", "Could not change this outbox item. Refresh and try again."));
     } finally { acting.current = false; setBusy(false); }
   }
-  return <details style={{ padding: "8px 20px", borderBottom: "1px solid var(--color-border)", fontSize: 13 }}>
-    <summary>{t("outbox.title", "Outbox")} ({query.data?.length ?? 0})</summary>
-    {!accountId && <label>{t("pendingOps.accountFilter", "Account")} <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-      <option value="">{t("outbox.allAccounts", "All accounts")}</option>
-      {accounts.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}
-    </select></label>}
-    <p>{t("outbox.notice", "Queued is not sent. Unknown outcomes are never resent automatically.")}</p>
-    <p>{t("outbox.listLimit", "Showing up to 50 items, active first. Dismiss finished items to see older ones.")}</p>
-    <button disabled={busy || query.isFetching} onClick={() => void query.refetch()}>{t("pendingOps.refresh", "Refresh")}</button>
-    {error && <p role="alert">{error}</p>}
-    {query.isLoading ? <p role="status">{t("common.loading", "Loading...")}</p> : query.isError ? <p role="alert">{t("outbox.readFailed", "Could not read outbox.")}</p> : !query.data?.length ? <p>{t("outbox.empty", "No outbox items")}</p> : <ul>
-      {query.data.map((item) => <li key={item.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
-        <strong>{item.subject || t("compose.untitledDraft", "Untitled draft")}</strong>
-        {!accountId && <span> · {accounts.find((a) => a.id === item.accountId)?.email}</span>} — <span>{statusLabel(item.status)}</span>
-        <span> · {t("outbox.attempts", "Attempts")}: {item.attempts}</span>
-        {item.nextRetryAt && <span> · {new Date(item.nextRetryAt * 1000).toLocaleString()}</span>}
-        {item.lastError && <p>{item.lastError}</p>}
-        {item.status === "outcome_unknown" && item.cloudDraft && <p>{t("outbox.cloudUnknown", "This send is linked to a Gmail draft. Its reconciliation record is kept until Check Sent confirms the result; do not send or upload another copy.")}</p>}
-        <div style={{ display: "flex", gap: 12 }}>
-          {item.status === "failed" && <button disabled={busy} onClick={() => void action(item, "retry")}>{t("outbox.retry", "Retry")}</button>}
-          {["queued", "failed"].includes(item.status) && <button disabled={busy} onClick={() => void action(item, "cancel")}>{t("outbox.cancel", "Cancel queued send")}</button>}
-          {item.status === "outcome_unknown" && <button disabled={busy} onClick={() => void action(item, "check")}>{t("outbox.check", "Check Sent")}</button>}
-          {(item.status === "sent" || (item.status === "outcome_unknown" && !item.cloudDraft)) && <button disabled={busy} onClick={() => void action(item, "dismiss")}>{t("outbox.dismiss", "Dismiss")}</button>}
-        </div>
-      </li>)}
-    </ul>}
+  return <details className="outbox-drawer">
+    <summary className="outbox-drawer-summary">
+      {t("outbox.title", "Outbox")} ({query.data?.length ?? 0})
+    </summary>
+    <div className="outbox-drawer-body">
+      <div className="outbox-drawer-controls">
+        {!accountId && <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>{t("pendingOps.accountFilter", "Account")} <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: "5px 8px", borderRadius: "var(--ui-radius-sm)", border: "1px solid var(--color-border)", background: "var(--color-bg)", color: "var(--color-text-primary)" }}>
+          <option value="">{t("outbox.allAccounts", "All accounts")}</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}
+        </select></label>}
+        <button type="button" className="settings-button" disabled={busy || query.isFetching} onClick={() => void query.refetch()}>{t("pendingOps.refresh", "Refresh")}</button>
+      </div>
+      <p className="outbox-drawer-note">{t("outbox.notice", "Queued is not sent. Unknown outcomes are never resent automatically.")}</p>
+      <p className="outbox-drawer-note">{t("outbox.listLimit", "Showing up to 50 items, active first. Dismiss finished items to see older ones.")}</p>
+      {error && <p role="alert" style={{ margin: 0, color: "var(--color-error)", fontSize: 12.5 }}>{error}</p>}
+      {query.isLoading ? <p role="status" className="outbox-drawer-note">{t("common.loading", "Loading...")}</p> : query.isError ? <p role="alert" style={{ margin: 0, color: "var(--color-error)", fontSize: 12.5 }}>{t("outbox.readFailed", "Could not read outbox.")}</p> : !query.data?.length ? <p className="outbox-drawer-note">{t("outbox.empty", "No outbox items")}</p> : <ul className="outbox-list">
+        {query.data.map((item) => {
+          const isSignal = item.status === "outcome_unknown" || item.status === "failed";
+          return <li key={item.id} className={`outbox-item${isSignal ? " outbox-item--signal" : ""}`}>
+            <div className="outbox-item-head">
+              <strong>{item.subject || t("compose.untitledDraft", "Untitled draft")}</strong>
+              {!accountId && <span style={{ color: "var(--color-text-secondary)", fontSize: 12 }}>· {accounts.find((a) => a.id === item.accountId)?.email}</span>}
+              <span className={`outbox-status-pill${isSignal ? " outbox-status-pill--signal" : ""}`}>{statusLabel(item.status)}</span>
+              <span style={{ color: "var(--color-text-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{t("outbox.attempts", "Attempts")}: {item.attempts}</span>
+              {item.nextRetryAt && <span style={{ color: "var(--color-text-tertiary)", fontSize: 11.5, fontVariantNumeric: "tabular-nums" }}>· {new Date(item.nextRetryAt * 1000).toLocaleString()}</span>}
+            </div>
+            {item.lastError && <p className="outbox-drawer-note" style={{ color: "var(--color-signal-text)" }}>{item.lastError}</p>}
+            {item.status === "outcome_unknown" && item.cloudDraft && <p className="outbox-drawer-note" style={{ color: "var(--color-signal-text)" }}>{t("outbox.cloudUnknown", "This send is linked to a Gmail draft. Its reconciliation record is kept until Check Sent confirms the result; do not send or upload another copy.")}</p>}
+            <div className="outbox-item-actions">
+              {item.status === "failed" && <button type="button" className="settings-button settings-button--primary" disabled={busy} onClick={() => void action(item, "retry")}>{t("outbox.retry", "Retry")}</button>}
+              {["queued", "failed"].includes(item.status) && <button type="button" className="settings-button" disabled={busy} onClick={() => void action(item, "cancel")}>{t("outbox.cancel", "Cancel queued send")}</button>}
+              {item.status === "outcome_unknown" && <button type="button" className="settings-button settings-button--primary" disabled={busy} onClick={() => void action(item, "check")}>{t("outbox.check", "Check Sent")}</button>}
+              {(item.status === "sent" || (item.status === "outcome_unknown" && !item.cloudDraft)) && <button type="button" className="settings-button" disabled={busy} onClick={() => void action(item, "dismiss")}>{t("outbox.dismiss", "Dismiss")}</button>}
+            </div>
+          </li>;
+        })}
+      </ul>}
+    </div>
   </details>;
 }

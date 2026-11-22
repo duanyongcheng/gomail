@@ -31,14 +31,16 @@ export default function ProxyTab() {
     } catch (err) { if (alive.current) setError(extractErrorMessage(err)); }
     finally { lock.current = false; if (alive.current) setBusy(false); }
   }
-  return <div style={{ display: "grid", gap: 12 }}>
-    <h2>{t("connectionRoute.globalTitle", "Global proxy")}</h2>
-    <p>{t("connectionRoute.globalNotice", "Choose a SOCKS5 or HTTP CONNECT proxy for accounts that inherit the global route. A failed proxy never falls back to direct. Per-account overrides are in Edit account.")}</p>
+  return <div style={{ display: "grid", gap: 14 }}>
+    <h2 className="settings-section-title settings-section-title--first" style={{ margin: 0 }}>{t("connectionRoute.globalTitle", "Global proxy")}</h2>
+    <p className="settings-section-desc" style={{ margin: 0 }}>{t("connectionRoute.globalNotice", "Choose a SOCKS5 or HTTP CONNECT proxy for accounts that inherit the global route. A failed proxy never falls back to direct. Per-account overrides are in Edit account.")}</p>
     <ProxyFields value={value} onChange={(next) => { setValue(next); setSaved(false); }} disabled={!ready || busy} global />
-    <button disabled={!ready || busy} onClick={() => void save()}>{busy ? t("common.saving", "Saving...") : t("connectionRoute.saveGlobal", "Save global proxy")}</button>
-    {!ready && !loadFailed && <p role="status">{t("common.loading", "Loading...")}</p>}
-    {saved && <p role="status">{t("connectionRoute.globalSaved", "Global proxy saved.")}</p>}
-    {loadFailed && <p role="alert">{t("connectionRoute.globalLoadFailed", "Could not load network settings. Reopen this tab before saving.")}</p>}
-    {error && <p role="alert">{error}</p>}
+    <div>
+      <button type="button" className="settings-button settings-button--primary" disabled={!ready || busy} onClick={() => void save()}>{busy ? t("common.saving", "Saving...") : t("connectionRoute.saveGlobal", "Save global proxy")}</button>
+    </div>
+    {!ready && !loadFailed && <p role="status" className="settings-section-desc">{t("common.loading", "Loading...")}</p>}
+    {saved && <p role="status" className="settings-callout">{t("connectionRoute.globalSaved", "Global proxy saved.")}</p>}
+    {loadFailed && <p role="alert" className="settings-callout settings-callout--signal">{t("connectionRoute.globalLoadFailed", "Could not load network settings. Reopen this tab before saving.")}</p>}
+    {error && <p role="alert" className="settings-callout settings-callout--signal">{error}</p>}
   </div>;
 }

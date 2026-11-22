@@ -53,6 +53,7 @@ const REALTIME_PREFERENCES = new Set<RealtimePreference>(["realtime", "balanced"
 const NOTIFICATIONS_KEY = "pebble-notifications-enabled";
 const KEEP_RUNNING_BACKGROUND_KEY = "pebble-keep-running-background";
 const UNREAD_COUNT_KEY = "pebble-show-unread-count";
+export const SYSTEM_LABELS_KEY = "pebble-show-system-labels";
 export const COLLAPSED_ACCOUNT_GROUPS_KEY = "pebble-collapsed-account-groups";
 export const BACKGROUND_IMAGE_STORAGE_KEY = "pebble-background-image-settings";
 const BACKGROUND_IMAGE_FITS = new Set<BackgroundImageFit>(["cover", "contain", "repeat"]);
@@ -129,6 +130,19 @@ export function readShowUnreadCountPreference(): boolean {
 }
 
 /**
+ * Whether the sidebar lists auxiliary provider system labels (`CATEGORY_*`,
+ * `CHAT`, `IMPORTANT`, `STARRED`, `UNREAD`, etc.).
+ *
+ * Off unless the user turned it on: Gmail exposes internal state and category
+ * tags as system labels alongside real folders, which otherwise crowd custom
+ * labels out of the mailbox tree. Standard mailbox roles (`Inbox`, `Sent`,
+ * `Drafts`, `Trash`, `Spam`, `Archive`) and user-created labels stay visible.
+ */
+export function readShowSystemLabelsPreference(): boolean {
+  return profileLocalStorage.getItem(SYSTEM_LABELS_KEY) === "true";
+}
+
+/**
  * Which mailbox groups the reader has folded shut, by account id.
  *
  * Empty on a fresh install: a group that starts collapsed hides the folders that
@@ -168,6 +182,7 @@ const initialRealtimeMode = readRealtimePreference();
 const initialNotificationsEnabled = readNotificationsEnabledPreference();
 const initialKeepRunningInBackground = readKeepRunningInBackgroundPreference();
 const initialShowUnreadCount = readShowUnreadCountPreference();
+const initialShowSystemLabels = readShowSystemLabelsPreference();
 const initialCollapsedAccountGroups = readCollapsedAccountGroups();
 const initialStartHiddenToTray = isFeatureAvailable("startHidden") && readStartHiddenToTrayPreference();
 const initialLanguage = getInitialLanguage();
@@ -187,9 +202,20 @@ export function resolveTheme(theme: Theme): "dark" | "light" {
   return theme;
 }
 
-/** Apply the resolved theme to the DOM immediately (no React effect needed). */
+/** Apply the resolved theme to the DOM immediately without mid-transition colour lag. */
 export function applyThemeToDom(theme: Theme) {
-  document.documentElement.setAttribute("data-theme", resolveTheme(theme));
+  const root = document.documentElement;
+  const resolved = resolveTheme(theme);
+  if (root.getAttribute("data-theme") !== resolved) {
+    root.setAttribute("data-theme-switching", "true");
+    root.setAttribute("data-theme", resolved);
+    // Flush style + layout synchronously while transitions are disabled so every
+    // element adopts its new theme colours immediately without starting a transition.
+    void root.offsetHeight;
+    root.removeAttribute("data-theme-switching");
+    return;
+  }
+  root.setAttribute("data-theme", resolved);
 }
 
 interface UIState {
@@ -242,6 +268,8 @@ interface UIState {
   setPendingRuleDraftText: (text: string | null) => void;
   showFolderUnreadCount: boolean;
   setShowFolderUnreadCount: (show: boolean) => void;
+  showSystemLabels: boolean;
+  setShowSystemLabels: (show: boolean) => void;
   /** Account ids whose folder group is folded shut in the sidebar. */
   collapsedAccountGroups: string[];
   toggleAccountGroup: (accountId: string) => void;
@@ -435,6 +463,11 @@ export const useUIStore = create<UIState>((set) => ({
   setShowFolderUnreadCount: (show) => {
     profileLocalStorage.setItem(UNREAD_COUNT_KEY, String(show));
     set({ showFolderUnreadCount: show });
+  },
+  showSystemLabels: initialShowSystemLabels,
+  setShowSystemLabels: (show) => {
+    profileLocalStorage.setItem(SYSTEM_LABELS_KEY, String(show));
+    set({ showSystemLabels: show });
   },
   collapsedAccountGroups: initialCollapsedAccountGroups,
   toggleAccountGroup: (accountId) => {

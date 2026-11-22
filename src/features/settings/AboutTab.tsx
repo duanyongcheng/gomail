@@ -196,19 +196,13 @@ export default function AboutTab() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <button
+            type="button"
+            className="settings-button"
             onClick={handleCheckUpdate}
             disabled={!updatesAvailable || update.status === "checking"}
             title={!updatesAvailable ? unavailableReason() : undefined}
             style={{
-              padding: "8px 18px",
-              fontSize: "13px",
-              fontWeight: 500,
-              border: "1px solid var(--color-border)",
-              borderRadius: "6px",
-              backgroundColor: "var(--color-bg-hover)",
-              color: "var(--color-text-primary)",
-              cursor: update.status === "checking" ? "wait" : "pointer",
-              opacity: update.status === "checking" ? 0.6 : 1,
+              cursor: update.status === "checking" ? "wait" : undefined,
             }}
           >
             {update.status === "checking"
@@ -217,7 +211,7 @@ export default function AboutTab() {
           </button>
 
           {update.status === "latest" && (
-            <span style={{ fontSize: "13px", color: "#22c55e" }}>
+            <span style={{ fontSize: "13px", color: "var(--color-accent)" }}>
               {t("about.upToDate", "You're on the latest version")}
             </span>
           )}
@@ -231,17 +225,13 @@ export default function AboutTab() {
 
         {update.status === "available" && (
           <div
+            className="settings-callout"
             style={{
               marginTop: "12px",
-              padding: "12px 14px",
-              borderRadius: "6px",
-              backgroundColor: "rgba(59, 130, 246, 0.08)",
-              border: "1px solid rgba(59, 130, 246, 0.2)",
-              fontSize: "13px",
-              color: "var(--color-text-primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: "12px",
             }}
           >
             <span>
@@ -250,17 +240,9 @@ export default function AboutTab() {
               })}
             </span>
             <button
+              type="button"
+              className="settings-button settings-button--primary"
               onClick={() => openUrl(update.releaseUrl || RELEASES_URL)}
-              style={{
-                padding: "6px 14px",
-                fontSize: "12px",
-                fontWeight: 500,
-                border: "none",
-                borderRadius: "6px",
-                backgroundColor: "var(--color-accent, #3b82f6)",
-                color: "#fff",
-                cursor: "pointer",
-              }}
             >
               {t("about.download", "Download")}
             </button>
@@ -269,15 +251,8 @@ export default function AboutTab() {
 
         {update.status === "error" && (
           <div
-            style={{
-              marginTop: "12px",
-              padding: "10px 14px",
-              borderRadius: "6px",
-              backgroundColor: "rgba(220, 53, 69, 0.1)",
-              border: "1px solid rgba(220, 53, 69, 0.3)",
-              fontSize: "13px",
-              color: "#dc3545",
-            }}
+            className="settings-callout settings-callout--signal"
+            style={{ marginTop: "12px" }}
           >
             {t("about.checkFailed", "Failed to check for updates")}: {update.error}
           </div>
@@ -309,7 +284,7 @@ export default function AboutTab() {
               onClick={(e) => { e.preventDefault(); openUrl(link.url); }}
               style={{
                 fontSize: "13px",
-                color: "var(--color-accent, #3b82f6)",
+                color: "var(--color-accent)",
                 textDecoration: "none",
                 cursor: "pointer",
               }}
@@ -473,7 +448,7 @@ function DiagnosticLogDialog({
         )}
 
         {state.status === "error" && (
-          <div style={{ padding: "22px", fontSize: "13px", color: "#dc3545", whiteSpace: "pre-wrap" }}>
+          <div style={{ padding: "22px", fontSize: "13px", color: "var(--color-error)", whiteSpace: "pre-wrap" }}>
             {state.error}
           </div>
         )}

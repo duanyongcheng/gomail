@@ -450,15 +450,8 @@ export default function TranslateTab() {
         <div
           role={statusType === "error" ? "alert" : "status"}
           aria-live="polite"
-          style={{
-            marginTop: "14px",
-            padding: "10px 14px",
-            borderRadius: "6px",
-            fontSize: "13px",
-            background: statusType === "success" ? "var(--color-bg-hover)" : "rgba(220, 53, 69, 0.1)",
-            color: statusType === "success" ? "var(--color-text-primary)" : "#dc3545",
-            border: `1px solid ${statusType === "success" ? "var(--color-border)" : "rgba(220, 53, 69, 0.3)"}`,
-          }}
+          className={`settings-callout${statusType === "error" ? " settings-callout--signal" : ""}`}
+          style={{ marginTop: "14px" }}
         >
           {statusMsg}
         </div>

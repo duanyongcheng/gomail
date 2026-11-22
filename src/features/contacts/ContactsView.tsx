@@ -222,17 +222,14 @@ export default function ContactsView() {
   return (
     <section className="contacts-view" aria-labelledby="contacts-view-title">
       <header className="contacts-header">
-        <div>
-          <span className="contacts-eyebrow">{t("sidebar.mail", "Mail")}</span>
-          <div className="contacts-title-row">
-            <h1 id="contacts-view-title">{t("contacts.title", "Contacts")}</h1>
-            <span
-              className="contacts-count"
-              aria-label={t("contacts.count", { count: contacts.length })}
-            >
-              {contacts.length}
-            </span>
-          </div>
+        <div className="contacts-title-row">
+          <h1 id="contacts-view-title">{t("contacts.title", "Contacts")}</h1>
+          <span
+            className="contacts-count"
+            aria-label={t("contacts.count", { count: contacts.length })}
+          >
+            {contacts.length}
+          </span>
         </div>
         <div className="contacts-header-actions">
           <input

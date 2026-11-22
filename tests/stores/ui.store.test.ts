@@ -4,8 +4,10 @@ import { useMailStore } from "../../src/stores/mail.store";
 import {
   readKeepRunningInBackgroundPreference,
   readNotificationsEnabledPreference,
+  readShowSystemLabelsPreference,
   readShowUnreadCountPreference,
   realtimePreferenceToPollInterval,
+  SYSTEM_LABELS_KEY,
   useUIStore,
 } from "../../src/stores/ui.store";
 
@@ -272,6 +274,26 @@ describe("UIStore", () => {
     localStorage.setItem("pebble-show-unread-count", "false");
 
     expect(readShowUnreadCountPreference()).toBe(false);
+  });
+
+  it("defaults auxiliary system labels in the sidebar to hidden", () => {
+    localStorage.removeItem(SYSTEM_LABELS_KEY);
+
+    expect(readShowSystemLabelsPreference()).toBe(false);
+  });
+
+  it("persists explicit opt-in to sidebar system labels", () => {
+    useUIStore.getState().setShowSystemLabels(true);
+
+    expect(useUIStore.getState().showSystemLabels).toBe(true);
+    expect(localStorage.getItem(SYSTEM_LABELS_KEY)).toBe("true");
+    expect(readShowSystemLabelsPreference()).toBe(true);
+
+    useUIStore.getState().setShowSystemLabels(false);
+
+    expect(useUIStore.getState().showSystemLabels).toBe(false);
+    expect(localStorage.getItem(SYSTEM_LABELS_KEY)).toBe("false");
+    expect(readShowSystemLabelsPreference()).toBe(false);
   });
 
   it("refuses unavailable startup-hidden writes while preserving an existing preference", () => {

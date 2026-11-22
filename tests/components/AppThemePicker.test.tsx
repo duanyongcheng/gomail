@@ -11,7 +11,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 function ControlledPicker() {
-  const [activeTheme, setActiveTheme] = useState<AppThemeId>("paper");
+  const [activeTheme, setActiveTheme] = useState<AppThemeId>("harbor");
   return <AppThemePicker activeTheme={activeTheme} onSelect={setActiveTheme} />;
 }
 
@@ -20,70 +20,41 @@ describe("AppThemePicker", () => {
     useUIStore.setState({ theme: "light" });
   });
 
-  it("offers all five directions with a unique three-pane preview", () => {
-    render(<AppThemePicker activeTheme="paper" onSelect={vi.fn()} />);
-    expect(screen.getByRole("radiogroup", { name: "Interface theme" })).toBeTruthy();
-    expect(screen.getAllByRole("radio")).toHaveLength(5);
-    const previewStyles = new Set<string>();
-    for (const theme of APP_THEMES) {
-      const option = screen.getByRole("radio", { name: `${theme.letter} ${theme.name}` });
-      const preview = option.querySelector<HTMLElement>(".app-theme-preview");
-      expect(preview?.dataset.previewTheme).toBe(theme.id);
-      expect(option.querySelector(".app-theme-preview-sidebar")).toBeTruthy();
-      expect(option.querySelector(".app-theme-preview-list")).toBeTruthy();
-      expect(option.querySelector(".app-theme-preview-reader")).toBeTruthy();
-      expect(preview?.style.getPropertyValue("--app-preview-accent")).toBe(theme.preview.light.accent);
-      previewStyles.add(preview?.getAttribute("style") ?? "");
-    }
-    expect(previewStyles.size).toBe(5);
+  it("renders the unified Harbor Chartroom live three-pane preview without multi-theme radio chrome", () => {
+    render(<AppThemePicker activeTheme="harbor" onSelect={vi.fn()} />);
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
+    const theme = APP_THEMES[0];
+    const card = screen.getByRole("button", { name: theme.name });
+    expect(card.getAttribute("data-app-theme-option")).toBe("harbor");
+    expect(card.getAttribute("data-active")).toBe("true");
+    const preview = card.querySelector<HTMLElement>(".app-theme-preview");
+    expect(preview?.dataset.previewTheme).toBe("harbor");
+    expect(card.querySelector(".app-theme-preview-sidebar")).toBeTruthy();
+    expect(card.querySelector(".app-theme-preview-list")).toBeTruthy();
+    expect(card.querySelector(".app-theme-preview-reader")).toBeTruthy();
+    expect(preview?.style.getPropertyValue("--app-preview-accent")).toBe(theme.preview.light.accent);
+    expect(screen.queryByText("Selected")).toBeNull();
+    expect(card.querySelector(".app-theme-option-letter")).toBeNull();
+    expect(card.querySelector(".app-theme-option-check")).toBeNull();
   });
 
-  it("marks only the selected option as checked and tabbable", () => {
-    render(<AppThemePicker activeTheme="editorial" onSelect={vi.fn()} />);
-    const selected = screen.getByRole("radio", { name: "D Editorial" });
-    expect(selected.getAttribute("aria-checked")).toBe("true");
-    expect(selected.tabIndex).toBe(0);
-    expect(screen.getAllByRole("radio").filter((radio) => radio.tabIndex === 0)).toHaveLength(1);
-    expect(screen.getByText("Selected")).toBeTruthy();
-  });
-
-  it("reports selections without closing the comparison", () => {
+  it("reports selection when clicked and supports controlled rendering", () => {
     const onSelect = vi.fn();
-    render(<AppThemePicker activeTheme="paper" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole("radio", { name: "B Warm Clay" }));
-    expect(onSelect).toHaveBeenCalledWith("clay");
-    expect(screen.getAllByRole("radio")).toHaveLength(5);
-  });
-
-  it("supports arrow navigation, wrapping, Home and End with roving focus", () => {
+    render(<AppThemePicker activeTheme="harbor" onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole("button", { name: "Harbor Chartroom" }));
+    expect(onSelect).toHaveBeenCalledWith("harbor");
     render(<ControlledPicker />);
-    const paper = screen.getByRole("radio", { name: "A Quiet Paper" });
-    const clay = screen.getByRole("radio", { name: "B Warm Clay" });
-    const minimal = screen.getByRole("radio", { name: "E Minimal Tool" });
-    paper.focus();
-    fireEvent.keyDown(paper, { key: "ArrowRight" });
-    expect(document.activeElement).toBe(clay);
-    expect(clay.getAttribute("aria-checked")).toBe("true");
-    fireEvent.keyDown(clay, { key: "End" });
-    expect(document.activeElement).toBe(minimal);
-    expect(minimal.getAttribute("aria-checked")).toBe("true");
-    fireEvent.keyDown(minimal, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(paper);
-    fireEvent.keyDown(paper, { key: "ArrowLeft" });
-    expect(document.activeElement).toBe(minimal);
-    fireEvent.keyDown(minimal, { key: "Home" });
-    expect(document.activeElement).toBe(paper);
-    expect(paper.tabIndex).toBe(0);
-    expect(minimal.tabIndex).toBe(-1);
+    expect(screen.getAllByRole("button", { name: "Harbor Chartroom" })[1].getAttribute("data-active")).toBe("true");
   });
 
-  it("updates every preview when the independent color mode changes", () => {
-    render(<AppThemePicker activeTheme="glass" onSelect={vi.fn()} />);
-    const glass = document.querySelector<HTMLElement>('[data-preview-theme="glass"]')!;
-    expect(glass.style.getPropertyValue("--app-preview-background")).toBe(APP_THEMES[2].preview.light.background);
+  it("updates the preview palette when the independent color mode changes", () => {
+    render(<AppThemePicker activeTheme="harbor" onSelect={vi.fn()} />);
+    const harbor = document.querySelector<HTMLElement>('[data-preview-theme="harbor"]')!;
+    expect(harbor.style.getPropertyValue("--app-preview-background")).toBe(APP_THEMES[0].preview.light.background);
     // The live mode hook repaints the same preview, rather than remounting the picker.
     act(() => useUIStore.getState().setTheme("dark"));
-    expect(glass.style.getPropertyValue("--app-preview-background")).toBe(APP_THEMES[2].preview.dark.background);
-    expect(screen.getByRole("radio", { name: "C Midnight Glass" }).getAttribute("aria-checked")).toBe("true");
+    expect(harbor.style.getPropertyValue("--app-preview-background")).toBe(APP_THEMES[0].preview.dark.background);
+    expect(harbor.style.getPropertyValue("--app-preview-accent")).toBe(APP_THEMES[0].preview.dark.accent);
   });
 });

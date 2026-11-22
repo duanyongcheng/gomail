@@ -227,10 +227,7 @@ export default function ContactEditorDialog({
         aria-labelledby="contact-editor-title"
       >
         <header className="contact-dialog-header">
-          <div>
-            <span className="contact-dialog-kicker">{t("contacts.title", "Contacts")}</span>
-            <h2 id="contact-editor-title">{title}</h2>
-          </div>
+          <h2 id="contact-editor-title">{title}</h2>
           <button
             type="button"
             className="contact-icon-button"

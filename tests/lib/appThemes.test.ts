@@ -11,13 +11,13 @@ import {
 } from "@/lib/appThemes";
 
 describe("interface theme registry", () => {
-  it("registers the five design directions in the original A-E order", () => {
-    expect(APP_THEMES.map((theme) => theme.id)).toEqual(["paper", "clay", "glass", "editorial", "minimal"]);
-    expect(APP_THEMES.map((theme) => theme.letter)).toEqual(["A", "B", "C", "D", "E"]);
-    expect(new Set(APP_THEMES.map((theme) => theme.rowHeight)).size).toBe(5);
+  it("registers the unified Harbor Chartroom design system", () => {
+    expect(APP_THEMES.map((theme) => theme.id)).toEqual(["harbor"]);
+    expect(APP_THEMES.map((theme) => theme.letter)).toEqual(["A"]);
+    expect(APP_THEMES[0].rowHeight).toBe(88);
   });
 
-  it("provides complete and distinct light and dark previews for every direction", () => {
+  it("provides complete and distinct light and dark previews", () => {
     for (const theme of APP_THEMES) {
       for (const mode of ["light", "dark"] as const) {
         expect(Object.keys(theme.preview[mode]).sort()).toEqual([
@@ -27,7 +27,6 @@ describe("interface theme registry", () => {
       }
       expect(theme.preview.light).not.toEqual(theme.preview.dark);
     }
-    expect(new Set(APP_THEMES.map((theme) => theme.preview.light.accent)).size).toBe(5);
   });
 
   it("keeps previews in sync with the live light and dark application palettes", () => {
@@ -76,12 +75,15 @@ describe("interface theme registry", () => {
     }
   });
 
-  it("reads a saved direction and falls back safely without rewriting corrupt data", () => {
+  it("reads a saved direction and falls back safely without rewriting legacy or corrupt data", () => {
     const data = new Map<string, string>();
     const storage = { getItem: (key: string) => data.get(key) ?? null };
     expect(readStoredAppTheme(storage)).toBe(DEFAULT_APP_THEME);
+    data.set(APP_THEME_STORAGE_KEY, "harbor");
+    expect(readStoredAppTheme(storage)).toBe("harbor");
     data.set(APP_THEME_STORAGE_KEY, "editorial");
-    expect(readStoredAppTheme(storage)).toBe("editorial");
+    expect(readStoredAppTheme(storage)).toBe(DEFAULT_APP_THEME);
+    expect(data.get(APP_THEME_STORAGE_KEY)).toBe("editorial");
     data.set(APP_THEME_STORAGE_KEY, "not-a-theme");
     expect(readStoredAppTheme(storage)).toBe(DEFAULT_APP_THEME);
     expect(data.get(APP_THEME_STORAGE_KEY)).toBe("not-a-theme");

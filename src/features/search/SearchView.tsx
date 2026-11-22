@@ -181,58 +181,25 @@ export default function SearchView() {
           style={{
             flexShrink: 0,
             overflow: "auto",
-            borderRight: selectedId ? "1px solid var(--color-border)" : "none",
           }}
         >
           {loading && (
-            <div
-              className="fade-in"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "40px",
-                color: "var(--color-text-secondary)",
-                fontSize: "13px",
-                gap: "10px",
-              }}
-            >
+            <div className="fade-in mail-state-center">
               <Loader size={20} className="spinner" />
-              <span>{t("common.loading")}</span>
+              <span className="mail-state-detail">{t("common.loading")}</span>
             </div>
           )}
 
           {!loading && queryError && (
-            <div
-              className="fade-in"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "40px",
-                color: "var(--color-text-secondary)",
-                fontSize: "14px",
-                gap: "8px",
-              }}
-            >
-              <p style={{ color: "var(--color-error, #e53e3e)", margin: 0 }}>
+            <div className="fade-in mail-state-center">
+              <p className="mail-state-error">
                 {t("search.error", "Search failed")}
               </p>
-              <p style={{ fontSize: "13px", margin: 0 }}>{queryError?.message}</p>
+              <p className="mail-state-detail">{queryError?.message}</p>
               <button
+                type="button"
+                className="mail-state-secondary-btn"
                 onClick={() => refetch()}
-                style={{
-                  marginTop: "8px",
-                  padding: "6px 16px",
-                  borderRadius: "4px",
-                  border: "1px solid var(--color-border)",
-                  backgroundColor: "transparent",
-                  color: "var(--color-accent)",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
               >
                 {t("common.retry", "Retry")}
               </button>
@@ -240,38 +207,16 @@ export default function SearchView() {
           )}
 
           {!loading && !queryError && hasSearched && results.length === 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "40px",
-                color: "var(--color-text-secondary)",
-                fontSize: "14px",
-                gap: "8px",
-              }}
-            >
-              <Search size={28} strokeWidth={1.2} />
-              {t("search.noResults")}
+            <div className="mail-state-center">
+              <Search size={28} strokeWidth={1.3} />
+              <p className="mail-state-detail">{t("search.noResults")}</p>
             </div>
           )}
 
           {!loading && !hasSearched && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "60px 20px",
-                color: "var(--color-text-tertiary)",
-                fontSize: "14px",
-                gap: "8px",
-              }}
-            >
-              <Search size={32} />
-              <span>{t("search.title")}</span>
+            <div className="mail-state-center">
+              <Search size={30} strokeWidth={1.3} />
+              <span className="mail-state-detail">{t("search.title")}</span>
             </div>
           )}
 

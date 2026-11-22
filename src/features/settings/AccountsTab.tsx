@@ -202,20 +202,9 @@ export default function AccountsTab() {
           {t("settings.emailAccounts")}
         </h2>
         <button
+          type="button"
+          className="settings-button settings-button--primary"
           onClick={() => setShowSetup(true)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "7px 14px",
-            borderRadius: "6px",
-            border: "none",
-            backgroundColor: "var(--color-accent)",
-            color: "#fff",
-            fontSize: "13px",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
         >
           <Plus size={14} />
           {t("settings.addAccount")}
@@ -462,8 +451,8 @@ export default function AccountsTab() {
                       cursor: "pointer",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "#ef4444";
-                      e.currentTarget.style.backgroundColor = "rgba(239,68,68,0.08)";
+                      e.currentTarget.style.color = "var(--color-error)";
+                      e.currentTarget.style.backgroundColor = "var(--color-signal-bg)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.color = "var(--color-text-secondary)";
@@ -493,16 +482,12 @@ export default function AccountsTab() {
       {/* Test result */}
       {testResult && (
         <div
+          className={`settings-callout${testResult.ok ? "" : " settings-callout--signal"}`}
           style={{
             marginTop: "10px",
-            padding: "10px 12px",
-            borderRadius: "6px",
-            backgroundColor: testResult.ok ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-            border: `1px solid ${testResult.ok ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-            color: testResult.ok ? "#22c55e" : "#ef4444",
             fontSize: "12px",
             whiteSpace: "pre-wrap",
-            fontFamily: "monospace",
+            fontFamily: "var(--font-mono)",
             lineHeight: 1.5,
           }}
         >
@@ -1158,7 +1143,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
                 </div>
 
                 {folderError && (
-                  <div role="alert" style={{ color: "#ef4444", fontSize: "12px" }}>
+                  <div role="alert" style={{ color: "var(--color-error)", fontSize: "12px" }}>
                     {t("settings.folderListFailed", "Failed to list IMAP folders: {{error}}", {
                       error: folderError,
                     })}
@@ -1255,7 +1240,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
             {!signatureLoaded && !signatureError && <p role="status">{t("common.loading")}</p>}
 
             {error && (
-              <div role="alert" aria-live="assertive" style={{ padding: "10px 12px", borderRadius: "6px", backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444", fontSize: "13px" }}>
+              <div role="alert" aria-live="assertive" className="settings-callout settings-callout--signal" style={{ fontSize: "13px" }}>
                 {error}
               </div>
             )}

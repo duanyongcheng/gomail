@@ -429,17 +429,12 @@ export default function CloudSyncTab() {
       </p>
 
       <p
+        className="settings-callout"
         style={{
           marginTop: "-8px",
           marginBottom: "18px",
-          fontSize: "13px",
-          lineHeight: 1.5,
-          color: "var(--color-text-secondary)",
           maxWidth: "640px",
-          padding: "8px 12px",
-          background: "var(--color-bg-secondary)",
-          borderRadius: "6px",
-          borderLeft: "3px solid var(--color-accent)",
+          color: "var(--color-text-secondary)",
         }}
       >
         {t(
@@ -722,21 +717,8 @@ export default function CloudSyncTab() {
         <div
           role={statusType === "error" ? "alert" : "status"}
           aria-live="polite"
-          style={{
-            marginTop: "14px",
-            padding: "10px 14px",
-            borderRadius: "6px",
-            fontSize: "13px",
-            background:
-              statusType === "success"
-                ? "var(--color-bg-hover)"
-                : "rgba(220, 53, 69, 0.1)",
-            color:
-              statusType === "success"
-                ? "var(--color-text-primary)"
-                : "#dc3545",
-            border: `1px solid ${statusType === "success" ? "var(--color-border)" : "rgba(220, 53, 69, 0.3)"}`,
-          }}
+          className={`settings-callout${statusType === "error" ? " settings-callout--signal" : ""}`}
+          style={{ marginTop: "14px" }}
         >
           {statusMsg}
         </div>

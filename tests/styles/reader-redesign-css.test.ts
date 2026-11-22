@@ -17,11 +17,10 @@ describe("interface-native reader styles", () => {
     expect(css).toContain("@media (max-width: 520px)");
   });
 
-  it("differentiates paper, clay, glass, editorial and minimal reading surfaces", () => {
-    for (const id of ["paper", "clay", "glass", "editorial", "minimal"]) {
-      expect(css).toContain(`[data-ui-theme="${id}"]`);
-    }
-    expect(css).toMatch(/\[data-ui-theme="clay"\] \.app-reader-sheet\s*\{[^}]*border-radius:\s*18px/s);
-    expect(css).toMatch(/\[data-ui-theme="editorial"\] \.app-reader-sender\s*\{[^}]*border-top:\s*1px solid var\(--color-text-primary\)/s);
+  it("defines the Harbor Chartroom reader toolbar, privacy signal strip, and reading sheet", () => {
+    expect(css).toContain(".app-reader-toolbar");
+    expect(css).toContain(".privacy-banner");
+    expect(css).toContain(".app-reader-sheet");
+    expect(css).toContain(".app-reader-sender");
   });
 });

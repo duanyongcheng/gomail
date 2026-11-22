@@ -216,7 +216,7 @@ export default function StatusBar() {
           aria-live="polite"
           aria-atomic="true"
           className="app-statusbar-primary flex items-center gap-1"
-          style={{ color: "var(--color-error, #ef4444)" }}
+          style={{ color: "var(--color-signal-text)" }}
         >
           <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="1" y1="1" x2="23" y2="23" />
@@ -250,14 +250,8 @@ export default function StatusBar() {
             disabled={!activeAccountId}
             title={syncStatus === "syncing" ? t("status.stopSync") : t("status.syncNow")}
             aria-label={syncStatus === "syncing" ? t("status.stopSync") : t("status.syncNow")}
+            className="app-statusbar-icon-btn"
             style={{
-              background: "none",
-              border: "none",
-              cursor: activeAccountId ? "pointer" : "default",
-              padding: "2px",
-              color: "var(--color-text-secondary)",
-              display: "flex",
-              alignItems: "center",
               opacity: activeAccountId ? 1 : 0.4,
             }}
           >
@@ -274,16 +268,10 @@ export default function StatusBar() {
               role={failedRemoteWrites > 0 ? "alert" : "status"}
               aria-live={failedRemoteWrites > 0 ? "assertive" : "polite"}
               aria-atomic="true"
-              className="flex items-center gap-1 truncate"
+              className={`app-statusbar-beacon truncate${failedRemoteWrites > 0 ? " app-statusbar-beacon--signal" : ""}`}
               title={pendingOpsSummary?.last_error ?? pendingRemoteText}
-              style={{
-                color: failedRemoteWrites > 0
-                  ? "var(--color-warning, #d97706)"
-                  : "var(--color-text-secondary)",
-                maxWidth: "220px",
-              }}
             >
-              {failedRemoteWrites > 0 ? <AlertCircle aria-hidden="true" size={13} /> : <Clock aria-hidden="true" size={13} />}
+              {failedRemoteWrites > 0 ? <AlertCircle aria-hidden="true" size={12} /> : <Clock aria-hidden="true" size={12} />}
               <span className="truncate">{pendingRemoteText}</span>
             </span>
           )}
@@ -295,8 +283,7 @@ export default function StatusBar() {
           role="alert"
           aria-live="assertive"
           aria-atomic="true"
-          className="truncate"
-          style={{ color: "var(--color-error, #ef4444)" }}
+          className="app-statusbar-beacon app-statusbar-beacon--signal truncate"
         >
           {lastMailError}
         </span>
@@ -309,21 +296,7 @@ export default function StatusBar() {
           aria-label={backgroundLabel}
           aria-pressed={keepRunningInBackground}
           title={backgroundLabel}
-          className="inline-flex items-center justify-center"
-          style={{
-            width: "20px",
-            height: "20px",
-            border: "1px solid transparent",
-            borderRadius: "4px",
-            background: keepRunningInBackground
-              ? "color-mix(in srgb, var(--color-accent) 16%, transparent)"
-              : "transparent",
-            color: keepRunningInBackground
-              ? "var(--color-accent)"
-              : "var(--color-text-secondary)",
-            cursor: "pointer",
-            padding: 0,
-          }}
+          className="app-statusbar-icon-btn"
         >
           <AppWindow aria-hidden="true" size={13} />
         </button>
