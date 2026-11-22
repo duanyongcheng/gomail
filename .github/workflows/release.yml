@@ -236,14 +236,16 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           set -euo pipefail
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          if ! gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" \
+              --repo "$GH_REPO" \
               --draft \
               --title "Pebble Go $RELEASE_TAG" \
               --generate-notes
           fi
-          gh release upload "$RELEASE_TAG" release-artifacts/*
-          gh release edit "$RELEASE_TAG" --draft=false
+          gh release upload "$RELEASE_TAG" release-artifacts/* --repo "$GH_REPO"
+          gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --draft=false
