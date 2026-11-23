@@ -19,7 +19,7 @@ describe("i18n default language", () => {
   });
 
   it("defaults to Chinese when there is no saved language and the system language is Chinese", async () => {
-    localStorage.removeItem("pebble-language");
+    localStorage.removeItem("gomail-language");
     stubNavigatorLanguage("zh-CN");
 
     const { default: i18n } = await import("../../src/lib/i18n");
@@ -28,7 +28,7 @@ describe("i18n default language", () => {
   });
 
   it("defaults to English when there is no saved language and the system language is not Chinese", async () => {
-    localStorage.removeItem("pebble-language");
+    localStorage.removeItem("gomail-language");
     stubNavigatorLanguage("fr-FR");
 
     const { default: i18n } = await import("../../src/lib/i18n");
@@ -37,7 +37,7 @@ describe("i18n default language", () => {
   });
 
   it("keeps an explicitly saved language over the system language", async () => {
-    localStorage.setItem("pebble-language", "en");
+    localStorage.setItem("gomail-language", "en");
     stubNavigatorLanguage("zh-CN");
 
     const { default: i18n } = await import("../../src/lib/i18n");

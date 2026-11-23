@@ -1,6 +1,5 @@
 {
   "version": 20,
-  "source": "Pebble/crates/pebble-store/src/migrations.rs",
   "source_sha256": "442a80d2c9dea502590b93e2fef1a991e8d9bdcea71c9ac1975dc0bbb630a619",
   "objects": [
     {

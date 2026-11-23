@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/privacy"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/privacy"
 )
 
 type SenderRequest struct {

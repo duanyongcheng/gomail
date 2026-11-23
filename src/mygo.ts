@@ -1193,7 +1193,7 @@ export const UpdateService = {
   install(arg0: Empty): Promise<UpdateStatus> {
     return call("UpdateService.Install", arg0);
   },
-  /** Relaunch restarts Pebble Go into an already-installed update. */
+  /** Relaunch restarts GoMail into an already-installed update. */
   relaunch(arg0: Empty): Promise<Empty> {
     return call("UpdateService.Relaunch", arg0);
   },

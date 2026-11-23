@@ -69,7 +69,7 @@ function mount(view: "inbox" | "search" | "starred" | "thread") {
 beforeEach(async () => {
   vi.clearAllMocks();
   await i18n.changeLanguage("en");
-  profileLocalStorage.setItem("pebble-privacy-mode", "strict");
+  profileLocalStorage.setItem("gomail-privacy-mode", "strict");
   useMailStore.setState({ activeAccountId: "a", activeFolderId: "a:inbox", selectedMessageId: null, selectedThreadId: null, threadView: false, batchMode: false, selectedMessageIds: new Set() });
   useUIStore.setState({ activeView: "inbox", searchQuery: "", theme: "light", showFolderUnreadCount: true });
   useToastStore.setState({ toasts: [] });

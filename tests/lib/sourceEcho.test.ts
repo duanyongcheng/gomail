@@ -14,7 +14,7 @@ import { SOURCE_ECHO_CLASS, SOURCE_ECHO_CSS } from "../../src/lib/sourceEcho";
 describe("source echo styling", () => {
   it("addresses the echo by class", () => {
     expect(SOURCE_ECHO_CSS).toContain(`.${SOURCE_ECHO_CLASS} {`);
-    expect(SOURCE_ECHO_CLASS).toBe("pebble-source-echo");
+    expect(SOURCE_ECHO_CLASS).toBe("gomail-source-echo");
   });
 
   it("puts the original on its own line, in muted small type", () => {

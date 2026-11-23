@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 func TestAccountSettingsEncryptedRestartAndOutgoingName(t *testing.T) {
@@ -21,7 +21,7 @@ func TestAccountSettingsEncryptedRestartAndOutgoingName(t *testing.T) {
 		t.Fatal(err)
 	}
 	data, err := s.Runtime.DB.EmailSignature(ctx, "a")
-	if err != nil || bytes.Contains(data, []byte(sig)) || !bytes.HasPrefix(data, []byte("PEBBLE")) {
+	if err != nil || bytes.Contains(data, []byte(sig)) || !bytes.HasPrefix(data, []byte("GOMAIL")) {
 		t.Fatal("plaintext signature", err)
 	}
 	if other, err := s.Signature(ctx, AccountRequest{AccountID: "b"}); err != nil || other != "" {

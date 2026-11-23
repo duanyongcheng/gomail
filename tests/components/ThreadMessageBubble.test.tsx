@@ -97,7 +97,7 @@ describe("ThreadMessageBubble", () => {
   });
 
   it("uses relaxed privacy mode by default when rendering expanded thread messages", async () => {
-    localStorage.removeItem("pebble-privacy-mode");
+    localStorage.removeItem("gomail-privacy-mode");
 
     render(<ThreadMessageBubble message={message} defaultExpanded />);
 

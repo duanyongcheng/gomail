@@ -3,7 +3,7 @@ package desktop
 import (
 	"errors"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/gomail/internal/app"
 	"github.com/egoist/mygo"
 )
 

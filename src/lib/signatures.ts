@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-const LEGACY_STORAGE_KEY = "pebble-signatures";
+const LEGACY_STORAGE_KEY = "gomail-signatures";
 
 function readLegacySignatures(): Record<string, string> | null {
   try {

@@ -78,7 +78,7 @@ it("switches only the automatic signature and ignores stale account results", as
   expect(html).toContain("Keep my body, including Private A.");
   expect(html).toContain("Work C");
   expect(html).not.toContain("Wrong B");
-  expect((html.match(/data-pebble-signature/g) ?? []).length).toBe(1);
+  expect((html.match(/data-gomail-signature/g) ?? []).length).toBe(1);
   expect(result.current.editor!.getText().match(/Private A/g)).toHaveLength(1);
 });
 
@@ -98,7 +98,7 @@ it.each<EditorMode>(["rich", "markdown", "html"])("preserves body in %s mode and
   expect(content()).not.toContain("Signature A");
   if (mode !== "rich") expect(content()).toMatch(/^Untouched source prefix\n\n/);
   act(() => result.current.switchMode("rich"));
-  expect(result.current.editor!.getHTML()).toContain('data-pebble-signature="auto"');
+  expect(result.current.editor!.getHTML()).toContain('data-gomail-signature="auto"');
   act(() => result.current.switchMode(mode));
   rerender({ account: "empty" });
   await waitFor(() => expect(result.current.editorReady).toBe(true));
@@ -107,7 +107,7 @@ it.each<EditorMode>(["rich", "markdown", "html"])("preserves body in %s mode and
 });
 
 it("restores original draft content without fetching or replacing its signature", async () => {
-  const restored = { editorMode: "rich" as const, richTextHtml: '<p>Saved draft</p><p data-pebble-signature="auto">Old signature</p>', quotedReplyHtml: "<blockquote>Original quote</blockquote>" };
+  const restored = { editorMode: "rich" as const, richTextHtml: '<p>Saved draft</p><p data-gomail-signature="auto">Old signature</p>', quotedReplyHtml: "<blockquote>Original quote</blockquote>" };
   vi.mocked(getSignature).mockImplementation(async account => `Current signature ${account}`);
   const { result, rerender } = renderHook(({ account }) => useComposeEditor({ ...base, fromAccountId: account, restoredDraft: restored }), { initialProps: { account: "a" } });
   await waitFor(() => expect(result.current.editorReady).toBe(true));

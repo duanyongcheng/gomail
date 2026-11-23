@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 	"golang.org/x/oauth2"
 )
 
@@ -96,7 +96,7 @@ func Authorize(ctx context.Context, cfg *oauth2.Config, client *http.Client, ope
 			http.Error(w, "Callback already consumed", 409)
 			return
 		}
-		_, _ = io.WriteString(w, "Authorization received. Return to Pebble; token exchange must still finish.")
+		_, _ = io.WriteString(w, "Authorization received. Return to GoMail; token exchange must still finish.")
 	})
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, MaxHeaderBytes: 8192}
 	defer server.Close()

@@ -22,7 +22,7 @@ import {
 import { extractErrorMessage as errorMessage } from "@/lib/extractErrorMessage";
 import { profileLocalStorage } from "@/lib/profileStorage";
 
-const LAST_BACKUP_KEY = "pebble-cloud-sync-last-backup";
+const LAST_BACKUP_KEY = "gomail-cloud-sync-last-backup";
 
 type RestoreRequest =
   | { source: "webdav"; preview: BackupPreview }
@@ -222,7 +222,7 @@ export default function CloudSyncTab() {
 
   function downloadBackupJson(data: string) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `pebble-settings-backup-${timestamp}.json`;
+    const filename = `gomail-settings-backup-${timestamp}.json`;
     const blob = new Blob([data], { type: "application/json;charset=utf-8" });
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 func trustFixture(t *testing.T) *DB {

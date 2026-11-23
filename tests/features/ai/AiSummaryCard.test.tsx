@@ -20,7 +20,7 @@ vi.mock("../../../src/lib/api", () => ({
   aiSummarizeMessage: vi.fn(),
 }));
 
-const PRIVACY_ACK_KEY = "pebble-ai-privacy-ack";
+const PRIVACY_ACK_KEY = "gomail-ai-privacy-ack";
 
 describe("AiSummaryCard", () => {
   beforeEach(() => {

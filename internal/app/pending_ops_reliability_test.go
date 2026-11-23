@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 // Fault injection uses a second connection to the disposable test DB, never a

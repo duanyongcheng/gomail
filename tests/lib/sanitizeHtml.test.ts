@@ -3,8 +3,8 @@ import { sanitizeHtml, reapplyInlineStyles } from "../../src/lib/sanitizeHtml";
 
 describe("sanitizeHtml", () => {
   it("preserves the local attachment protocol while dropping data URLs", () => {
-    const sanitized = sanitizeHtml('<img src="pebble-attachment://localhost/token"><img src="data:image/png;base64,abc">');
-    expect(sanitized).toContain("pebble-attachment://localhost/token");
+    const sanitized = sanitizeHtml('<img src="gomail-attachment://localhost/token"><img src="data:image/png;base64,abc">');
+    expect(sanitized).toContain("gomail-attachment://localhost/token");
     expect(sanitized).not.toContain("data:image");
   });
 

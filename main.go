@@ -8,11 +8,11 @@ import (
 	stdruntime "runtime"
 	"sync"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/desktop"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/profile"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/desktop"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/profile"
+	"github.com/duanyongcheng/gomail/internal/store"
 	"github.com/egoist/mygo"
 )
 
@@ -35,10 +35,10 @@ var openUpdates = mygo.NewEvent[struct{}]("app:open-updates")
 var desktopAppService *desktop.AppService
 
 func main() {
-	mygo.App.SetName("Pebble Go")
-	if os.Getenv("PEBBLE_SELFTEST") == "1" {
+	mygo.App.SetName("GoMail")
+	if os.Getenv("GOMAIL_SELFTEST") == "1" {
 		// Keep synthetic second-instance checks away from a normal user's app.
-		mygo.App.SetName("Pebble Go Selftest")
+		mygo.App.SetName("GoMail Selftest")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -61,7 +61,7 @@ func main() {
 	mygo.App.OnActivate(func(bool) { lifecycle.Restore() })
 	mygo.App.OnSecondInstance(func([]string, string) { lifecycle.Restore() })
 	fileService := &desktop.FileService{Runtime: runtime, App: windowService}
-	updateService := desktop.NewUpdateService(ctx, "duanyongcheng/pebble-go", os.Getenv("PEBBLE_SELFTEST") == "1")
+	updateService := desktop.NewUpdateService(ctx, "duanyongcheng/gomail", os.Getenv("GOMAIL_SELFTEST") == "1")
 	updateService.OnStatus = func(st desktop.UpdateStatus) { _ = updateStatus.Broadcast(st) }
 	updateService.OnProgress = func(p desktop.UpdateProgress) { _ = updateProgress.Broadcast(p) }
 	mygo.Bind(&app.MicrosoftService{Runtime: runtime}, &app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService, updateService)
@@ -87,7 +87,7 @@ func main() {
 			mygo.App.Quit()
 			return
 		}
-		root, err := profile.Resolve(filepath.Dir(exe), fallback, os.Getenv("PEBBLE_PROFILE_DIR"))
+		root, err := profile.Resolve(filepath.Dir(exe), fallback, os.Getenv("GOMAIL_PROFILE_DIR"))
 		if err != nil {
 			slog.Error("cannot resolve profile directory")
 			mygo.App.Quit()
@@ -110,7 +110,7 @@ func main() {
 				return
 			}
 			slog.SetDefault(slog.New(slog.NewJSONHandler(logFile, nil)))
-			db, err = store.Open(ctx, filepath.Join(root, "pebble.sqlite"))
+			db, err = store.Open(ctx, filepath.Join(root, "gomail.sqlite"))
 			if err != nil {
 				slog.Error("cannot open profile database")
 				mygo.App.Quit()
@@ -125,7 +125,7 @@ func main() {
 			if err := runtime.Restore(); err != nil {
 				slog.Warn("saved credentials require attention; cached mail remains available")
 			}
-			if os.Getenv("PEBBLE_SELFTEST") == "1" {
+			if os.Getenv("GOMAIL_SELFTEST") == "1" {
 				if err := prepareSelftest(runtime); err != nil {
 					slog.Error("selftest fixture failed")
 					mygo.App.Quit()
@@ -143,7 +143,7 @@ func main() {
 				if !mygo.App.IsPackaged() {
 					mygo.SetFrontend(os.DirFS("dist"))
 				}
-				window := mygo.NewWindow(mygo.WindowOptions{Title: "Pebble Go", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f7fafb"})
+				window := mygo.NewWindow(mygo.WindowOptions{Title: "GoMail", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f7fafb"})
 				windowService.Window.Store(window)
 				// Click handlers route links through the validating typed service.
 				// Disable MyGO's default target=_blank Shell.OpenExternal fallback,
@@ -161,7 +161,7 @@ func main() {
 				if stdruntime.GOOS == "darwin" {
 					mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 						{
-							Label: "Pebble Go",
+							Label: "GoMail",
 							Submenu: []*mygo.MenuItem{
 								{Role: mygo.RoleAbout},
 								{
@@ -186,7 +186,7 @@ func main() {
 				} else {
 					mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{{Role: mygo.RoleAppMenu}, {Role: mygo.RoleEditMenu}}))
 				}
-				if os.Getenv("PEBBLE_SELFTEST") == "1" {
+				if os.Getenv("GOMAIL_SELFTEST") == "1" {
 					// Close before the first frontend preference RPC can run. The
 					// page may finish bootstrap but must not show itself again.
 					window.Close()

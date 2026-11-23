@@ -62,7 +62,7 @@ export function isFeatureAvailable(feature: Feature): boolean {
 }
 
 export function unavailableReason(): string {
-  const fallback = "This feature is not available in Pebble Go yet. No changes will be made.";
+  const fallback = "This feature is not available in GoMail yet. No changes will be made.";
   return i18n.t("common.featureUnavailable", fallback) || fallback;
 }
 

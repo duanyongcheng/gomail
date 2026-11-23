@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
-	"github.com/duanyongcheng/pebble-go/internal/store"
-	"github.com/duanyongcheng/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/provider/gmail"
+	"github.com/duanyongcheng/gomail/internal/store"
+	"github.com/duanyongcheng/gomail/internal/testgmail"
 )
 
 func cloudOutboxFixture(t *testing.T) (*ComposeService, *testgmail.Mock, SendRequest) {

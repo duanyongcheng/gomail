@@ -7,7 +7,7 @@ import { useEffect, useRef, type RefObject } from "react";
  * answered here and not by the global shortcut layer because the popover has to
  * go first — the keystroke that closes a popover must not also close the
  * message detail sitting underneath it. So while the popover is open its node
- * carries `data-pebble-overlay`, which is what `useKeyboard` looks for before
+ * carries `data-gomail-overlay`, which is what `useKeyboard` looks for before
  * claiming Escape for the rest of the window.
  *
  * The popover keeps the gesture for the whole stack: a second press closes the
@@ -25,7 +25,7 @@ export function useClickOutside(
   useEffect(() => {
     if (!active) return;
     const node = ref.current;
-    node?.setAttribute("data-pebble-overlay", "true");
+    node?.setAttribute("data-gomail-overlay", "true");
 
     const onPointerDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -43,7 +43,7 @@ export function useClickOutside(
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
-      node?.removeAttribute("data-pebble-overlay");
+      node?.removeAttribute("data-gomail-overlay");
     };
   }, [active, ref]);
 }

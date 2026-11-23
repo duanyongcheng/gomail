@@ -1,7 +1,7 @@
 import { profileLocalStorage } from "@/lib/profileStorage";
 import { isFeatureAvailable } from "@/lib/availability";
 
-export const START_HIDDEN_TO_TRAY_KEY = "pebble-start-hidden-to-tray";
+export const START_HIDDEN_TO_TRAY_KEY = "gomail-start-hidden-to-tray";
 
 export function readStartHiddenToTrayPreference(storage: Pick<Storage, "getItem"> = profileLocalStorage): boolean {
   // Preserve legacy storage, but never leave the only window hidden without a tray.

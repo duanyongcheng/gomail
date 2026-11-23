@@ -128,7 +128,7 @@ export default function SettingsView() {
             <h1>{t(TAB_LABEL_KEYS[activeTab])}</h1>
           </header>
           <p className="settings-availability-note">
-            {t("settings.unavailableHint", "Disabled settings are not available in Pebble Go yet.")}
+            {t("settings.unavailableHint", "Disabled settings are not available in GoMail yet.")}
           </p>
           {activeTab === "accounts" && <AccountsTab />}
           {activeTab === "general" && <GeneralTab />}

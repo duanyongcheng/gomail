@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 func TestReplayQueuedWritesUsesPersistedPayloadAndIsolatesAccounts(t *testing.T) {

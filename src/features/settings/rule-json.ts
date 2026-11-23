@@ -1,9 +1,7 @@
-// Rule JSON schema — MUST stay byte-compatible with the backend types in
-// `crates/pebble-rules/src/types.rs`. Both sides (de)serialize the same
-// persisted strings, so adding, removing, or renaming a variant here without
-// a matching change there (and vice versa) will silently skip or reject
-// rules at load time. When the two drift, prefer fixing both; a future
-// migration to shared ts-rs-generated bindings is tracked separately.
+// Rule JSON schema — must stay byte-compatible with the persisted rule payloads
+// serialized by the GoMail backend. Adding, removing, or renaming a variant here
+// without a matching backend change (and vice versa) will cause rules to be
+// skipped or rejected at load time.
 export type ConditionField =
   | "from"
   | "to"

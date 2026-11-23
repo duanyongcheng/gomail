@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 // MailOpPayload is the persisted, provider-neutral label intent. The same

@@ -124,7 +124,7 @@ describe("useKeyboard — Escape closes an open message", () => {
   // message under it must survive that press.
   it("leaves Escape to a popover that is on screen", () => {
     const overlay = document.createElement("div");
-    overlay.setAttribute("data-pebble-overlay", "true");
+    overlay.setAttribute("data-gomail-overlay", "true");
     document.body.appendChild(overlay);
     const detail = answerDetailClose(true);
     renderHook(() => useKeyboard());

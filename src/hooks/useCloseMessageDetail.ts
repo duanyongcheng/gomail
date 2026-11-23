@@ -11,7 +11,7 @@ import { useEffect, useRef } from "react";
  * it, a press with nothing open would be swallowed instead of falling through
  * to the next thing Escape does in that view.
  */
-export const CLOSE_MESSAGE_DETAIL_EVENT = "pebble:close-message-detail";
+export const CLOSE_MESSAGE_DETAIL_EVENT = "gomail:close-message-detail";
 
 /**
  * Answer `CLOSE_MESSAGE_DETAIL_EVENT` while `hasOpenDetail` holds.

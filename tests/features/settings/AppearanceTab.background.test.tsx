@@ -40,7 +40,7 @@ describe("AppearanceTab supported local preferences", () => {
     render(<AppearanceTab />);
     fireEvent.click(screen.getByRole("button", { name: /settings.themeDark/ }));
     expect(useUIStore.getState().theme).toBe("dark");
-    expect(localStorage.getItem("pebble-theme")).toBe("dark");
+    expect(localStorage.getItem("gomail-theme")).toBe("dark");
     fireEvent.click(screen.getByRole("button", { name: "English" }));
     expect(useUIStore.getState().language).toBe("en");
   });

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/provider/gmail"
 )
 
 type draftServer struct {
@@ -102,7 +102,7 @@ func TestCloudDraftCreateUpdateAndExternalConflict(t *testing.T) {
 		t.Fatal(parsed, err)
 	}
 	copy, err := s.Runtime.DB.GmailDraftCopy(ctx, "a", id)
-	if err != nil || strings.Contains(string(copy.Data), "pebble.invalid") {
+	if err != nil || strings.Contains(string(copy.Data), "gomail.invalid") {
 		t.Fatal(copy, err)
 	}
 	if _, err = s.Save(ctx, SaveDraftRequest{AccountID: "a", ExistingDraftID: id, Subject: "updated", BodyText: "new", EditorMode: "rich"}); err != nil {

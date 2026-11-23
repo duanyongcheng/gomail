@@ -121,9 +121,9 @@ describe("MessageDetail AI summary entry", () => {
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
 
     act(() => {
-      document.dispatchEvent(new CustomEvent("pebble:ai-summarize"));
-      document.dispatchEvent(new CustomEvent("pebble:toggle-bilingual"));
-      document.dispatchEvent(new CustomEvent("pebble:translate-selection"));
+      document.dispatchEvent(new CustomEvent("gomail:ai-summarize"));
+      document.dispatchEvent(new CustomEvent("gomail:toggle-bilingual"));
+      document.dispatchEvent(new CustomEvent("gomail:translate-selection"));
     });
 
     expect(screen.queryByText("ai.summaryTitle")).toBeNull();

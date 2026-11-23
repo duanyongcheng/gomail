@@ -10,9 +10,9 @@ export const ComposeSignature = Node.create({
   isolating: true,
   // Raise the parse rule priority, not the extension priority: Paragraph must
   // remain the schema's default block for empty documents and ordinary Enter.
-  parseHTML: () => [{ tag: 'p[data-pebble-signature="auto"]', priority: 60 }],
+  parseHTML: () => [{ tag: 'p[data-gomail-signature="auto"]', priority: 60 }],
   renderHTML: () => ["p", {
-    "data-pebble-signature": "auto",
+    "data-gomail-signature": "auto",
     style: "color:var(--color-text-secondary);font-size:13px",
   }, 0],
 });
@@ -21,7 +21,7 @@ export function signatureHtml(signature: string): string {
   if (!signature) return "";
   const escaped = signature.replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\r?\n/g, "<br/>");
-  return `<p data-pebble-signature="auto" style="color:var(--color-text-secondary);font-size:13px">--<br/>${escaped}</p>`;
+  return `<p data-gomail-signature="auto" style="color:var(--color-text-secondary);font-size:13px">--<br/>${escaped}</p>`;
 }
 
 export function replaceEditorSignature(editor: Editor, signature: string) {
@@ -48,7 +48,7 @@ export function replaceSourceSignature(source: string, signature: string): strin
   let replaced = false;
   // Signature paragraphs contain inline content only. Keep all bytes outside
   // their explicit marker intact, including hand-authored Markdown/HTML.
-  const next = source.replace(/<p\b(?=[^>]*\bdata-pebble-signature\s*=\s*(?:"auto"|'auto'))[^>]*>[\s\S]*?<\/p\s*>/gi, () => {
+  const next = source.replace(/<p\b(?=[^>]*\bdata-gomail-signature\s*=\s*(?:"auto"|'auto'))[^>]*>[\s\S]*?<\/p\s*>/gi, () => {
     const replacement = replaced ? "" : html;
     replaced = true;
     return replacement;

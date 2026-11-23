@@ -40,7 +40,7 @@ describe("TitleBar", () => {
   it("renders the app logo as a transparent custom titlebar image", () => {
     const { container } = render(<TitleBar />);
 
-    expect(screen.getByText("Pebble Go")).toBeTruthy();
+    expect(screen.getByText("GoMail")).toBeTruthy();
 
     const logo = container.querySelector("img[aria-hidden='true']");
     expect(logo).not.toBeNull();

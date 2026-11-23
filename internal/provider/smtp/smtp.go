@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/mailnet"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/mailnet"
 )
 
 type Config struct {
@@ -106,7 +106,7 @@ func (t *Transport) connect(ctx context.Context) (*session, error) {
 	if err != nil || code != 220 {
 		return fail()
 	}
-	code, extensions, err := s.command("EHLO pebble.invalid")
+	code, extensions, err := s.command("EHLO gomail.invalid")
 	if err != nil || code != 250 {
 		return fail()
 	}
@@ -125,7 +125,7 @@ func (t *Transport) connect(ctx context.Context) (*session, error) {
 		s.conn = secure
 		setDeadline(secure, ctx, 60*time.Second)
 		s.reader = bufio.NewReaderSize(secure, 8192)
-		code, extensions, err = s.command("EHLO pebble.invalid")
+		code, extensions, err = s.command("EHLO gomail.invalid")
 		if err != nil || code != 250 {
 			return fail()
 		}

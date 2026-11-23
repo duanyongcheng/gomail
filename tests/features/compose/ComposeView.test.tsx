@@ -284,7 +284,7 @@ describe("ComposeView", () => {
 
   it("uses rendered plain text instead of signature HTML markers for Markdown sends", async () => {
     mocks.editorMode = "markdown";
-    mocks.rawSource = '<p data-pebble-signature="auto">Hello</p>';
+    mocks.rawSource = '<p data-gomail-signature="auto">Hello</p>';
     render(<ComposeView />);
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Signature" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));

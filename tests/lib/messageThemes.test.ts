@@ -540,8 +540,8 @@ describe("message theme variables", () => {
 describe("message theme content css", () => {
   it("outranks the core shadow rules without rewriting them", () => {
     const css = messageThemeContentCss(getMessageTheme("letter"));
-    expect(css).toContain(".pebble-email-content.pebble-email-content");
-    expect(css).toContain(":host([data-pebble-message-theme])");
+    expect(css).toContain(".gomail-email-content.gomail-email-content");
+    expect(css).toContain(":host([data-gomail-message-theme])");
   });
 
   it("hands a dark template a light sheet so mail stays readable", () => {
@@ -601,7 +601,7 @@ describe("message theme content css", () => {
 
   it("keeps links readable on the interface-native dark-mode white sheet", () => {
     const css = messageThemeContentCss(getMessageTheme("app"));
-    const linkRule = ':host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content a';
+    const linkRule = ':host-context([data-theme="dark"]) .gomail-email-content.gomail-email-content a';
     expect(css).toContain(linkRule);
     expect(css).toContain("color: #155e8a;");
     expect(css.indexOf(linkRule)).toBeGreaterThan(css.indexOf(MESSAGE_THEME_DARK_SHEET_CSS));

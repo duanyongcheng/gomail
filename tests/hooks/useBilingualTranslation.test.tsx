@@ -117,11 +117,11 @@ describe("useBilingualTranslation", () => {
 
     const translated = result.current.bilingualResult?.translated ?? "";
     // One echo for the paragraph, not one per fragment.
-    expect(translated.match(/pebble-source-echo/g) ?? []).toHaveLength(1);
+    expect(translated.match(/gomail-source-echo/g) ?? []).toHaveLength(1);
 
     // It sits after everything the engine rewrote, and carries the whole
     // paragraph in the message's own words rather than a single fragment.
-    const echoIndex = translated.indexOf("pebble-source-echo");
+    const echoIndex = translated.indexOf("gomail-source-echo");
     expect(translated.lastIndexOf("〔")).toBeLessThan(echoIndex);
     const echo = translated.slice(echoIndex);
     expect(echo).toContain("We noticed you still haven't viewed the meeting report");
@@ -153,8 +153,8 @@ describe("useBilingualTranslation", () => {
     await toggle(result);
 
     const translated = result.current.bilingualResult?.translated ?? "";
-    expect(translated.match(/pebble-source-echo/g) ?? []).toHaveLength(1);
-    expect(translated.slice(translated.indexOf("pebble-source-echo"))).toContain(LONG_ENGLISH);
+    expect(translated.match(/gomail-source-echo/g) ?? []).toHaveLength(1);
+    expect(translated.slice(translated.indexOf("gomail-source-echo"))).toContain(LONG_ENGLISH);
   });
 
   /// The echo must carry nothing but a class. Carried as an inline `style`, the
@@ -174,7 +174,7 @@ describe("useBilingualTranslation", () => {
     await toggle(result);
 
     const translated = result.current.bilingualResult?.translated ?? "";
-    expect(translated).toContain('<span class="pebble-source-echo">');
+    expect(translated).toContain('<span class="gomail-source-echo">');
     expect(translated).not.toContain("style=");
   });
 

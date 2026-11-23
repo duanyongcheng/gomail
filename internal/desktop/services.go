@@ -7,8 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/crypto"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/crypto"
 	"github.com/egoist/mygo"
 )
 
@@ -100,7 +100,7 @@ func OpenLog(profile string) (*RotatingLog, error) {
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return nil, err
 	}
-	w := &RotatingLog{path: filepath.Join(directory, "pebble-go.log")}
+	w := &RotatingLog{path: filepath.Join(directory, "gomail.log")}
 	if err := w.open(); err != nil {
 		return nil, err
 	}

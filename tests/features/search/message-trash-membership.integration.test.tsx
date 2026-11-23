@@ -74,7 +74,7 @@ beforeEach(async () => {
   clients = [];
   messages = [{ ...base }];
   await i18n.changeLanguage("en");
-  profileLocalStorage.setItem("pebble-privacy-mode", "strict");
+  profileLocalStorage.setItem("gomail-privacy-mode", "strict");
   useMailStore.setState({ activeAccountId: "a", activeFolderId: "a:inbox", selectedMessageId: null, selectedThreadId: null, threadView: false, batchMode: false, selectedMessageIds: new Set() });
   useUIStore.setState({ activeView: "search", searchQuery: "", theme: "light" });
   useToastStore.setState({ toasts: [] });

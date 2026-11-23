@@ -9,7 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/gomail/internal/app"
 	"golang.org/x/net/idna"
 )
 

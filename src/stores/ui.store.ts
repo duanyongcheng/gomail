@@ -48,14 +48,14 @@ export interface RealtimeStatus {
   message?: string | null;
 }
 
-const REALTIME_PREFERENCE_KEY = "pebble-realtime-mode";
+const REALTIME_PREFERENCE_KEY = "gomail-realtime-mode";
 const REALTIME_PREFERENCES = new Set<RealtimePreference>(["realtime", "balanced", "battery", "manual"]);
-const NOTIFICATIONS_KEY = "pebble-notifications-enabled";
-const KEEP_RUNNING_BACKGROUND_KEY = "pebble-keep-running-background";
-const UNREAD_COUNT_KEY = "pebble-show-unread-count";
-export const SYSTEM_LABELS_KEY = "pebble-show-system-labels";
-export const COLLAPSED_ACCOUNT_GROUPS_KEY = "pebble-collapsed-account-groups";
-export const BACKGROUND_IMAGE_STORAGE_KEY = "pebble-background-image-settings";
+const NOTIFICATIONS_KEY = "gomail-notifications-enabled";
+const KEEP_RUNNING_BACKGROUND_KEY = "gomail-keep-running-background";
+const UNREAD_COUNT_KEY = "gomail-show-unread-count";
+export const SYSTEM_LABELS_KEY = "gomail-show-system-labels";
+export const COLLAPSED_ACCOUNT_GROUPS_KEY = "gomail-collapsed-account-groups";
+export const BACKGROUND_IMAGE_STORAGE_KEY = "gomail-background-image-settings";
 const BACKGROUND_IMAGE_FITS = new Set<BackgroundImageFit>(["cover", "contain", "repeat"]);
 const DEFAULT_BACKGROUND_IMAGE_FIT: BackgroundImageFit = "cover";
 const DEFAULT_BACKGROUND_IMAGE_OPACITY = 0.35;
@@ -276,14 +276,14 @@ interface UIState {
 }
 
 function restoredSettingsTab(): SettingsTab {
-  const tab = profileSessionStorage.getItem("pebble-settings-tab") ?? "accounts";
+  const tab = profileSessionStorage.getItem("gomail-settings-tab") ?? "accounts";
   return isSettingsTabAvailable(tab) ? tab as SettingsTab : "accounts";
 }
 
 export const useUIStore = create<UIState>((set) => ({
   sidebarCollapsed: false,
   activeView: "inbox",
-  theme: (profileLocalStorage.getItem("pebble-theme") as Theme) || "light",
+  theme: (profileLocalStorage.getItem("gomail-theme") as Theme) || "light",
   appTheme: initialAppTheme,
   messageTheme: initialMessageTheme,
   backgroundImage: initialBackgroundImage,
@@ -362,7 +362,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ activeView: "inbox" });
   },
   setTheme: (theme) => {
-    profileLocalStorage.setItem("pebble-theme", theme);
+    profileLocalStorage.setItem("gomail-theme", theme);
     applyThemeToDom(theme);
     set({ theme });
   },
@@ -432,7 +432,7 @@ export const useUIStore = create<UIState>((set) => ({
   setRealtimeMode: (mode) => {
     const pollInterval = realtimePreferenceToPollInterval(mode);
     profileLocalStorage.setItem(REALTIME_PREFERENCE_KEY, mode);
-    profileLocalStorage.setItem("pebble-poll-interval", String(pollInterval));
+    profileLocalStorage.setItem("gomail-poll-interval", String(pollInterval));
     set({
       realtimeMode: mode,
       pollInterval,
@@ -440,7 +440,7 @@ export const useUIStore = create<UIState>((set) => ({
   },
   pollInterval: realtimePreferenceToPollInterval(initialRealtimeMode),
   setPollInterval: (secs) => {
-    profileLocalStorage.setItem("pebble-poll-interval", String(secs));
+    profileLocalStorage.setItem("gomail-poll-interval", String(secs));
     set({ pollInterval: secs });
   },
   searchQuery: "",
@@ -451,7 +451,7 @@ export const useUIStore = create<UIState>((set) => ({
       useToastStore.getState().addToast({ message: unavailableReason(), type: "info" });
       return;
     }
-    profileSessionStorage.setItem("pebble-settings-tab", tab);
+    profileSessionStorage.setItem("gomail-settings-tab", tab);
     set({ settingsTab: tab });
   },
   pendingRuleDraftText: null,

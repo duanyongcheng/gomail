@@ -15,7 +15,7 @@ const LANGUAGE_OPTIONS = [
   { code: "es", labelKey: "languages.spanish" },
 ] as const;
 
-const PRIVACY_ACK_KEY = "pebble-ai-privacy-ack";
+const PRIVACY_ACK_KEY = "gomail-ai-privacy-ack";
 
 interface Props {
   messageId: string;
@@ -23,7 +23,7 @@ interface Props {
 }
 
 function defaultSummaryLanguage() {
-  const uiLang = profileLocalStorage.getItem("pebble-language") || "zh";
+  const uiLang = profileLocalStorage.getItem("gomail-language") || "zh";
   return LANGUAGE_OPTIONS.some((option) => option.code === uiLang) ? uiLang : "en";
 }
 

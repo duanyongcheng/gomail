@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-const LEGACY_STORAGE_KEY = "pebble-templates";
+const LEGACY_STORAGE_KEY = "gomail-templates";
 
 export interface EmailTemplate {
   id: string;

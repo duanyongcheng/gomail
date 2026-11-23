@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/gomail/internal/app"
 	"github.com/egoist/mygo"
 )
 
@@ -399,7 +399,7 @@ func (s *UpdateService) Install(app.Empty) (UpdateStatus, error) {
 	return st, nil
 }
 
-// Relaunch restarts Pebble Go into an already-installed update.
+// Relaunch restarts GoMail into an already-installed update.
 func (s *UpdateService) Relaunch(app.Empty) (app.Empty, error) {
 	s.mu.Lock()
 	installed := s.status.State == "installed" && s.status.InstalledVersion != ""
@@ -437,7 +437,7 @@ func fetchLatestGitHubReleaseFromURL(ctx context.Context, endpoint, repo, curren
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "Pebble-Go/"+normalizeVersion(current))
+	req.Header.Set("User-Agent", "GoMail/"+normalizeVersion(current))
 
 	resp, err := client.Do(req)
 	if err != nil {

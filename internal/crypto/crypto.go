@@ -9,11 +9,11 @@ import (
 	"errors"
 )
 
-const KeyringService = "dev.bary.pebble.go"
+const KeyringService = "dev.bary.gomail"
 const KeyringAccount = "master-dek"
 
 var ErrKeyNotFound = errors.New("DEK not found")
-var header = []byte("PEBBLE\x00\x01")
+var header = []byte("GOMAIL\x00\x01")
 
 type Keyring interface {
 	Get(string) ([]byte, error)
@@ -51,7 +51,7 @@ func FromKey(key []byte) (*Service, error) {
 
 func aad(purpose, record string) []byte {
 	out := append([]byte{}, header...)
-	out = append(out, []byte("pebble.crypto.context.v1\x00")...)
+	out = append(out, []byte("gomail.crypto.context.v1\x00")...)
 	out = binary.BigEndian.AppendUint64(out, uint64(len(purpose)))
 	out = append(out, purpose...)
 	out = binary.BigEndian.AppendUint64(out, uint64(len(record)))
@@ -69,7 +69,7 @@ func (s *Service) Encrypt(purpose, record string, plain []byte) ([]byte, error) 
 
 func (s *Service) Decrypt(purpose, record string, encrypted []byte) ([]byte, error) {
 	var associated []byte
-	if bytes.HasPrefix(encrypted, []byte("PEBBLE\x00")) {
+	if bytes.HasPrefix(encrypted, []byte("GOMAIL\x00")) {
 		if !bytes.HasPrefix(encrypted, header) {
 			return nil, errors.New("unsupported or truncated ciphertext envelope")
 		}

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
 )
 
 const AccountID = "poc-account"

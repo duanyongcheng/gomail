@@ -10,11 +10,11 @@ describe("unsupported tray startup through production window adapter", () => {
     const storage = { getItem: vi.fn(() => "true") };
     expect(readStartHiddenToTrayPreference(storage)).toBe(false);
     expect(shouldShowMainWindowOnStartup(storage)).toBe(true);
-    localStorage.setItem("pebble-start-hidden-to-tray", "true");
+    localStorage.setItem("gomail-start-hidden-to-tray", "true");
     await showMainWindow();
     expect(call).toHaveBeenCalledTimes(1);
     expect(call).toHaveBeenCalledWith("AppService.WindowAction", { action: "show", width: 0, height: 0, x: 0, y: 0 });
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("true");
-    localStorage.removeItem("pebble-start-hidden-to-tray");
+    expect(localStorage.getItem("gomail-start-hidden-to-tray")).toBe("true");
+    localStorage.removeItem("gomail-start-hidden-to-tray");
   });
 });

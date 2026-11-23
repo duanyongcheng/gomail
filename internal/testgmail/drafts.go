@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
 )
 
 // SetDraft seeds or externally edits a remote draft without counting an API write.

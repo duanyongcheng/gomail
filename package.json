@@ -1,14 +1,14 @@
 {
-  "name": "pebble-go",
+  "name": "gomail",
   "private": true,
   "type": "module",
-  "homepage": "https://github.com/duanyongcheng/pebble-go#readme",
+  "homepage": "https://github.com/duanyongcheng/gomail#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/duanyongcheng/pebble-go.git"
+    "url": "git+https://github.com/duanyongcheng/gomail.git"
   },
   "bugs": {
-    "url": "https://github.com/duanyongcheng/pebble-go/issues"
+    "url": "https://github.com/duanyongcheng/gomail/issues"
   },
   "scripts": {
     "dev": "mygo dev",

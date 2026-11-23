@@ -11,7 +11,7 @@ interface Props {
   onClose: () => void;
 }
 
-const TARGET_LANG_STORAGE_KEY = "pebble-translate-target-lang";
+const TARGET_LANG_STORAGE_KEY = "gomail-translate-target-lang";
 
 function readSavedTargetLang(): string | null {
   const saved = profileLocalStorage.getItem(TARGET_LANG_STORAGE_KEY);
@@ -38,7 +38,7 @@ export default function TranslatePopover({ text, position, onClose }: Props) {
   }
 
   const [privacyAcked, setPrivacyAcked] = useState(() =>
-    profileLocalStorage.getItem("pebble-translate-privacy-ack") === "1",
+    profileLocalStorage.getItem("gomail-translate-privacy-ack") === "1",
   );
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function TranslatePopover({ text, position, onClose }: Props) {
   }, [text, targetLang, privacyAcked]);
 
   function handleAcceptPrivacy() {
-    profileLocalStorage.setItem("pebble-translate-privacy-ack", "1");
+    profileLocalStorage.setItem("gomail-translate-privacy-ack", "1");
     setPrivacyAcked(true);
   }
 

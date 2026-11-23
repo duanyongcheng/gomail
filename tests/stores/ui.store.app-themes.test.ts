@@ -36,8 +36,8 @@ describe("UI store interface themes", () => {
   });
 
   it("keeps application style independent of color mode and message template", async () => {
-    localStorage.setItem("pebble-theme", "dark");
-    localStorage.setItem("pebble-message-theme", "telegram");
+    localStorage.setItem("gomail-theme", "dark");
+    localStorage.setItem("gomail-message-theme", "telegram");
     const { useUIStore, applyThemeToDom } = await import("@/stores/ui.store");
     applyThemeToDom(useUIStore.getState().theme);
     useUIStore.getState().setAppTheme("harbor");
@@ -46,8 +46,8 @@ describe("UI store interface themes", () => {
     expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("88px");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("harbor");
-    expect(localStorage.getItem("pebble-theme")).toBe("dark");
-    expect(localStorage.getItem("pebble-message-theme")).toBe("telegram");
+    expect(localStorage.getItem("gomail-theme")).toBe("dark");
+    expect(localStorage.getItem("gomail-message-theme")).toBe("telegram");
 
     useUIStore.getState().setTheme("light");
     expect(useUIStore.getState().appTheme).toBe("harbor");
@@ -67,16 +67,16 @@ describe("UI store interface themes", () => {
   it("keeps theme writes and restoration scoped to the active profile", async () => {
     const { initializeProfileStorageNamespace } = await import("@/lib/profileStorage");
     await initializeProfileStorageNamespace(async () => "theme-profile-a");
-    localStorage.setItem("pebble:profile:theme-profile-a:pebble-app-theme", "editorial");
+    localStorage.setItem("gomail:profile:theme-profile-a:gomail-app-theme", "editorial");
     const { useUIStore } = await import("@/stores/ui.store");
     expect(useUIStore.getState().appTheme).toBe("harbor");
     useUIStore.getState().setAppTheme("harbor");
-    expect(localStorage.getItem("pebble:profile:theme-profile-a:pebble-app-theme")).toBe("harbor");
+    expect(localStorage.getItem("gomail:profile:theme-profile-a:gomail-app-theme")).toBe("harbor");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBeNull();
 
     await initializeProfileStorageNamespace(async () => "theme-profile-b");
     useUIStore.getState().setAppTheme("harbor");
-    expect(localStorage.getItem("pebble:profile:theme-profile-b:pebble-app-theme")).toBe("harbor");
-    expect(localStorage.getItem("pebble:profile:theme-profile-a:pebble-app-theme")).toBe("harbor");
+    expect(localStorage.getItem("gomail:profile:theme-profile-b:gomail-app-theme")).toBe("harbor");
+    expect(localStorage.getItem("gomail:profile:theme-profile-a:gomail-app-theme")).toBe("harbor");
   });
 });

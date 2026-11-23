@@ -194,7 +194,7 @@ export default function AppearanceTab() {
               {backgroundImage?.filename ?? t("settings.noBackgroundImage", "No background image")}
             </div>
             <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "3px" }}>
-              {t("settings.backgroundImageDesc", "Stored locally in Pebble's app data folder.")}
+              {t("settings.backgroundImageDesc", "Stored locally in GoMail's app data folder.")}
             </div>
           </div>
         </div>

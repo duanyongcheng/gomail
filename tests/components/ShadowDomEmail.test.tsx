@@ -77,8 +77,8 @@ describe("ShadowDomEmail", () => {
     });
 
     const shadowMarkup = host!.shadowRoot!.innerHTML;
-    expect(shadowMarkup).toContain('class="pebble-email-content"');
-    expect(shadowMarkup).toContain(':host-context([data-theme="dark"]) .pebble-email-content');
+    expect(shadowMarkup).toContain('class="gomail-email-content"');
+    expect(shadowMarkup).toContain(':host-context([data-theme="dark"]) .gomail-email-content');
     expect(shadowMarkup).toContain("color-scheme: light");
     expect(shadowMarkup).toContain("background: #fff");
     expect(shadowMarkup).toContain("color: #202124");
@@ -89,23 +89,23 @@ describe("ShadowDomEmail", () => {
   /// reader saw the original running on from the translation instead of a muted
   /// line of its own. This rule is emitted independently of any theme.
   it("styles the echoed original from the shadow root", async () => {
-    const html = '<p>Body<span class="pebble-source-echo">Original</span></p>';
+    const html = '<p>Body<span class="gomail-source-echo">Original</span></p>';
     const { container } = render(<ShadowDomEmail html={html} />);
     const host = container.firstChild as HTMLDivElement | null;
 
     await waitFor(() => {
-      expect(host?.shadowRoot?.querySelector(".pebble-email-content")).not.toBeNull();
+      expect(host?.shadowRoot?.querySelector(".gomail-email-content")).not.toBeNull();
     });
 
     const shadowMarkup = host!.shadowRoot!.innerHTML;
-    expect(shadowMarkup).toContain(".pebble-source-echo {");
+    expect(shadowMarkup).toContain(".gomail-source-echo {");
     expect(shadowMarkup).toContain("color: #8a8a8a");
 
     // The sanitizer has to keep the class the translation puts on the echo —
     // the class is now the only thing the look depends on.
-    const echo = host!.shadowRoot!.querySelector(".pebble-source-echo")!;
+    const echo = host!.shadowRoot!.querySelector(".gomail-source-echo")!;
     expect(echo.textContent).toBe("Original");
-    expect(echo.getAttribute("class")).toBe("pebble-source-echo");
+    expect(echo.getAttribute("class")).toBe("gomail-source-echo");
   });
 
   it("prevents full-height email wrappers from painting a gray viewport canvas", async () => {
@@ -119,11 +119,11 @@ describe("ShadowDomEmail", () => {
     const host = container.firstChild as HTMLDivElement | null;
 
     await waitFor(() => {
-      expect(host?.shadowRoot?.querySelector(".pebble-email-content")).not.toBeNull();
+      expect(host?.shadowRoot?.querySelector(".gomail-email-content")).not.toBeNull();
     });
 
     const shadowMarkup = host!.shadowRoot!.innerHTML;
-    expect(shadowMarkup).toContain('.pebble-email-content > table[height="100%"]');
+    expect(shadowMarkup).toContain('.gomail-email-content > table[height="100%"]');
     // The attribute stays: the stylesheet matches on it. What makes the clamp
     // actually reach the paint is the CSSOM copy check below.
     expect(shadowMarkup).toContain('style="height: 100%; background: #f1f1f1"');
@@ -140,7 +140,7 @@ describe("ShadowDomEmail", () => {
     const host = container.firstChild as HTMLDivElement | null;
 
     await waitFor(() => {
-      expect(host?.shadowRoot?.querySelector(".pebble-email-content")).not.toBeNull();
+      expect(host?.shadowRoot?.querySelector(".gomail-email-content")).not.toBeNull();
     });
 
     expect(mocks.reapplyInlineStyles).toHaveBeenCalled();
@@ -158,10 +158,10 @@ describe("ShadowDomEmail", () => {
     const host = container.firstChild as HTMLDivElement | null;
 
     await waitFor(() => {
-      expect(host?.shadowRoot?.querySelector(".pebble-email-content")).not.toBeNull();
+      expect(host?.shadowRoot?.querySelector(".gomail-email-content")).not.toBeNull();
     });
 
-    const content = host!.shadowRoot!.querySelector(".pebble-email-content")!;
+    const content = host!.shadowRoot!.querySelector(".gomail-email-content")!;
     expect(content.querySelector("style")?.textContent).toContain(".hero");
     expect(content.querySelector("link")?.getAttribute("href")).toBe("https://cdn.example.com/mail.css");
     expect(content.querySelector(".hero")?.textContent).toBe("Styled body");
@@ -198,14 +198,14 @@ describe("ShadowDomEmail", () => {
       const host = container.firstChild as HTMLDivElement | null;
 
       await waitFor(() => {
-        expect(host?.shadowRoot?.querySelector(".pebble-email-content")).not.toBeNull();
+        expect(host?.shadowRoot?.querySelector(".gomail-email-content")).not.toBeNull();
       });
 
       const shadow = host!.shadowRoot!;
       expect(shadow.adoptedStyleSheets).toHaveLength(1);
       expect(
         (shadow.adoptedStyleSheets[0] as unknown as { cssText: string }).cssText,
-      ).toContain(".pebble-source-echo {");
+      ).toContain(".gomail-source-echo {");
       // Nothing inline is left to be refused.
       expect(shadow.querySelector("style")).toBeNull();
     } finally {
@@ -222,16 +222,16 @@ describe("ShadowDomEmail", () => {
 
   it("keeps the echo rule in the stylesheet itself, independent of the theme", () => {
     const css = shadowEmailCss(null);
-    expect(css).toContain(".pebble-source-echo {");
+    expect(css).toContain(".gomail-source-echo {");
     expect(css).toContain("color: #8a8a8a");
     expect(css).toContain("display: block");
     // A theme only ever adds to it; the echo rule cannot depend on one.
-    expect(shadowEmailCss(getMessageTheme("card"))).toContain(".pebble-source-echo {");
+    expect(shadowEmailCss(getMessageTheme("card"))).toContain(".gomail-source-echo {");
   });
 
   it("opens http and https links through the external URL command", async () => {
     const { container } = render(
-      <ShadowDomEmail html={'<a href="http://pebble.byebug.cn/">Pebble</a>'} />,
+      <ShadowDomEmail html={'<a href="http://example.com/">GoMail</a>'} />,
     );
     const host = container.firstChild as HTMLDivElement | null;
 
@@ -242,7 +242,7 @@ describe("ShadowDomEmail", () => {
     fireEvent.click(host!.shadowRoot!.querySelector("a")!);
 
     await waitFor(() => expect(mocks.call).toHaveBeenCalledExactlyOnceWith("AppService.OpenExternal", {
-      url: "http://pebble.byebug.cn/",
+      url: "http://example.com/",
     }));
   });
 

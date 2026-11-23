@@ -20,7 +20,7 @@ describe("keyboard product availability", () => {
     useShortcutStore.setState({ bindings: { [action]: "Ctrl+Shift+U" } });
     const confirm = vi.spyOn(useConfirmStore.getState(), "confirm");
     const events = vi.fn();
-    const eventNames = ["pebble:translate-selection", "pebble:toggle-bilingual", "pebble:ai-summarize"];
+    const eventNames = ["gomail:translate-selection", "gomail:toggle-bilingual", "gomail:ai-summarize"];
     eventNames.forEach((name) => document.addEventListener(name, events));
     const { unmount } = renderHook(() => useKeyboard());
     act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "u", ctrlKey: true, shiftKey: true, bubbles: true })); });
@@ -43,7 +43,7 @@ describe("keyboard product availability", () => {
       useShortcutStore.getState().updateShortcut(action, "Ctrl+U");
     }
     expect(useShortcutStore.getState().recording).toBeNull();
-    expect(localStorage.getItem("pebble-shortcuts")).toBeNull();
+    expect(localStorage.getItem("gomail-shortcuts")).toBeNull();
     expect(useShortcutStore.getState().bindings["open-search"]).toBe("Ctrl+Shift+F");
   });
 
@@ -56,11 +56,11 @@ describe("keyboard product availability", () => {
   });
 
   it("sanitizes persisted unsupported bindings without deleting the saved preference", async () => {
-    localStorage.setItem("pebble-shortcuts", JSON.stringify({ "toggle-view-kanban": "U", "open-search": "Ctrl+U" }));
+    localStorage.setItem("gomail-shortcuts", JSON.stringify({ "toggle-view-kanban": "U", "open-search": "Ctrl+U" }));
     vi.resetModules();
     const { useShortcutStore: restored } = await import("../../src/stores/shortcut.store");
     expect(restored.getState().bindings["toggle-view-kanban"]).toBeUndefined();
     expect(restored.getState().bindings["open-search"]).toBe("Ctrl+U");
-    expect(localStorage.getItem("pebble-shortcuts")).toContain("toggle-view-kanban");
+    expect(localStorage.getItem("gomail-shortcuts")).toContain("toggle-view-kanban");
   });
 });

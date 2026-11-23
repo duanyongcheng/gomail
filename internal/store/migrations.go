@@ -73,7 +73,7 @@ func migrate(ctx context.Context, db *sql.DB, target int) error {
 			return err
 		}
 		if count != 0 {
-			return errors.New("unversioned database is not an empty profile; use a new Pebble-Go profile")
+			return errors.New("unversioned database is not an empty profile; use a new GoMail profile")
 		}
 	}
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys=ON"); err != nil {

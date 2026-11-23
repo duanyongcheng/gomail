@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 const cloudDraftPurpose = "gmail_draft_copies.data"
@@ -161,7 +161,7 @@ func (s *ComposeService) Cloud(ctx context.Context, request CloudDraftRequest) (
 		err = provider.WithDraftSession(ctx, account.Email, func(api *googleapi.API) error { return s.checkCloudCopy(ctx, api, &copy, identity) })
 		return CloudDraftStatus{State: cloudCopyState(copy, stored.Revision)}, err
 	}
-	newIdentity := cloudDraftIdentity{MessageID: rand.Text() + "@pebble.invalid"}
+	newIdentity := cloudDraftIdentity{MessageID: rand.Text() + "@gomail.invalid"}
 	raw, thread, err := s.cloudDraftMIME(ctx, draft, newIdentity.MessageID)
 	if err != nil {
 		return CloudDraftStatus{}, err

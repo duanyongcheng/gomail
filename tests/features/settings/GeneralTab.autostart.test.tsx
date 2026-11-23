@@ -19,7 +19,7 @@ describe("GeneralTab unavailable startup behavior", () => {
 
   it("does not interpret the autostart startup stub as OS support", () => {
     render(<GeneralTab />);
-    const checkbox = screen.getByRole("checkbox", { name: "Launch Pebble at system startup" }) as HTMLInputElement;
+    const checkbox = screen.getByRole("checkbox", { name: "Launch GoMail at system startup" }) as HTMLInputElement;
     expect(checkbox.disabled).toBe(true);
     expect(checkbox.checked).toBe(false);
     expect(checkbox.title).toBe(unavailableReason());
@@ -35,6 +35,6 @@ describe("GeneralTab unavailable startup behavior", () => {
     expect(checkbox.disabled).toBe(true);
     expect(checkbox.checked).toBe(false);
     fireEvent.click(checkbox);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBeNull();
+    expect(localStorage.getItem("gomail-start-hidden-to-tray")).toBeNull();
   });
 });

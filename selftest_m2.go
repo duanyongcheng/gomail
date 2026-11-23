@@ -23,9 +23,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/store"
 	"github.com/egoist/mygo"
 	protocol "github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
@@ -57,7 +57,7 @@ func selftestM2(ctx context.Context, runtime *app.Runtime, window *mygo.Window, 
 }
 
 func runM2Selftest(ctx context.Context, checks map[string]bool) error {
-	dir, err := os.MkdirTemp("", "pebble-m2-synthetic-")
+	dir, err := os.MkdirTemp("", "gomail-m2-synthetic-")
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func runM2Selftest(ctx context.Context, checks map[string]bool) error {
 		}
 		ids = append(ids, a.ID)
 		ciphertext, err := db.AuthData(ctx, a.ID)
-		if err != nil || !bytes.HasPrefix(ciphertext, []byte("PEBBLE\x00\x01")) || bytes.Contains(ciphertext, []byte("synthetic-password")) {
+		if err != nil || !bytes.HasPrefix(ciphertext, []byte("GOMAIL\x00\x01")) || bytes.Contains(ciphertext, []byte("synthetic-password")) {
 			return fmt.Errorf("synthetic credentials are not encrypted")
 		}
 	}

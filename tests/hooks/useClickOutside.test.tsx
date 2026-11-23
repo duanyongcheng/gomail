@@ -60,11 +60,11 @@ describe("useClickOutside", () => {
     const node = makeNode();
     const { unmount } = renderHook(() => useClickOutside({ current: node }, true, vi.fn()));
 
-    expect(node.getAttribute("data-pebble-overlay")).toBe("true");
+    expect(node.getAttribute("data-gomail-overlay")).toBe("true");
 
     unmount();
 
-    expect(node.hasAttribute("data-pebble-overlay")).toBe(false);
+    expect(node.hasAttribute("data-gomail-overlay")).toBe(false);
   });
 
   it("neither listens nor marks while inactive", () => {
@@ -76,7 +76,7 @@ describe("useClickOutside", () => {
     document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 
     expect(onClose).not.toHaveBeenCalled();
-    expect(node.hasAttribute("data-pebble-overlay")).toBe(false);
+    expect(node.hasAttribute("data-gomail-overlay")).toBe(false);
   });
 
   it("unmarks the node when the popover closes", () => {
@@ -86,10 +86,10 @@ describe("useClickOutside", () => {
       { initialProps: { active: true } },
     );
 
-    expect(node.hasAttribute("data-pebble-overlay")).toBe(true);
+    expect(node.hasAttribute("data-gomail-overlay")).toBe(true);
 
     rerender({ active: false });
 
-    expect(node.hasAttribute("data-pebble-overlay")).toBe(false);
+    expect(node.hasAttribute("data-gomail-overlay")).toBe(false);
   });
 });

@@ -15,7 +15,7 @@ function Harness() {
 }
 beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); });
 it.each([false, true])("never opens AI forms or sends draft text, even with old privacy consent (%s)", (acknowledged) => {
-  if (acknowledged) profileLocalStorage.setItem("pebble-ai-privacy-ack", "1");
+  if (acknowledged) profileLocalStorage.setItem("gomail-ai-privacy-ack", "1");
   render(<Harness />);
   const button = screen.getByRole("button", { name: "ai.menuTooltip" });
   expect(button).toBeDisabled();

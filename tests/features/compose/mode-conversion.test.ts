@@ -55,7 +55,7 @@ it.each([
   '<p style="font-size: 22px">Large</p>',
   '<p><em style="color: red"><strong>Styled combined marks</strong></em></p>',
   '<p><small>Small</small><sup>sup</sup><sub>sub</sub></p>',
-  '<p data-pebble-signature="auto" style="color: red">Styled signature</p>',
+  '<p data-gomail-signature="auto" style="color: red">Styled signature</p>',
   '<p><a name="anchor">Anchor</a></p>',
   '<picture><source srcset="https://example.invalid/photo 2x"><img src="cid:photo"></picture>',
   '<svg><text>Vector content</text></svg>',

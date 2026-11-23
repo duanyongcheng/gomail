@@ -1,9 +1,0 @@
-{
-  "tests/tauri/background-asset-protocol-config.test.ts": "Asserts Rust/Tauri asset protocol scopes, capabilities and Cargo source; MyGO assets are covered in M1/M4.",
-  "tests/tauri/linux-webkit-workaround.test.ts": "Asserts a Rust Tauri startup workaround; MyGO owns the platform WebView runtime.",
-  "tests/tauri/macos-release-config.test.ts": "Asserts Cargo and tauri.conf packaging/signing configuration; MyGO release packaging is M6.",
-  "tests/tauri/mailto-deep-link-config.test.ts": "Asserts Tauri deep link plugin registration and Rust handlers; MyGO mailto is M4.",
-  "tests/tauri/tray-config.test.ts": "Asserts Tauri capabilities and Rust tray source; MyGO tray integration is M4.",
-  "tests/tauri/window-startup-config.test.ts": "Asserts Tauri window configuration and permissions; MyGO startup is checked by the explicit desktop selftest.",
-  "tests/site/policy-pages.test.ts": "Tests the separate upstream public website, which was not copied into this desktop repository."
-}

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 func (db *DB) TrustSender(ctx context.Context, account, email, level string) error {

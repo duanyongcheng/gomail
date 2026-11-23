@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 // Exercise the same cache projections used by Search -> Rendered/Get, Starred,

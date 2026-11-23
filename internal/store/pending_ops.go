@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 const MaxPendingMailOpAttempts = 8

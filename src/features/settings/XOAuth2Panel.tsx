@@ -105,7 +105,7 @@ export function XOAuth2Fields({ value, onChange, idPrefix, hasStoredRefreshToken
         <div style={hintStyle}>
           {t(
             "xoauth2.refreshTokenHint",
-            "Pebble exchanges this for a fresh access token before every connection, so you never have to paste one again.",
+            "GoMail exchanges this for a fresh access token before every connection, so you never have to paste one again.",
           )}
         </div>
       </div>

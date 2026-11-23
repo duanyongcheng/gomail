@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/privacy"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/privacy"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 func TestAttachmentHandlerServesOnlyAuthorizedOpaqueURL(t *testing.T) {
@@ -36,7 +36,7 @@ func TestAttachmentHandlerServesOnlyAuthorizedOpaqueURL(t *testing.T) {
 	if recorder.Code != 404 {
 		t.Fatalf("cross-account attachment returned %d", recorder.Code)
 	}
-	request = httptest.NewRequest("GET", "pebble-attachment://localhost/not-a-token", nil)
+	request = httptest.NewRequest("GET", "gomail-attachment://localhost/not-a-token", nil)
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	if recorder.Code != 404 {

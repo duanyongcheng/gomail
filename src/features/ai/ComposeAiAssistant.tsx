@@ -14,7 +14,7 @@ import { useToastStore } from "@/stores/toast.store";
 import AiReviewDialog from "./AiReviewDialog";
 import type { AiReviewAction } from "./AiReviewDialog";
 
-const PRIVACY_ACK_KEY = "pebble-ai-privacy-ack";
+const PRIVACY_ACK_KEY = "gomail-ai-privacy-ack";
 
 const TARGET_LANGUAGES = [
   { code: "zh", labelKey: "languages.chinese" },
@@ -65,7 +65,7 @@ interface Props {
 }
 
 function uiLanguage() {
-  const lang = profileLocalStorage.getItem("pebble-language") || "zh";
+  const lang = profileLocalStorage.getItem("gomail-language") || "zh";
   return TARGET_LANGUAGES.some((option) => option.code === lang) ? lang : "en";
 }
 

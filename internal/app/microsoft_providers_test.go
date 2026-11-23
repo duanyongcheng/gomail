@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 	"errors"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/oauth"
-	"github.com/duanyongcheng/pebble-go/internal/provider/graph"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/oauth"
+	"github.com/duanyongcheng/gomail/internal/provider/graph"
 	"testing"
 )
 

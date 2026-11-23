@@ -108,7 +108,7 @@ describe("InboxView mailbox that has not synced", () => {
     mocks.accounts = [];
     render(<InboxView />);
 
-    expect(screen.getByText("Welcome to Pebble")).toBeTruthy();
+    expect(screen.getByText("Welcome to GoMail")).toBeTruthy();
     expect(screen.queryByText("Sync now")).toBeNull();
   });
 
@@ -117,7 +117,7 @@ describe("InboxView mailbox that has not synced", () => {
     render(<InboxView />);
 
     expect(screen.queryByText("This mailbox has not synced yet")).toBeNull();
-    expect(screen.queryByText("Welcome to Pebble")).toBeNull();
+    expect(screen.queryByText("Welcome to GoMail")).toBeNull();
     expect(screen.queryByText("Sync now")).toBeNull();
   });
 

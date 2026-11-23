@@ -11,7 +11,7 @@ function normalizeNamespace(namespace: string | null | undefined): string | null
 }
 
 function scopedKey(key: string): string {
-  return profileStorageNamespace ? `pebble:profile:${profileStorageNamespace}:${key}` : key;
+  return profileStorageNamespace ? `gomail:profile:${profileStorageNamespace}:${key}` : key;
 }
 
 function createProfileStorage(storage: StorageLike): StorageLike {
@@ -28,30 +28,30 @@ export const profileSessionStorage = createProfileStorage(sessionStorage);
 // localStorage keys written by releases before profile-scoped storage existed.
 // On upgrades the scoped key starts out missing, so without copying these over
 // every user's theme, language, and other preferences would silently reset.
-const LEGACY_MIGRATED_MARKER = "pebble:profile-storage-migrated";
+const LEGACY_MIGRATED_MARKER = "gomail:profile-storage-migrated";
 const LEGACY_LOCAL_KEYS = [
-  "pebble-language",
-  "pebble-theme",
-  "pebble-privacy-mode",
-  "pebble-start-hidden-to-tray",
-  "pebble-shortcuts",
-  "pebble-cloud-sync-last-backup",
-  "pebble-translate-privacy-ack",
-  "pebble-background-image",
-  "pebble-realtime-mode",
-  "pebble-notifications-enabled",
-  "pebble-keep-running-background",
-  "pebble-poll-interval",
-  "pebble-show-unread-count",
+  "gomail-language",
+  "gomail-theme",
+  "gomail-privacy-mode",
+  "gomail-start-hidden-to-tray",
+  "gomail-shortcuts",
+  "gomail-cloud-sync-last-backup",
+  "gomail-translate-privacy-ack",
+  "gomail-background-image",
+  "gomail-realtime-mode",
+  "gomail-notifications-enabled",
+  "gomail-keep-running-background",
+  "gomail-poll-interval",
+  "gomail-show-unread-count",
 ] as const;
-const LEGACY_SESSION_KEYS = ["pebble-settings-tab"] as const;
+const LEGACY_SESSION_KEYS = ["gomail-settings-tab"] as const;
 
 function migrateLegacyKeysOnce(namespace: string) {
   if (localStorage.getItem(LEGACY_MIGRATED_MARKER) === namespace) return;
   for (const key of LEGACY_LOCAL_KEYS) {
     const value = localStorage.getItem(key);
     if (value === null) continue;
-    const scoped = `pebble:profile:${namespace}:${key}`;
+    const scoped = `gomail:profile:${namespace}:${key}`;
     if (localStorage.getItem(scoped) === null) {
       localStorage.setItem(scoped, value);
     }
@@ -60,7 +60,7 @@ function migrateLegacyKeysOnce(namespace: string) {
   for (const key of LEGACY_SESSION_KEYS) {
     const value = sessionStorage.getItem(key);
     if (value === null) continue;
-    const scoped = `pebble:profile:${namespace}:${key}`;
+    const scoped = `gomail:profile:${namespace}:${key}`;
     if (sessionStorage.getItem(scoped) === null) {
       sessionStorage.setItem(scoped, value);
     }

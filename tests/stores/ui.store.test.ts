@@ -244,26 +244,26 @@ describe("UIStore", () => {
   });
 
   it("defaults unavailable desktop notifications to disabled", () => {
-    localStorage.removeItem("pebble-notifications-enabled");
+    localStorage.removeItem("gomail-notifications-enabled");
 
     expect(readNotificationsEnabledPreference()).toBe(false);
     expect(useUIStore.getState().notificationsEnabled).toBe(false);
   });
 
   it("defaults close-to-background to enabled when the user has no stored preference", () => {
-    localStorage.removeItem("pebble-keep-running-background");
+    localStorage.removeItem("gomail-keep-running-background");
 
     expect(readKeepRunningInBackgroundPreference()).toBe(true);
   });
 
   it("honors an explicit close-to-background opt-out", () => {
-    localStorage.setItem("pebble-keep-running-background", "false");
+    localStorage.setItem("gomail-keep-running-background", "false");
 
     expect(readKeepRunningInBackgroundPreference()).toBe(false);
   });
 
   it("defaults the sidebar unread counts to visible when nothing is stored", () => {
-    localStorage.removeItem("pebble-show-unread-count");
+    localStorage.removeItem("gomail-show-unread-count");
 
     // The counts are how the sidebar says mail is waiting, so a fresh install
     // must not look as though nothing has arrived.
@@ -271,7 +271,7 @@ describe("UIStore", () => {
   });
 
   it("honors an explicit opt-out of the sidebar unread counts", () => {
-    localStorage.setItem("pebble-show-unread-count", "false");
+    localStorage.setItem("gomail-show-unread-count", "false");
 
     expect(readShowUnreadCountPreference()).toBe(false);
   });
@@ -297,27 +297,27 @@ describe("UIStore", () => {
   });
 
   it("refuses unavailable startup-hidden writes while preserving an existing preference", () => {
-    localStorage.setItem("pebble-start-hidden-to-tray", "legacy");
+    localStorage.setItem("gomail-start-hidden-to-tray", "legacy");
     useUIStore.getState().setStartHiddenToTray(true);
     expect(useUIStore.getState().startHiddenToTray).toBe(false);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("legacy");
+    expect(localStorage.getItem("gomail-start-hidden-to-tray")).toBe("legacy");
   });
 
   it("refuses unsupported notification preference writes", () => {
     useUIStore.getState().setNotificationsEnabled(true);
     expect(useUIStore.getState().notificationsEnabled).toBe(false);
-    expect(localStorage.getItem("pebble-notifications-enabled")).toBeNull();
+    expect(localStorage.getItem("gomail-notifications-enabled")).toBeNull();
   });
 
   it("persists close-to-background preference through the UI store", () => {
     useUIStore.getState().setKeepRunningInBackground(true);
 
     expect(useUIStore.getState().keepRunningInBackground).toBe(true);
-    expect(localStorage.getItem("pebble-keep-running-background")).toBe("true");
+    expect(localStorage.getItem("gomail-keep-running-background")).toBe("true");
 
     useUIStore.getState().setKeepRunningInBackground(false);
 
     expect(useUIStore.getState().keepRunningInBackground).toBe(false);
-    expect(localStorage.getItem("pebble-keep-running-background")).toBe("false");
+    expect(localStorage.getItem("gomail-keep-running-background")).toBe("false");
   });
 });

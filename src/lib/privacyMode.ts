@@ -1,7 +1,7 @@
 import type { PrivacyMode } from "@/lib/api";
 import { profileLocalStorage } from "@/lib/profileStorage";
 
-export const PRIVACY_MODE_KEY = "pebble-privacy-mode";
+export const PRIVACY_MODE_KEY = "gomail-privacy-mode";
 export const DEFAULT_STORED_PRIVACY_MODE = "relaxed";
 
 export type StoredPrivacyMode = "strict" | "relaxed" | "off";

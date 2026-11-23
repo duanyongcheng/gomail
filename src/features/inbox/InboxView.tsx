@@ -130,7 +130,7 @@ export default function InboxView() {
           <Mail size={32} strokeWidth={1.3} />
         </div>
         <p className="mail-state-center-title">
-          {t("inbox.welcome", "Welcome to Pebble")}
+          {t("inbox.welcome", "Welcome to GoMail")}
         </p>
         <p className="mail-state-center-hint">
           {t("inbox.addAccountHint", "Add an email account to get started")}

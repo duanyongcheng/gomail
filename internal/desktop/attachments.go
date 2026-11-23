@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/privacy"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/privacy"
+	"github.com/duanyongcheng/gomail/internal/store"
 	"github.com/egoist/mygo"
 )
 
-const attachmentScheme = "pebble-attachment"
+const attachmentScheme = "gomail-attachment"
 
 // RegisterAttachmentProtocol exposes only attachment IDs signed into renderer
 // URLs. It never accepts a filesystem path or a message/account chosen solely

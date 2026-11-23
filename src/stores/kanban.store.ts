@@ -22,7 +22,7 @@ interface KanbanState {
   setContextNote: (messageId: string, note: string) => Promise<void>;
 }
 
-const LEGACY_CONTEXT_NOTES_STORAGE_KEY = "pebble-kanban-context-notes";
+const LEGACY_CONTEXT_NOTES_STORAGE_KEY = "gomail-kanban-context-notes";
 
 function loadLegacyContextNotes(): Record<string, string> {
   if (typeof localStorage === "undefined") return {};

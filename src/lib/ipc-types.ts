@@ -1,15 +1,13 @@
 /**
- * IPC type contracts — the single source of TypeScript mirrors for Rust structs
- * that cross the Tauri invoke boundary.
+ * IPC type contracts — TypeScript mirrors for backend structs that cross the
+ * GoMail desktop IPC boundary (Go services in `internal/`).
  *
- * Each type has a `@rust` JSDoc tag pointing to the canonical Rust definition.
- * When updating a type here, check the Rust source first; when updating the
- * Rust struct, update the mirror here.
+ * When updating a type here, check the Go backend definition first; when
+ * updating a backend struct, update its mirror here.
  */
 
 // ─── Core domain types ─────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → Account */
 export interface Account {
   capabilities?: { send: boolean; read: boolean; modify_flags: boolean; html: boolean; folder_management?: boolean };
   account_label?: string | null;
@@ -18,13 +16,12 @@ export interface Account {
   email: string;
   display_name: string;
   color?: string | null;
-  /** ProviderType enum (rename_all = "lowercase") */
+  /** ProviderType enum (lowercase wire format) */
   provider: "imap" | "pop3" | "gmail" | "outlook";
   created_at: number;
   updated_at: number;
 }
 
-/** @rust pebble-core/src/types.rs → Folder */
 export interface Folder {
   id: string;
   account_id: string;
@@ -38,13 +35,11 @@ export interface Folder {
   sort_order: number;
 }
 
-/** @rust src-tauri/src/commands/folders.rs → ImapSyncFolderSettings */
 export interface ImapSyncFolderSettings {
   folders: Folder[];
   selected_remote_ids: string[];
 }
 
-/** @rust pebble-core/src/types.rs → EmailAddress */
 export interface EmailAddress {
   name: string | null;
   address: string;
@@ -52,7 +47,6 @@ export interface EmailAddress {
 
 /**
  * Lightweight message data for list views (no body fields).
- * @rust pebble-core/src/types.rs → MessageSummary
  */
 export interface MessageSummary {
   id: string;
@@ -73,7 +67,7 @@ export interface MessageSummary {
   is_read: boolean;
   is_starred: boolean;
   is_draft: boolean;
-  /** Pebble Go: derived cached Trash membership, independent of the current view. */
+  /** GoMail: derived cached Trash membership, independent of the current view. */
   in_trash?: boolean;
   date: number;
   remote_version: string | null;
@@ -85,10 +79,9 @@ export interface MessageSummary {
 
 /**
  * Full message including body content.
- * @rust pebble-core/src/types.rs → Message
  */
 export interface Message extends MessageSummary {
-  /** Effective capability of this message's account in Pebble Go. */
+  /** Effective capability of this message's account in GoMail. */
   capabilities?: { modify_flags: boolean };
   body_text: string;
   body_html_raw: string;
@@ -118,21 +111,18 @@ export interface PendingMailOp {
   next_retry_at: number | null;
 }
 
-/** @rust src-tauri/src/commands/diagnostics.rs -> AppLogSnapshot */
 export interface AppLogSnapshot {
   path: string;
   content: string;
   truncated: boolean;
 }
 
-/** @rust src-tauri/src/commands/appearance.rs -> ImportedBackgroundImage */
 export interface ImportedBackgroundImage {
   path: string;
   filename: string;
   size: number;
 }
 
-/** @rust src-tauri/src/commands/notifications.rs -> NotificationStatus */
 export interface NotificationStatus {
   enabled: boolean;
   attention_active: boolean;
@@ -140,14 +130,12 @@ export interface NotificationStatus {
   app_id: string | null;
 }
 
-/** @rust pebble-core/src/types.rs → RenderedHtml */
 export interface RenderedHtml {
   html: string;
   trackers_blocked: { domain: string; tracker_type: string }[];
   images_blocked: number;
 }
 
-/** @rust pebble-core/src/traits.rs → SearchHit */
 export interface SearchHit {
   message_id: string;
   score: number;
@@ -158,18 +146,16 @@ export interface SearchHit {
 }
 
 /**
- * Serde external tagging: unit variants serialize as strings, tuple variants
- * as `{ VariantName: value }`.
- * @rust pebble-core/src/types.rs → PrivacyMode
+ * External tagging wire format: unit variants serialize as strings, payload
+ * variants as `{ VariantName: value }`.
  */
 export type PrivacyMode = "Strict" | { TrustedSender: string } | "LoadOnce" | "Off";
 
 // ─── Mail config types ──────────────────────────────────────────────────────────
 
-/** @rust pebble-mail/src/imap.rs → ConnectionSecurity (rename_all = "lowercase") */
+/** ConnectionSecurity (lowercase wire format) */
 export type ConnectionSecurity = "tls" | "starttls" | "plain";
 
-/** @rust src-tauri/src/commands/accounts.rs → AddAccountRequest */
 export interface AddAccountRequest {
   account_label?: string | null;
   email: string;
@@ -189,16 +175,13 @@ export interface AddAccountRequest {
   proxy_port?: number;
 }
 
-/** @rust pebble-core/src/types.rs -> HttpProxyConfig */
 export interface HttpProxyConfig {
   host: string;
   port: number;
 }
 
-/** @rust src-tauri/src/commands/network.rs -> AccountProxyMode */
 export type AccountProxyMode = "inherit" | "disabled" | "custom";
 
-/** @rust src-tauri/src/commands/network.rs -> AccountProxySetting */
 export interface AccountProxySetting {
   mode: AccountProxyMode;
   proxy: HttpProxyConfig | null;
@@ -206,7 +189,6 @@ export interface AccountProxySetting {
 
 // ─── Attachment types ───────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → Attachment */
 export interface Attachment {
   id: string;
   message_id: string;
@@ -220,10 +202,9 @@ export interface Attachment {
 
 // ─── Kanban types ───────────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → KanbanColumn (rename_all = "lowercase") */
+/** KanbanColumn (lowercase wire format) */
 export type KanbanColumnType = "todo" | "waiting" | "done";
 
-/** @rust pebble-core/src/types.rs → KanbanCard */
 export interface KanbanCard {
   message_id: string;
   column: KanbanColumnType;
@@ -234,7 +215,6 @@ export interface KanbanCard {
 
 // ─── Snooze types ───────────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → SnoozedMessage */
 export interface SnoozedMessage {
   message_id: string;
   snoozed_at: number;
@@ -244,18 +224,16 @@ export interface SnoozedMessage {
 
 // ─── Trusted Sender types ───────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → TrustedSender */
 export interface TrustedSender {
   account_id: string;
   email: string;
-  /** TrustType enum (rename_all = "lowercase") */
+  /** TrustType enum (lowercase wire format) */
   trust_type: "images" | "all";
   created_at: number;
 }
 
 // ─── Rule types ─────────────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → Rule */
 export interface Rule {
   id: string;
   name: string;
@@ -269,10 +247,7 @@ export interface Rule {
 
 // ─── Search types ───────────────────────────────────────────────────────────────
 
-/**
- * @rust src-tauri/src/commands/advanced_search.rs → AdvancedSearchQuery
- * (rename_all = "camelCase")
- */
+/** AdvancedSearchQuery (camelCase wire format) */
 export interface AdvancedSearchQuery {
   text?: string;
   from?: string;
@@ -288,7 +263,6 @@ export interface AdvancedSearchQuery {
 
 // ─── Translate types ────────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → TranslateConfig */
 export interface TranslateConfig {
   id: string;
   provider_type: string;
@@ -298,7 +272,6 @@ export interface TranslateConfig {
   updated_at: number;
 }
 
-/** @rust pebble-translate/src/types.rs → TranslateResult + BilingualSegment */
 export interface TranslateResult {
   translated: string;
   segments: { source: string; target: string }[];
@@ -306,7 +279,6 @@ export interface TranslateResult {
 
 // ─── AI assistant types ─────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → AiConfig */
 export interface AiConfig {
   id: string;
   provider_type: string;
@@ -318,16 +290,13 @@ export interface AiConfig {
 
 export type AiProviderType = "openai_compatible" | "generic";
 
-/** @rust pebble-translate/src/types.rs → LLMMode (shared wire format) */
+/** Shared wire format for LLM API mode */
 export type AiApiMode = "completions" | "responses";
 
-/** @rust pebble-ai/src/types.rs → AiTone */
 export type AiTone = "neutral" | "formal" | "friendly" | "concise";
 
-/** @rust pebble-ai/src/types.rs → AiLength */
 export type AiLength = "short" | "medium" | "long";
 
-/** @rust pebble-ai/src/types.rs → AiResult */
 export interface AiResult {
   text: string;
   /** `"ai"` when the AI service answered, `"translate"` when the compose
@@ -337,10 +306,9 @@ export interface AiResult {
 
 // ─── Thread types ───────────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → ThreadSummary */
 export interface ThreadSummary {
   thread_id: string;
-  /** Mailbox of the most recent message in the thread (see the Rust side). */
+  /** Mailbox of the most recent message in the thread. */
   account_id: string;
   subject: string;
   snippet: string;
@@ -354,7 +322,6 @@ export interface ThreadSummary {
 
 // ─── Label types ────────────────────────────────────────────────────────────────
 
-/** @rust pebble-store/src/labels.rs → Label */
 export interface Label {
   id: string;
   name: string;
@@ -365,7 +332,6 @@ export interface Label {
 
 // ─── Cloud Sync types ───────────────────────────────────────────────────────────
 
-/** @rust pebble-store/src/cloud_sync.rs → BackupPreview */
 export interface BackupPreview {
   version: number;
   exported_at: number;
@@ -383,10 +349,8 @@ export interface BackupPreview {
 
 // ─── Contacts types ─────────────────────────────────────────────────────────────
 
-/** @rust pebble-core/src/types.rs → ContactEmailLabel */
 export type ContactEmailLabel = "work" | "personal" | "other";
 
-/** @rust pebble-core/src/types.rs → ContactEmail */
 export interface ContactEmail {
   id: string;
   address: string;
@@ -394,7 +358,6 @@ export interface ContactEmail {
   is_primary: boolean;
 }
 
-/** @rust pebble-core/src/types.rs → Contact */
 export interface Contact {
   id: string;
   display_name: string;
@@ -405,7 +368,6 @@ export interface Contact {
   updated_at: number;
 }
 
-/** @rust pebble-core/src/types.rs → ContactEmailInput */
 export interface ContactEmailInput {
   id?: string | null;
   address: string;
@@ -413,7 +375,6 @@ export interface ContactEmailInput {
   is_primary: boolean;
 }
 
-/** @rust pebble-core/src/types.rs → ContactInput */
 export interface ContactInput {
   id?: string | null;
   display_name: string;
@@ -422,10 +383,8 @@ export interface ContactInput {
   emails: ContactEmailInput[];
 }
 
-/** @rust pebble-core/src/types.rs → ContactSuggestionSource */
 export type ContactSuggestionSource = "saved" | "recent";
 
-/** @rust pebble-core/src/types.rs → ContactSuggestion */
 export interface ContactSuggestion {
   contact_id: string | null;
   name: string | null;
@@ -435,7 +394,6 @@ export interface ContactSuggestion {
   last_interaction_at: number | null;
 }
 
-/** @rust pebble-core/src/types.rs → VcardImportResult */
 export interface VcardImportResult {
   created: number;
   merged: number;
@@ -444,7 +402,6 @@ export interface VcardImportResult {
   errors: string[];
 }
 
-/** @rust pebble-core/src/types.rs → KnownContact */
 export interface KnownContact {
   name: string | null;
   address: string;

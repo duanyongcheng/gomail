@@ -20,9 +20,9 @@ done
 unset GOOS GOARCH
 export CGO_ENABLED=0
 arch="$(go env GOHOSTARCH)"
-app_path="$project_root/build/darwin-$arch/Pebble Go.app"
+app_path="$project_root/build/darwin-$arch/GoMail.app"
 
-printf 'Building Pebble Go locally for darwin/%s\n' "$arch"
+printf 'Building GoMail locally for darwin/%s\n' "$arch"
 bun install --frozen-lockfile
 
 # MyGO generates bindings and builds the frontend, then stages the bundle before

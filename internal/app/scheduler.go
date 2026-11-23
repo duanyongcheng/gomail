@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 type RealtimeStatus struct {

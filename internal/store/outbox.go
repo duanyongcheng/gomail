@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 const MaxOutboxBytes = 200 << 20

@@ -1,4 +1,4 @@
-// Package store owns profile persistence and schema compatibility with Pebble.
+// Package store owns GoMail profile persistence and SQLite schema migrations.
 // Business packages use repository methods; SQL and connection pools stay here.
 package store
 
@@ -29,7 +29,7 @@ type DB struct {
 }
 
 // Open opens a file database and migrates it before opening the read pool.
-// Callers must supply the Pebble-Go profile path, never an old live profile.
+// Callers must supply the GoMail profile path.
 func Open(ctx context.Context, path string) (_ *DB, err error) {
 	if path == "" || path == ":memory:" {
 		return nil, errors.New("profile database requires a file path")

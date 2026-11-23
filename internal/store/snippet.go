@@ -2,7 +2,7 @@ package store
 
 import "strings"
 
-// buildSnippet preserves Pebble's v13 data migration semantics. This extracts
+// buildSnippet preserves the v13 data migration snippet semantics. This extracts
 // previews only; it is not the HTML renderer or a security sanitizer.
 func buildSnippet(bodyText, bodyHTML string) string {
 	value := strings.TrimSpace(stripHTMLForSnippet(bodyText))

@@ -25,14 +25,14 @@ describe("BilingualView", () => {
     render(
       <BilingualView
         segments={[
-          { source: "Pebble 2.0 is out.", target: "Pebble 2.0 已发布。" },
-          { source: "Pebble 2.0", target: "Pebble 2.0" },
+          { source: "GoMail 2.0 is out.", target: "GoMail 2.0 已发布。" },
+          { source: "GoMail 2.0", target: "GoMail 2.0" },
         ]}
       />,
     );
 
-    expect(screen.getByText("Pebble 2.0 已发布。")).toBeTruthy();
-    expect(screen.queryByText("Pebble 2.0")).toBeNull();
+    expect(screen.getByText("GoMail 2.0 已发布。")).toBeTruthy();
+    expect(screen.queryByText("GoMail 2.0")).toBeNull();
   });
 
   it("still shows the translation when nothing could be paired", () => {

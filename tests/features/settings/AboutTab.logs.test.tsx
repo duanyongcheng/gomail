@@ -62,7 +62,7 @@ describe("AboutTab real platform adapter", () => {
           state: "available",
           availableVersion: "1.3.0",
           releaseNotes: "Signed delta update notes",
-          releaseUrl: "https://github.com/duanyongcheng/pebble-go/releases/tag/v1.3.0",
+          releaseUrl: "https://github.com/duanyongcheng/gomail/releases/tag/v1.3.0",
         };
       }
       if (method === "UpdateService.Install") {
@@ -129,17 +129,17 @@ describe("AboutTab real platform adapter", () => {
     try {
       render(<><AboutTab /><ToastContainer /></>);
       expect(screen.getByRole("link", { name: "GitHub Releases" }).getAttribute("href")).toBe(
-        "https://github.com/duanyongcheng/pebble-go/releases",
+        "https://github.com/duanyongcheng/gomail/releases",
       );
       expect(screen.getByRole("link", { name: "Report an Issue" }).getAttribute("href")).toBe(
-        "https://github.com/duanyongcheng/pebble-go/issues",
+        "https://github.com/duanyongcheng/gomail/issues",
       );
       fireEvent.click(screen.getByRole("link", { name: "Source Code" }));
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toContain("Could not open this link");
       expect(alert.textContent).not.toContain("private");
       expect(mocks.call).toHaveBeenCalledWith("AppService.OpenExternal", {
-        url: "https://github.com/duanyongcheng/pebble-go",
+        url: "https://github.com/duanyongcheng/gomail",
       });
       expect(warn).not.toHaveBeenCalled();
     } finally { warn.mockRestore(); }

@@ -5,9 +5,9 @@ import { UpdateService, type UpdateProgress, type UpdateStatus } from "@/mygo";
 import { isComposeDirty } from "./compose.store";
 import { useConfirmStore } from "./confirm.store";
 
-export const AUTO_CHECK_UPDATES_KEY = "pebble-auto-check-updates";
-export const SKIPPED_UPDATE_VERSION_KEY = "pebble-skipped-update-version";
-export const LAST_UPDATE_CHECK_AT_KEY = "pebble-last-update-check-at";
+export const AUTO_CHECK_UPDATES_KEY = "gomail-auto-check-updates";
+export const SKIPPED_UPDATE_VERSION_KEY = "gomail-skipped-update-version";
+export const LAST_UPDATE_CHECK_AT_KEY = "gomail-last-update-check-at";
 export const AUTO_UPDATE_CHECK_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
 export type UpdateStateKind =
@@ -249,7 +249,7 @@ export const useUpdateStore = create<UpdateStoreState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error && err.message.trim()
         ? err.message
-        : i18next.t("about.restartFailed", "Could not restart automatically. Quit and reopen Pebble Go to finish updating.");
+        : i18next.t("about.restartFailed", "Could not restart automatically. Quit and reopen GoMail to finish updating.");
       set({ error: message });
     }
   },

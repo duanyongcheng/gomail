@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/duanyongcheng/pebble-go/internal/mailnet"
+import "github.com/duanyongcheng/gomail/internal/mailnet"
 
 // ProtocolConfig is a secret-bearing vault record. Never return it to a UI.
 type ProtocolConfig struct {

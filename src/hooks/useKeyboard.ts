@@ -151,7 +151,7 @@ export function useKeyboard() {
           // own handler (ConfirmDialog, the settings dialogs, the message
           // detail's popovers via `useClickOutside`). Closing the message
           // behind one of them would take two layers off on a single keystroke.
-          if (document.querySelector('[role="dialog"], [data-pebble-overlay]')) break;
+          if (document.querySelector('[role="dialog"], [data-gomail-overlay]')) break;
 
           const ui = useUIStore.getState();
 
@@ -296,13 +296,13 @@ export function useKeyboard() {
           break;
         }
         case "translate-selection":
-          document.dispatchEvent(new CustomEvent("pebble:translate-selection"));
+          document.dispatchEvent(new CustomEvent("gomail:translate-selection"));
           break;
         case "toggle-bilingual":
-          document.dispatchEvent(new CustomEvent("pebble:toggle-bilingual"));
+          document.dispatchEvent(new CustomEvent("gomail:toggle-bilingual"));
           break;
         case "summarize-message":
-          document.dispatchEvent(new CustomEvent("pebble:ai-summarize"));
+          document.dispatchEvent(new CustomEvent("gomail:ai-summarize"));
           break;
         default:
           break;

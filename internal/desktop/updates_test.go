@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
+	"github.com/duanyongcheng/gomail/internal/app"
 )
 
 type fakeNativeUpdate struct {
@@ -58,7 +58,7 @@ func TestUpdateServiceNativeSignedUpdateAndProgressFlow(t *testing.T) {
 	)
 	svc := &UpdateService{
 		ctx:            context.Background(),
-		repo:           "duanyongcheng/pebble-go",
+		repo:           "duanyongcheng/gomail",
 		currentVersion: func() string { return "0.2.0" },
 		canAutoUpdate:  func() bool { return true },
 		checkNative: func(context.Context) (NativeUpdate, error) {
@@ -95,7 +95,7 @@ func TestUpdateServiceNativeSignedUpdateAndProgressFlow(t *testing.T) {
 	if checked.State != "available" || !checked.CanAutoUpdate || checked.AvailableVersion != "0.2.1" {
 		t.Fatalf("unexpected check status: %+v", checked)
 	}
-	if checked.ReleaseURL != "https://github.com/duanyongcheng/pebble-go/releases/tag/v0.2.1" {
+	if checked.ReleaseURL != "https://github.com/duanyongcheng/gomail/releases/tag/v0.2.1" {
 		t.Fatalf("unexpected release url: %q", checked.ReleaseURL)
 	}
 
@@ -134,7 +134,7 @@ func TestUpdateServiceNativeSignedUpdateAndProgressFlow(t *testing.T) {
 func TestUpdateServiceFallsBackToGitHubWhenSelfUpdateDisabledOrManifestMissing(t *testing.T) {
 	svc := &UpdateService{
 		ctx:            context.Background(),
-		repo:           "duanyongcheng/pebble-go",
+		repo:           "duanyongcheng/gomail",
 		currentVersion: func() string { return "0.2.0" },
 		canAutoUpdate:  func() bool { return true },
 		checkNative: func(context.Context) (NativeUpdate, error) {
@@ -156,7 +156,7 @@ func TestUpdateServiceFallsBackToGitHubWhenSelfUpdateDisabledOrManifestMissing(t
 	if st.State != "available" || st.CanAutoUpdate || st.AvailableVersion != "0.2.1" {
 		t.Fatalf("unexpected fallback status: %+v", st)
 	}
-	if st.ReleaseURL != "https://github.com/duanyongcheng/pebble-go/releases/tag/v0.2.1" {
+	if st.ReleaseURL != "https://github.com/duanyongcheng/gomail/releases/tag/v0.2.1" {
 		t.Fatalf("expected untrusted URL to be sanitized, got %q", st.ReleaseURL)
 	}
 	if _, err := svc.Install(app.Empty{}); err == nil {
@@ -168,7 +168,7 @@ func TestUpdateServiceInstallErrorPreservesPendingForRetry(t *testing.T) {
 	attempts := 0
 	svc := &UpdateService{
 		ctx:            context.Background(),
-		repo:           "duanyongcheng/pebble-go",
+		repo:           "duanyongcheng/gomail",
 		currentVersion: func() string { return "0.2.0" },
 		canAutoUpdate:  func() bool { return true },
 		checkNative: func(context.Context) (NativeUpdate, error) {
@@ -209,7 +209,7 @@ func TestUpdateServiceDisabledInSelftestNeverTouchesNetwork(t *testing.T) {
 	called := false
 	svc := &UpdateService{
 		ctx:            context.Background(),
-		repo:           "duanyongcheng/pebble-go",
+		repo:           "duanyongcheng/gomail",
 		disabled:       true,
 		currentVersion: func() string { return "0.2.0" },
 		canAutoUpdate:  func() bool { return true },
@@ -238,11 +238,11 @@ func TestUpdateServiceDisabledInSelftestNeverTouchesNetwork(t *testing.T) {
 func TestFetchLatestGitHubReleaseFromURL(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"tag_name":"v0.2.1","body":"Release notes","html_url":"https://github.com/duanyongcheng/pebble-go/releases/tag/v0.2.1","published_at":"2026-11-22T08:00:00Z","draft":false,"prerelease":false}`))
+		_, _ = w.Write([]byte(`{"tag_name":"v0.2.1","body":"Release notes","html_url":"https://github.com/duanyongcheng/gomail/releases/tag/v0.2.1","published_at":"2026-11-22T08:00:00Z","draft":false,"prerelease":false}`))
 	}))
 	defer srv.Close()
 
-	info, err := fetchLatestGitHubReleaseFromURL(context.Background(), srv.URL, "duanyongcheng/pebble-go", "0.2.0", srv.Client())
+	info, err := fetchLatestGitHubReleaseFromURL(context.Background(), srv.URL, "duanyongcheng/gomail", "0.2.0", srv.Client())
 	if err != nil {
 		t.Fatalf("fetch failed: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestFetchLatestGitHubReleaseFromURL(t *testing.T) {
 		t.Fatalf("unexpected release info: %+v", info)
 	}
 
-	same, err := fetchLatestGitHubReleaseFromURL(context.Background(), srv.URL, "duanyongcheng/pebble-go", "0.2.1", srv.Client())
+	same, err := fetchLatestGitHubReleaseFromURL(context.Background(), srv.URL, "duanyongcheng/gomail", "0.2.1", srv.Client())
 	if err != nil {
 		t.Fatalf("same-version fetch failed: %v", err)
 	}

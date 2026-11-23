@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/crypto"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/oauth"
-	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
-	"github.com/duanyongcheng/pebble-go/internal/store"
-	"github.com/duanyongcheng/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/crypto"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/oauth"
+	"github.com/duanyongcheng/gomail/internal/provider/gmail"
+	"github.com/duanyongcheng/gomail/internal/store"
+	"github.com/duanyongcheng/gomail/internal/testgmail"
 	"github.com/egoist/mygo"
 	"github.com/emersion/go-message/mail"
 	"golang.org/x/oauth2"
@@ -48,7 +48,7 @@ func prepareSelftest(runtime *app.Runtime) error {
 	selftestMailbox = fixture
 	context.AfterFunc(runtime.Context, fixture.Close)
 	png := []byte{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130}
-	raw, err := mailmime.Build("sender@example.invalid", "Pebble Go selftest", "中文搜索 selftest message", `<p>中文搜索 selftest message</p><img src="cid:logo"><p><a href="`+selftestLinkURL+`">Safe link selftest</a> <a href="`+selftestFailedLinkURL+`">Failed link selftest</a></p>`, "selftest@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, []mailmime.Attachment{{ContentID: "logo", Inline: true, MIMEType: "image/png", Data: png}, {Filename: "selftest-export.txt", MIMEType: "text/plain", Data: []byte("Pebble Go attachment export selftest\n")}})
+	raw, err := mailmime.Build("sender@example.invalid", "GoMail selftest", "中文搜索 selftest message", `<p>中文搜索 selftest message</p><img src="cid:logo"><p><a href="`+selftestLinkURL+`">Safe link selftest</a> <a href="`+selftestFailedLinkURL+`">Failed link selftest</a></p>`, "selftest@example.invalid", []*mail.Address{{Address: "demo@example.invalid"}}, nil, []mailmime.Attachment{{ContentID: "logo", Inline: true, MIMEType: "image/png", Data: png}, {Filename: "selftest-export.txt", MIMEType: "text/plain", Data: []byte("GoMail attachment export selftest\n")}})
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func prepareSelftest(runtime *app.Runtime) error {
 		return err
 	}
 	fixture.Set("m3", queueRaw, []string{"INBOX", "UNREAD"})
-	fixture.Set("m4", []byte("From: second@example.invalid\r\nTo: demo@example.invalid\r\nMessage-ID: <thread-child@example.invalid>\r\nIn-Reply-To: <selftest@example.invalid>\r\nReferences: <selftest@example.invalid>\r\nSubject: Re: Pebble Go selftest\r\n\r\nThread selftest reply"), []string{"INBOX", "UNREAD"})
+	fixture.Set("m4", []byte("From: second@example.invalid\r\nTo: demo@example.invalid\r\nMessage-ID: <thread-child@example.invalid>\r\nIn-Reply-To: <selftest@example.invalid>\r\nReferences: <selftest@example.invalid>\r\nSubject: Re: GoMail selftest\r\n\r\nThread selftest reply"), []string{"INBOX", "UNREAD"})
 	fixture.Lock()
 	threadChild := fixture.Messages["m4"]
 	threadChild.ThreadID = fixture.Messages["m1"].ThreadID
@@ -77,7 +77,7 @@ func prepareSelftest(runtime *app.Runtime) error {
 	if err := runtime.DB.SaveAccount(runtime.Context, account, nil); err != nil {
 		return err
 	}
-	if os.Getenv("PEBBLE_SELFTEST") == "1" {
+	if os.Getenv("GOMAIL_SELFTEST") == "1" {
 		_ = os.Setenv("GOOGLE_CLIENT_ID", "local-selftest-client")
 		_ = os.Setenv("GOOGLE_CLIENT_SECRET", "local-selftest-secret")
 		runtime.GmailAPIBase = fixture.Server.URL + "/gmail/v1/users/me"
@@ -121,7 +121,7 @@ func prepareSelftest(runtime *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	if os.Getenv("PEBBLE_SELFTEST") == "1" {
+	if os.Getenv("GOMAIL_SELFTEST") == "1" {
 		outbox := &app.OutboxService{Runtime: runtime}
 		if _, err := outbox.Queue(runtime.Context, app.SendRequest{AccountID: account.ID, ClientKey: "selftest-unknown-send", To: []string{"recipient@example.invalid"}, Subject: "Unknown send remains unknown", BodyText: "Must never be resent by reconnect."}); err != nil {
 			return err
@@ -200,7 +200,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	for _, name := range m2UISelftestChecks {
 		checks[name] = false
 	}
-	directory := os.Getenv("PEBBLE_SELFTEST_DIR")
+	directory := os.Getenv("GOMAIL_SELFTEST_DIR")
 	if directory == "" {
 		directory = filepath.Join(filepath.Dir(runtime.DB.Path()), "selftest")
 	}
@@ -223,7 +223,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 			mygo.App.Quit()
 		}
 	}()
-	checks["react inbox rendered"] = waitSelftestPage(ctx, window, `document.body.innerText.includes('Pebble Go selftest')`, 30*time.Second)
+	checks["react inbox rendered"] = waitSelftestPage(ctx, window, `document.body.innerText.includes('GoMail selftest')`, 30*time.Second)
 	if !checks["react inbox rendered"] {
 		return
 	}
@@ -232,8 +232,8 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	capture("inbox.png")
 	readLatencies := map[string]int64{}
 	_, readFast, readElapsed := selftestOpenUnread(ctx, runtime, window, "selftest-gmail:m1",
-		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row||!row.classList.contains('message-list-row--unread'))return false;row.click();return true; })()`,
-		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('Pebble Go selftest'));return Boolean(row)&&!row.classList.contains('message-list-row--unread'); })()`)
+		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('GoMail selftest')); if(!row||!row.classList.contains('message-list-row--unread'))return false;row.click();return true; })()`,
+		`(() => { const row=Array.from(document.querySelectorAll('.message-list-row')).find(r=>r.textContent.includes('GoMail selftest'));return Boolean(row)&&!row.classList.contains('message-list-row--unread'); })()`)
 	checks["opening unread message updates locally without Gmail"] = readFast
 	readLatencies["messageMilliseconds"] = readElapsed.Milliseconds()
 	checks["MIME address names and avatar decoded through UI"] = waitSelftestPage(ctx, window, `(() => {
@@ -246,8 +246,8 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	selftestUIThemes(ctx, window, checks, capture)
 	if waitSelftestPage(ctx, window, `(() => { const b=Array.from(document.querySelectorAll('button')).find(b => /^(会话视图|会话模式|Thread view)$/.test(b.getAttribute('aria-label') || '')); if (!b) return false; b.click(); return true; })()`, 5*time.Second) {
 		opened, threadReadFast, threadReadElapsed := selftestOpenUnread(ctx, runtime, window, "selftest-gmail:m4",
-			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('Pebble Go selftest')); if(!row||!row.classList.contains('thread-list-row--unread'))return false;row.click();return true; })()`,
-			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('Pebble Go selftest'));return Boolean(row)&&!row.classList.contains('thread-list-row--unread'); })()`)
+			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('GoMail selftest')); if(!row||!row.classList.contains('thread-list-row--unread'))return false;row.click();return true; })()`,
+			`(() => { const row=Array.from(document.querySelectorAll('.thread-list-row')).find(r=>r.textContent.includes('GoMail selftest'));return Boolean(row)&&!row.classList.contains('thread-list-row--unread'); })()`)
 		checks["opening unread conversation updates locally without Gmail"] = threadReadFast
 		readLatencies["conversationMilliseconds"] = threadReadElapsed.Milliseconds()
 		if opened {
@@ -267,7 +267,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	checks["opaque cursor preserved"] = err == nil && cursor == "900719925474099312345"
 	privacyMode := json.RawMessage(`"Strict"`)
 	rendered, renderErr := (&app.MessageService{Runtime: runtime}).Rendered(ctx, app.MessageRequest{MessageID: "selftest-gmail:m1", PrivacyMode: privacyMode})
-	checks["cid attachment rendered"] = renderErr == nil && strings.Contains(rendered.Rendered.HTML, "pebble-attachment://localhost/")
+	checks["cid attachment rendered"] = renderErr == nil && strings.Contains(rendered.Rendered.HTML, "gomail-attachment://localhost/")
 	checks["queued remote write replayed"] = pendingQueueDrained(ctx, runtime)
 	// Fetch m3 authoritatively so a drained-but-incorrect queue cannot pass.
 	service := &app.MessageService{Runtime: runtime}
@@ -282,11 +282,11 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	_, syncErr := (&app.SyncService{Runtime: runtime}).Sync(ctx, app.AccountRequest{AccountID: "selftest-gmail"})
 	inInbox, membershipErr := runtime.DB.MessageInFolderRemote(ctx, "selftest-gmail:m3", "INBOX")
 	checks["archive survives authoritative sync"] = cursorErr == nil && checkpointErr == nil && syncErr == nil && membershipErr == nil && !inInbox
-	selected := waitSelftestPage(ctx, window, `(() => { const row = Array.from(document.querySelectorAll('[role="option"]')).find(row => row.textContent.includes('Pebble Go selftest')); if (!row) return false; row.click(); return true; })()`, 5*time.Second)
+	selected := waitSelftestPage(ctx, window, `(() => { const row = Array.from(document.querySelectorAll('[role="option"]')).find(row => row.textContent.includes('GoMail selftest')); if (!row) return false; row.click(); return true; })()`, 5*time.Second)
 	if selected && waitSelftestPage(ctx, window, `(() => { const button = Array.from(document.querySelectorAll('button')).find(button => /^(下载|Download): selftest-export.txt$/.test(button.getAttribute('aria-label') || '')); if (!button || button.disabled) return false; button.click(); return true; })()`, 10*time.Second) {
 		saved := waitSelftestPage(ctx, window, `Array.from(document.querySelectorAll('.attachment-list-download')).some(button => button.title.includes('exports') && button.title.includes('selftest-export.txt'))`, 10*time.Second)
 		content, err := os.ReadFile(filepath.Join(exportDirectory, "selftest-export.txt"))
-		checks["attachment exported through UI"] = saved && err == nil && string(content) == "Pebble Go attachment export selftest\n"
+		checks["attachment exported through UI"] = saved && err == nil && string(content) == "GoMail attachment export selftest\n"
 		capture("attachment-export.png")
 	}
 	checks["safe external links through actual UI"] = selected && selftestExternalLinks(ctx, window)
@@ -411,7 +411,7 @@ func runSelftest(ctx context.Context, runtime *app.Runtime, window *mygo.Window)
 	if !checks["Gmail local account settings saved through UI"] {
 		return
 	}
-	if os.Getenv("PEBBLE_SELFTEST") != "1" {
+	if os.Getenv("GOMAIL_SELFTEST") != "1" {
 		return
 	}
 	if _, err := (&app.ComposeService{Runtime: runtime}).Save(ctx, app.SaveDraftRequest{AccountID: "selftest-gmail", ClientKey: "reconnect-draft", Subject: "Draft preserved after reconnect", BodyText: "Preserve me"}); err != nil {

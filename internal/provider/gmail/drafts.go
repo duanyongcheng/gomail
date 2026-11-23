@@ -2,7 +2,7 @@ package gmail
 
 import (
 	"context"
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
 )
 
 // WithDraftSession serializes draft changes with sync/send/credential replacement

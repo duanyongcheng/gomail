@@ -1,4 +1,4 @@
--- Pebble-Go-owned search cache. v1-v20 remain the legacy Pebble contract.
+-- GoMail search cache. v1-v20 preserve the baseline schema contract.
 -- Cache and message changes are committed in the same transaction, including
 -- deletes and soft deletes; startup never needs a provider-specific FTS table.
 CREATE VIRTUAL TABLE message_search USING fts5(

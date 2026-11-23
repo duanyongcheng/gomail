@@ -20,7 +20,7 @@ vi.mock("react-i18next", () => ({
     t: (key: string, fallback?: string) => {
       const labels: Record<string, string> = {
         "settings.realtimeMode": "Realtime Mode",
-        "settings.realtimeModeDesc": "Choose how aggressively Pebble checks for new mail.",
+        "settings.realtimeModeDesc": "Choose how aggressively GoMail checks for new mail.",
         "settings.realtimeModeRealtime": "Realtime (recommended)",
         "settings.realtimeModeBalanced": "Balanced",
         "settings.realtimeModeBattery": "Battery saver",
@@ -84,7 +84,7 @@ describe("GeneralTab realtime mode", () => {
     fireEvent.click(screen.getByRole("button", { name: "Battery saver" }));
 
     expect(useUIStore.getState().realtimeMode).toBe("battery");
-    expect(localStorage.getItem("pebble-realtime-mode")).toBe("battery");
+    expect(localStorage.getItem("gomail-realtime-mode")).toBe("battery");
   });
 
   it("keeps desktop notifications disabled without persisting a false success", () => {
@@ -95,7 +95,7 @@ describe("GeneralTab realtime mode", () => {
     expect((checkbox as HTMLInputElement).disabled).toBe(true);
     fireEvent.click(checkbox);
     expect(useUIStore.getState().notificationsEnabled).toBe(false);
-    expect(localStorage.getItem("pebble-notifications-enabled")).toBeNull();
+    expect(localStorage.getItem("gomail-notifications-enabled")).toBeNull();
   });
 
   it("cannot send an unavailable desktop test notification", () => {
@@ -116,7 +116,7 @@ describe("GeneralTab realtime mode", () => {
     fireEvent.click(checkbox);
 
     expect(useUIStore.getState().keepRunningInBackground).toBe(false);
-    expect(localStorage.getItem("pebble-keep-running-background")).toBe("false");
+    expect(localStorage.getItem("gomail-keep-running-background")).toBe("false");
   });
 
   it("does not persist unavailable start-hidden-to-tray behavior", () => {
@@ -129,7 +129,7 @@ describe("GeneralTab realtime mode", () => {
 
     expect((checkbox as HTMLInputElement).disabled).toBe(true);
     expect(useUIStore.getState().startHiddenToTray).toBe(false);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBeNull();
+    expect(localStorage.getItem("gomail-start-hidden-to-tray")).toBeNull();
   });
 
   it("defaults sidebar system labels to unchecked and persists toggling them", () => {
@@ -143,6 +143,6 @@ describe("GeneralTab realtime mode", () => {
     fireEvent.click(checkbox);
 
     expect(useUIStore.getState().showSystemLabels).toBe(true);
-    expect(localStorage.getItem("pebble-show-system-labels")).toBe("true");
+    expect(localStorage.getItem("gomail-show-system-labels")).toBe("true");
   });
 });

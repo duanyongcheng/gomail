@@ -76,7 +76,7 @@ export type MessageThemeId =
   | "telegram"
   | "imessage";
 
-export const MESSAGE_THEME_STORAGE_KEY = "pebble-message-theme";
+export const MESSAGE_THEME_STORAGE_KEY = "gomail-message-theme";
 export const DEFAULT_MESSAGE_THEME: MessageThemeId = "app";
 
 /** How the header and the body are arranged relative to each other. */
@@ -1218,7 +1218,7 @@ export function messageThemeBodyRule(theme: MessageTheme): string {
  *
  * The fallback rule inside `ShadowDomEmail` is deliberately left untouched.
  */
-export const MESSAGE_THEME_DARK_SHEET_CSS = `:host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content {
+export const MESSAGE_THEME_DARK_SHEET_CSS = `:host-context([data-theme="dark"]) .gomail-email-content.gomail-email-content {
           display: inline-block;
           max-width: 100%;
           color-scheme: light;
@@ -1230,16 +1230,16 @@ export const MESSAGE_THEME_DARK_SHEET_CSS = `:host-context([data-theme="dark"]) 
  * The extra CSS handed to {@link ShadowDomEmail} so the sanitized mail inherits
  * the theme's reading typography.
  *
- * Selectors are doubled (`.pebble-email-content.pebble-email-content`) so they
+ * Selectors are doubled (`.gomail-email-content.gomail-email-content`) so they
  * outrank the core rules — including the `:host-context([data-theme="dark"])`
  * light-sheet fallback — without touching them.
  */
 export function messageThemeContentCss(theme: MessageTheme): string {
-  const doubled = ":host([data-pebble-message-theme]) .pebble-email-content.pebble-email-content";
+  const doubled = ":host([data-gomail-message-theme]) .gomail-email-content.gomail-email-content";
   const guard = theme.paletteMode === "adaptive" ? `\n        ${MESSAGE_THEME_DARK_SHEET_CSS}` : "";
   // The dark UI's pale accent is not readable on the guard's white mail sheet.
   const sheetLinks = theme.id === "app" ? `
-        :host-context([data-theme="dark"]) .pebble-email-content.pebble-email-content a {
+        :host-context([data-theme="dark"]) .gomail-email-content.gomail-email-content a {
           color: #155e8a;
         }` : "";
   // These defaults never outrank the sender's inline styles or alter sanitizing.
@@ -1270,7 +1270,7 @@ export function messageThemeContentCss(theme: MessageTheme): string {
         }`;
 
   return `
-        :host([data-pebble-message-theme]) {
+        :host([data-gomail-message-theme]) {
           font-family: ${theme.type.body.fontFamily};
           font-size: ${theme.type.body.size};
           font-weight: ${theme.type.body.weight};
@@ -1278,7 +1278,7 @@ export function messageThemeContentCss(theme: MessageTheme): string {
           ${theme.id === "app" ? "line-height: var(--ui-reader-leading, 1.8);" : ""}
           color: ${theme.type.body.color};
         }
-        :host([data-pebble-message-theme]) a {
+        :host([data-gomail-message-theme]) a {
           color: ${theme.type.body.linkColor};
         }${headings}
         ${doubled} {

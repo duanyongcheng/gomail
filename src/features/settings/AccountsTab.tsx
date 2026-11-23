@@ -903,7 +903,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
               <label style={labelStyle}>{t("accountSetup.accountLabel", "Account label")}</label>
               <input aria-label={t("accountSetup.accountLabel", "Account label")} style={inputStyle} maxLength={120}
                 value={accountLabelValue} onChange={(e) => setAccountLabelValue(e.target.value)} />
-              <small>{t("accountSetup.accountLabelHelp", "Only used to identify this account in Pebble; never sent as your sender name.")}</small>
+              <small>{t("accountSetup.accountLabelHelp", "Only used to identify this account in GoMail; never sent as your sender name.")}</small>
             </div>
             <div>
               <label style={labelStyle}>{t("accountSetup.displayName")}</label>

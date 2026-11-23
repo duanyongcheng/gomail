@@ -13,7 +13,7 @@
  * sanitizer never sees it and a message cannot address it, and the translation
  * only emits the class. Nothing about the look has to survive anything.
  */
-export const SOURCE_ECHO_CLASS = "pebble-source-echo";
+export const SOURCE_ECHO_CLASS = "gomail-source-echo";
 
 /**
  * Injected by `ShadowDomEmail` alongside the message.
