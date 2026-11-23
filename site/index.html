@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GoMail — 本地优先的跨平台桌面邮箱客户端</title>
+  <meta name="description" content="GoMail 是一款基于 Go、MyGO WebView 与纯 Go SQLite 打造的本地优先桌面邮件客户端，支持 Gmail、IMAP/SMTP、POP3 与 Outlook，内置 HTML 隐私净室渲染与 AES-256-GCM 系统钥匙串加密，零云端服务器。" />
+  <meta property="og:title" content="GoMail — Local-First Desktop Email Client" />
+  <meta property="og:description" content="A calm, local-first desktop email client built with Go, MyGO WebView, and pure-Go SQLite. Zero cloud servers." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="./assets/app-icon.png" />
+  <link rel="icon" type="image/png" href="./assets/app-icon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main-content">
+    <span data-lang="zh">跳至正文内容</span>
+    <span data-lang="en">Skip to main content</span>
+  </a>
+
+  <!-- Sticky Floating Rounded-18px Navigation Bar -->
+  <header class="nav-wrap">
+    <nav class="top-nav" aria-label="Primary">
+      <a class="brand-link" href="#">
+        <img src="./assets/app-icon.png" alt="GoMail" width="28" height="28" />
+        <span>GoMail</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#features">
+          <span data-lang="zh">功能特性</span>
+          <span data-lang="en">Features</span>
+        </a>
+        <a href="#security">
+          <span data-lang="zh">本地安全</span>
+          <span data-lang="en">Security</span>
+        </a>
+        <a href="#details">
+          <span data-lang="zh">工程细节</span>
+          <span data-lang="en">Details</span>
+        </a>
+        <a href="#download">
+          <span data-lang="zh">下载与构建</span>
+          <span data-lang="en">Download</span>
+        </a>
+        <a href="https://github.com/duanyongcheng/gomail/blob/master/docs/architecture.md" target="_blank" rel="noopener noreferrer">
+          <span data-lang="zh">架构文档</span>
+          <span data-lang="en">Architecture</span>
+        </a>
+      </div>
+
+      <div class="nav-actions">
+        <button type="button" id="lang-toggle" class="util-btn" aria-label="Switch language">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M2 12h20"></path>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span id="lang-toggle-label">EN</span>
+        </button>
+
+        <span class="nav-divider" aria-hidden="true"></span>
+
+        <button type="button" id="theme-toggle" class="util-btn icon-only" aria-label="切换主题">
+          <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+        </button>
+
+        <a class="util-btn gh-pill" href="https://github.com/duanyongcheng/gomail" target="_blank" rel="noopener noreferrer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.38-3.87-1.38-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.26 5.67.42.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
+          </svg>
+          <span class="gh-label-text">GitHub</span>
+          <span class="version-tag tabular" data-version-badge>v0.2.2</span>
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <!-- 1. Hero + Multi-OS Download Dock + Concentric 26px Live Harbor Workspace -->
+    <section class="hero">
+      <div class="container">
+        <h1>
+          <span data-lang="zh">所有邮箱归于一处，</span>
+          <span data-lang="en">All your mailboxes in one place,</span>
+          <span class="hero-accent" data-lang="zh">只停泊在你的电脑里</span>
+          <span class="hero-accent" data-lang="en">anchored solely on your machine</span>
+        </h1>
+
+        <p class="hero-lead">
+          <span data-lang="zh">基于 Go、MyGO WebView 与纯 Go SQLite 打造的开源桌面邮件客户端。直连 Gmail、IMAP/SMTP、POP3 与 Outlook，邮件归档、全文索引、隐私清洗与加密凭据 100% 留在本地，零云端中转服务器。</span>
+          <span data-lang="en">An open-source desktop email client built with Go, MyGO WebView, and pure-Go SQLite. Connect Gmail, IMAP/SMTP, POP3, and Outlook directly—keeping your archive, FTS5 search index, HTML sanitizer, and encrypted credentials 100% on your device.</span>
+        </p>
+
+        <div class="hero-cta-row">
+          <a id="hero-download-btn" class="btn-primary" href="https://github.com/duanyongcheng/gomail/releases/latest">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span id="hero-download-label" class="tabular">下载 macOS 版 (Apple Silicon .dmg) · v0.2.2</span>
+            <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+
+          <a class="btn-secondary" href="https://github.com/duanyongcheng/gomail" target="_blank" rel="noopener noreferrer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span data-lang="zh">查看 GitHub 源码</span>
+            <span data-lang="en">View Source on GitHub</span>
+          </a>
+        </div>
+
+        <div class="platform-dock" role="group" aria-label="Platform selector">
+          <button type="button" class="os-pill" data-os-select="macos-arm64" aria-pressed="true">macOS Apple Silicon</button>
+          <button type="button" class="os-pill" data-os-select="macos-amd64" aria-pressed="false">macOS Intel</button>
+          <button type="button" class="os-pill" data-os-select="windows-x64" aria-pressed="false">Windows x64</button>
+          <button type="button" class="os-pill" data-os-select="windows-arm64" aria-pressed="false">Windows ARM64</button>
+          <button type="button" class="os-pill" data-os-select="linux-deb" aria-pressed="false">Linux .deb</button>
+          <a class="checksum-link" data-checksum-link href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>SHA256SUMS.txt</span>
+          </a>
+        </div>
+
+        <!-- Concentric 26px Live Harbor Chartroom Interactive Shell -->
+        <div class="stage-outer">
+          <div class="harbor-window" role="region" aria-label="GoMail interactive workspace preview">
+            <!-- 40px Harbor Titlebar -->
+            <div class="hw-titlebar">
+              <div class="hw-title-left">
+                <span class="traffic-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="hw-brand">
+                  <img src="./assets/app-icon.png" alt="" width="18" height="18" />
+                  <span>GoMail</span>
+                </span>
+                <span class="hw-crumb">
+                  <span data-lang="zh">统一收件箱 · 交互式界面预览</span>
+                  <span data-lang="en">Unified Inbox · Live UI Preview</span>
+                </span>
+              </div>
+
+              <div class="hw-demo-controls">
+                <button type="button" id="demo-offline-toggle" class="hw-chip-toggle" aria-pressed="false">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                    <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                    <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                  </svg>
+                  <span data-lang="zh">模拟断网离线</span>
+                  <span data-lang="en">Simulate Offline</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Offline Signal Strip (toggled interactively) -->
+            <div id="demo-offline-banner" class="hw-offline-strip" role="status" hidden>
+              <span class="signal-lead">
+                <span class="signal-pip" aria-hidden="true"></span>
+                <span data-lang="zh">离线状态 — 本地已缓存邮件、FTS5 搜索与加密草稿照常可用，远端修改已入队等待恢复重试</span>
+                <span data-lang="en">Offline — Cached mail, local FTS5 search, and encrypted drafts stay usable; remote writes are safely queued</span>
+              </span>
+            </div>
+
+            <!-- 3-Plane Workspace Body -->
+            <div class="hw-body">
+              <!-- Plane 1: Harbor Mist Sidebar -->
+              <aside class="hw-sidebar" aria-label="Mailbox navigation">
+                <div class="hw-compose-btn" aria-hidden="true">
+                  <span class="hw-row-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                    </svg>
+                    <span data-lang="zh">撰写</span>
+                    <span data-lang="en">Compose</span>
+                  </span>
+                  <span class="hw-kbd">⌘N</span>
+                </div>
+
+                <div class="hw-nav-group">
+                  <div class="hw-group-title">
+                    <span data-lang="zh">视图</span>
+                    <span data-lang="en">Mailboxes</span>
+                  </div>
+                  <button type="button" class="hw-nav-row" data-acct-filter="all" aria-current="true">
+                    <span class="hw-row-label">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                        <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                      </svg>
+                      <span data-lang="zh">所有账户收件箱</span>
+                      <span data-lang="en">All Accounts</span>
+                    </span>
+                    <span class="hw-count-slot">4</span>
+                  </button>
+                </div>
+
+                <div class="hw-nav-group">
+                  <div class="hw-group-title">
+                    <span data-lang="zh">已连接账户（点击筛选）</span>
+                    <span data-lang="en">Accounts (click to filter)</span>
+                  </div>
+                  <button type="button" class="hw-nav-row" data-acct-filter="gmail" aria-current="false">
+                    <span class="hw-row-label">
+                      <span class="acct-dot" aria-hidden="true">G</span>
+                      <span>lin.mo@gmail.com</span>
+                    </span>
+                    <span class="hw-count-slot">2</span>
+                  </button>
+                  <button type="button" class="hw-nav-row" data-acct-filter="imap" aria-current="false">
+                    <span class="hw-row-label">
+                      <span class="acct-dot" aria-hidden="true">H</span>
+                      <span>eng@harbor-corp.io</span>
+                    </span>
+                    <span class="hw-count-slot">1</span>
+                  </button>
+                  <button type="button" class="hw-nav-row" data-acct-filter="outlook" aria-current="false">
+                    <span class="hw-row-label">
+                      <span class="acct-dot" aria-hidden="true">O</span>
+                      <span>ops@outlook.com</span>
+                    </span>
+                    <span class="hw-count-slot">1</span>
+                  </button>
+                </div>
+              </aside>
+
+              <!-- Plane 2: Chalk Sea Message List -->
+              <div class="hw-list-pane">
+                <div class="hw-pane-header">
+                  <span class="hw-pane-title">
+                    <span data-lang="zh">收件箱</span>
+                    <span data-lang="en">Inbox</span>
+                    <span id="demo-list-count" class="hw-badge-neutral">4</span>
+                  </span>
+                </div>
+
+                <div class="hw-search-wrap">
+                  <label class="hw-search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input id="demo-search-input" type="search" placeholder="本地 FTS5 搜索邮件…" autocomplete="off" />
+                  </label>
+                </div>
+
+                <div id="demo-mail-list" class="hw-rows" role="listbox" aria-label="Sample messages"></div>
+              </div>
+
+              <!-- Plane 3: Reading Sheet -->
+              <div id="demo-reader-pane" class="hw-reader-pane" data-msg-tpl="app">
+                <div class="hw-reader-toolbar">
+                  <div class="hw-tool-icons" aria-hidden="true">
+                    <span class="hw-icon-btn">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                    </span>
+                    <span class="hw-icon-btn">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </span>
+                    <span class="hw-icon-btn">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    </span>
+                  </div>
+
+                  <div class="template-Seg" role="group" aria-label="Reading template">
+                    <button type="button" class="tpl-btn" data-tpl-choice="app" aria-pressed="true">
+                      <span data-lang="zh">跟随界面</span>
+                      <span data-lang="en">Follow UI</span>
+                    </button>
+                    <button type="button" class="tpl-btn" data-tpl-choice="letter" aria-pressed="false">
+                      <span data-lang="zh">书信衬线</span>
+                      <span data-lang="en">Letter</span>
+                    </button>
+                    <button type="button" class="tpl-btn" data-tpl-choice="console" aria-pressed="false">
+                      <span data-lang="zh">终端</span>
+                      <span data-lang="en">Console</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Harbor-Channel Terracotta Privacy Signal Strip -->
+                <div id="demo-privacy-strip" class="hw-privacy-strip">
+                  <span class="signal-lead">
+                    <span class="signal-pip" aria-hidden="true"></span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span id="demo-privacy-text">Go 净室隐私盾已拦截 3 个远程追踪像素 · 外部图片默认未加载</span>
+                  </span>
+                  <button type="button" id="demo-privacy-action" class="signal-btn">仅本次加载图片</button>
+                </div>
+
+                <article class="hw-article">
+                  <h2 id="demo-msg-title" class="hw-article-title">GoMail v0.2.2：签名增量更新与本地安全说明</h2>
+
+                  <div class="hw-sender-bar">
+                    <div class="hw-sender-left">
+                      <span id="demo-msg-avatar" class="hw-avatar">发</span>
+                      <div>
+                        <div id="demo-msg-sender" class="hw-meta-main">GoMail 发布团队 &lt;release@gomail.local&gt;</div>
+                        <div id="demo-msg-recipient" class="hw-meta-sub">收件人：林默 &lt;lin.mo@gmail.com&gt;</div>
+                      </div>
+                    </div>
+                    <span id="demo-msg-time" class="hw-meta-sub tabular">10:42</span>
+                  </div>
+
+                  <div id="demo-msg-body" class="hw-article-body"></div>
+
+                  <div id="demo-msg-attachment" class="hw-attachment">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span class="att-name">SHA256SUMS.txt</span>
+                    <span class="att-size">4.2 KB</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <!-- 28px Bottom Horizon Status Bar -->
+            <div class="hw-statusbar" role="status">
+              <span class="status-left">
+                <span id="demo-status-dot" class="status-dot" data-offline="false" aria-hidden="true"></span>
+                <span id="demo-status-text">本地就绪 · SQLite WAL 已同步 · 零云端连接（交互演示数据）</span>
+              </span>
+              <span>CGO_ENABLED=0 · SQLite v33</span>
+            </div>
+          </div>
+
+          <!-- Floating Bottom-Right Security Vault Card -->
+          <div class="vault-float">
+            <span class="vault-badge" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            <div>
+              <div class="vault-title">
+                <span data-lang="zh">系统钥匙串硬件级守护</span>
+                <span data-lang="en">OS Keyring Encrypted Vault</span>
+              </div>
+              <div class="vault-desc">
+                <span data-lang="zh">令牌、草稿、发件箱与签名均以 AES-256-GCM 密封于本机。</span>
+                <span data-lang="en">Tokens, drafts, Outbox &amp; signatures sealed locally with AES-256-GCM.</span>
+                <div class="vault-code">dev.bary.gomail</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Protocol & Mail Ecosystem Strip -->
+    <div class="protocol-band">
+      <div class="container">
+        <div class="protocol-divider">
+          <span data-lang="zh">原生直连你正在使用的主流邮件协议与安全标准</span>
+          <span data-lang="en">Direct native support for standard mail protocols &amp; local security</span>
+        </div>
+
+        <div class="protocol-strip">
+          <span class="proto-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+            <span>Gmail OAuth 2.0 PKCE</span>
+          </span>
+          <span class="proto-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path></svg>
+            <span>IMAP4rev1 + IDLE</span>
+          </span>
+          <span class="proto-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span>SMTP / STARTTLS</span>
+          </span>
+          <span class="proto-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>POP3 + UIDL</span>
+          </span>
+          <span class="proto-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>
+            <span>Outlook &amp; Microsoft Graph</span>
+          </span>
+          <span class="proto-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"></path></svg>
+            <span>HTTP CONNECT &amp; SOCKS5</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Asymmetric 2x2 Bento Feature Grid -->
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>
+            <span data-lang="zh"><span class="cjk-keep">告别网页标签页，</span><span class="cjk-keep">回归沉静的桌面收件箱</span></span>
+            <span data-lang="en">Leave webmail tab clutter behind for a calm desktop workspace</span>
+          </h2>
+          <p>
+            <span data-lang="zh"><span class="cjk-keep">每一处细节都围绕日常高频收发、</span><span class="cjk-keep">长文阅读舒适度与离线确定性打磨。</span></span>
+            <span data-lang="en">Crafted around multi-account triage, effortless bilingual reading comfort, and deterministic local state.</span>
+          </p>
+        </div>
+
+        <div class="bento-grid">
+          <!-- Span-2 Top-Left -->
+          <article class="bento-tile span-2">
+            <div class="bento-copy">
+              <h3>
+                <span data-lang="zh">多账户统一收件箱，源站直连同步</span>
+                <span data-lang="en">Unified multi-account inbox with direct protocol sync</span>
+              </h3>
+              <p>
+                <span data-lang="zh">同时管理多个 Gmail（支持断点续传全量回填与 History 增量同步）、企业 IMAP（UIDVALIDITY 校验点与 IDLE 实时推送）、POP3 与 Microsoft 账户。支持在应用内直接加密保存自定义 Google OAuth Client ID，修改后无需重启即刻生效。</span>
+                <span data-lang="en">Manage multiple Gmail (resumable backfill + paginated History sync), IMAP (UIDVALIDITY checkpoints + IDLE push), POP3, and Microsoft accounts together—with hot-reloaded in-app Google OAuth setup.</span>
+              </p>
+              <div class="bento-tags">
+                <span class="bento-tag">Gmail PKCE</span>
+                <span class="bento-tag">IMAP IDLE</span>
+                <span class="bento-tag">Exchange XOAUTH2</span>
+              </div>
+            </div>
+
+            <div class="mini-ui" aria-hidden="true">
+              <div class="mini-ui-bar">
+                <span data-lang="zh">已连接邮箱调度器</span>
+                <span data-lang="en">Per-Account Sync Scheduler</span>
+                <span class="tabular">3 active</span>
+              </div>
+              <div class="mini-acct-list">
+                <div class="mini-acct-item">
+                  <span class="mini-acct-name"><span class="acct-dot">G</span> lin.mo@gmail.com</span>
+                  <span class="mini-acct-state"><span class="status-dot"></span> History Sync</span>
+                </div>
+                <div class="mini-acct-item">
+                  <span class="mini-acct-name"><span class="acct-dot">H</span> eng@harbor-corp.io</span>
+                  <span class="mini-acct-state"><span class="status-dot"></span> IMAP IDLE</span>
+                </div>
+                <div class="mini-acct-item">
+                  <span class="mini-acct-name"><span class="acct-dot">O</span> ops@outlook.com</span>
+                  <span class="mini-acct-state"><span class="status-dot"></span> SOCKS5 · TLS</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Span-1 Top-Right -->
+          <article class="bento-tile">
+            <div class="bento-copy">
+              <h3>
+                <span data-lang="zh">Go 净室级 HTML 隐私清洗</span>
+                <span data-lang="en">Go-side HTML &amp; tracker sanitizer</span>
+              </h3>
+              <p>
+                <span data-lang="zh">不信任任何外来邮件正文：进入 WebView 前在 Go 层剥离脚本、外链 CSS 与 1×1 追踪像素，仅通过受限协议加载附件内嵌图。</span>
+                <span data-lang="en">Untrusted HTML and CSS are rewritten in Go before touching WebView, stripping scripts and tracking pixels while isolating CID images.</span>
+              </p>
+            </div>
+
+            <div class="mini-ui" aria-hidden="true">
+              <div class="mini-sanitizer">
+                <div class="sanitizer-row blocked">
+                  <span>&lt;img src="https://trk.ad/1x1.gif"&gt;</span>
+                  <span data-lang="zh">已拦截</span>
+                  <span data-lang="en">Blocked</span>
+                </div>
+                <div class="sanitizer-row blocked">
+                  <span>style="background:url(...)"</span>
+                  <span data-lang="zh">已剥离</span>
+                  <span data-lang="en">Stripped</span>
+                </div>
+                <div class="sanitizer-row safe">
+                  <span>gomail-attachment://localhost/…</span>
+                  <span data-lang="zh">安全放行</span>
+                  <span data-lang="en">Verified</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Span-1 Bottom-Left -->
+          <article class="bento-tile">
+            <div class="bento-copy">
+              <h3>
+                <span data-lang="zh">9 套独立信件阅读模板</span>
+                <span data-lang="en">9 decoupled reading templates</span>
+              </h3>
+              <p>
+                <span data-lang="zh">应用外壳保持统一的 Harbor Chartroom 秩序，正文阅读区可自由切换跟随界面、纸质书信、Claude、终端等 9 种排版，深色模式下自动守护白底邮件链接对比度。</span>
+                <span data-lang="en">Keep one calm Harbor shell while switching message detail across 9 adaptive and fixed-palette reading templates with dark-mode contrast guards.</span>
+              </p>
+            </div>
+
+            <div class="mini-ui" aria-hidden="true">
+              <div class="mini-tpl-preview">
+                <div class="mini-tpl-swatches">
+                  <div class="swatch-chip s-harbor">Harbor</div>
+                  <div class="swatch-chip s-letter">Letter</div>
+                  <div class="swatch-chip s-console">Console</div>
+                </div>
+                <div style="font-size:12px;color:var(--ink-secondary);line-height:1.6;">
+                  <span data-lang="zh">740px 舒适行宽 · 1.82 中英混排行高 · Shadow DOM 样式隔离</span>
+                  <span data-lang="en">740px reading measure · 1.82 bilingual line-height · Shadow DOM isolation</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Span-2 Bottom-Right -->
+          <article class="bento-tile span-2">
+            <div class="bento-copy">
+              <h3>
+                <span data-lang="zh"><span class="cjk-keep">断网照常办公，</span><span class="cjk-keep">发件箱绝不盲目重发</span></span>
+                <span data-lang="en">Offline-capable with unknown-outcome Outbox safety</span>
+              </h3>
+              <p>
+                <span data-lang="zh">离线时仍可流畅阅读历史邮件、执行毫秒级 FTS5 搜索、编辑加密草稿。发送邮件先以幂等键加密落盘至本地发件箱；若传输中途断网导致结果未知，系统会诚实挂起提示你核验已发送夹，绝不暗自重复投递。</span>
+                <span data-lang="en">Browse mail, search FTS5, and edit encrypted drafts offline. If a network drop leaves a send outcome uncertain, GoMail pauses for explicit Check Sent verification rather than risking duplicate delivery.</span>
+              </p>
+              <div class="bento-tags">
+                <span class="bento-tag">Durable Outbox</span>
+                <span class="bento-tag">FIFO Pending Ops</span>
+                <span class="bento-tag">Gmail Cloud Drafts</span>
+              </div>
+            </div>
+
+            <div class="mini-ui" aria-hidden="true">
+              <div class="mini-ui-bar">
+                <span data-lang="zh">发件箱与远端写回队列</span>
+                <span data-lang="en">Encrypted Outbox &amp; Write Queue</span>
+                <span class="tabular">FIFO</span>
+              </div>
+              <div class="outbox-rows">
+                <div class="outbox-row">
+                  <span data-lang="zh">Re: Q4 合作协议修订版</span>
+                  <span data-lang="en">Re: Q4 Partnership Redline</span>
+                  <span class="outbox-pill">
+                    <span data-lang="zh">AES-256 已入队</span>
+                    <span data-lang="en">Encrypted Queue</span>
+                  </span>
+                </div>
+                <div class="outbox-row uncertain">
+                  <span data-lang="zh">年度预算审批汇报.pdf</span>
+                  <span data-lang="en">Annual Budget Sign-off.pdf</span>
+                  <span class="outbox-pill">
+                    <span data-lang="zh">结果未明 · 待核验</span>
+                    <span data-lang="en">Check Sent</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 3-Step Horizontal Local Custody & Cryptography Flow -->
+    <section id="security" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>
+            <span data-lang="zh"><span class="cjk-keep">三层本地托管防线，</span><span class="cjk-keep">从源头杜绝云端泄密</span></span>
+            <span data-lang="en">Three layers of local custody—zero cloud intermediaries</span>
+          </h2>
+          <p>
+            <span data-lang="zh"><span class="cjk-keep">没有厂商账号体系、没有云同步中继，</span><span class="cjk-keep">打包产物绝不内嵌任何 OAuth 密钥。</span></span>
+            <span data-lang="en">No vendor account required, no cloud sync relay, and zero OAuth secrets ever embedded in packaged binaries.</span>
+          </p>
+        </div>
+
+        <div class="custody-flow">
+          <article class="flow-step">
+            <div class="step-badge-row">
+              <span class="step-icon" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                  <polyline points="10 17 15 12 10 7"></polyline>
+                  <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+              </span>
+              <span class="step-tag">PKCE · TLS 1.2+</span>
+            </div>
+            <h3>
+              <span data-lang="zh">系统浏览器 PKCE 直连授权</span>
+              <span data-lang="en">Direct PKCE &amp; verified TLS</span>
+            </h3>
+            <p>
+              <span data-lang="zh">Gmail 与 Microsoft 采用系统默认浏览器一次性本地回环（Loopback PKCE）完成授权；IMAP/SMTP/POP3 强制校验证书链并支持自定义根证书（CA PEM）。启动恢复账户时绝不静默联网。</span>
+              <span data-lang="en">Gmail and Microsoft authenticate via one-shot loopback PKCE in your system browser; IMAP/SMTP/POP3 enforce verified TLS with optional custom CA PEM trust.</span>
+            </p>
+            <div class="envelope-spec">127.0.0.1 ephemeral loopback · CAS token refresh</div>
+          </article>
+
+          <div class="flow-arrow" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+
+          <article class="flow-step">
+            <div class="step-badge-row">
+              <span class="step-icon" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <span class="step-tag">AES-256-GCM</span>
+            </div>
+            <h3>
+              <span data-lang="zh">钥匙串主密钥与上下文绑定加密</span>
+              <span data-lang="en">OS Keyring DEK &amp; AAD envelope</span>
+            </h3>
+            <p>
+              <span data-lang="zh">32 字节主密钥（DEK）安全托管于系统钥匙串，所有凭据、本地草稿、发件箱快照、签名与代理配置均通过绑定用途与记录 ID 的 AAD 信封加密；钥匙串锁定时保留密文绝不降级明文。</span>
+              <span data-lang="en">A 32-byte master DEK in your OS keyring seals tokens, drafts, Outbox payloads, signatures, and proxy configs with purpose-bound AAD—never falling back to plaintext.</span>
+            </p>
+            <div class="envelope-spec">"GOMAIL\x00\x01" || nonce(12B) || ciphertext || tag(16B)</div>
+          </article>
+
+          <div class="flow-arrow" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+
+          <article class="flow-step">
+            <div class="step-badge-row">
+              <span class="step-icon" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <polyline points="9 12 11 14 15 10"></polyline>
+                </svg>
+              </span>
+              <span class="step-tag">SQLite · Ed25519</span>
+            </div>
+            <h3>
+              <span data-lang="zh">纯 Go SQLite 与签名增量更新</span>
+              <span data-lang="en">Pure-Go SQLite &amp; signed updates</span>
+            </h3>
+            <p>
+              <span data-lang="zh">基于无 CGO 依赖的纯 Go SQLite 引擎（v1–v33 事务迁移）与 WebView 导航锁死防护，外链仅经安全校验后调用系统浏览器打开；应用内置 Ed25519 签名的 bsdiff 增量更新。</span>
+              <span data-lang="en">Powered by CGO-free SQLite (v1–v33 transactional migrations), locked-down WebView navigation, and Ed25519-signed bsdiff delta auto-updates.</span>
+            </p>
+            <div class="envelope-spec">gomail.sqlite (WAL + FULL) · bsdiff deltas</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Architectural 2-Column Everyday Details Ledger -->
+    <section id="details" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>
+            <span data-lang="zh"><span class="cjk-keep">日常高频细节，</span><span class="cjk-keep">开箱即备</span></span>
+            <span data-lang="en">Everyday desktop essentials, thoughtfully built in</span>
+          </h2>
+          <p>
+            <span data-lang="zh"><span class="cjk-keep">轻量纯本地运行，</span><span class="cjk-keep">兼顾顺手的键盘效率与清晰诚实的状态反馈。</span></span>
+            <span data-lang="en">Fast, zero-CDN local execution pairing keyboard speed with transparent operational feedback.</span>
+          </p>
+        </div>
+
+        <div class="ledger-sheet">
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">本地 FTS5 全文检索</span>
+                  <span data-lang="en">Local FTS5 Full-Text Search</span>
+                </h3>
+                <span class="ledger-code">SQLite FTS5</span>
+              </div>
+              <p>
+                <span data-lang="zh">毫秒级检索本地邮件主题、发件人与正文，支持 RFC 2047 编码名称解析，离线亦随时可查。</span>
+                <span data-lang="en">Instant offline search across subjects, senders, and bodies with full RFC 2047 display-name decoding.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">会话聚合与单封双视图</span>
+                  <span data-lang="en">Conversation &amp; Message Views</span>
+                </h3>
+                <span class="ledger-code">Threads</span>
+              </div>
+              <p>
+                <span data-lang="zh">按账户作用域精准聚合往来回复链，支持折叠/展开气泡阅读与单封列表自由切换。</span>
+                <span data-lang="en">Account-scoped conversation threading with expandable message bubbles and one-click list view toggle.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">富文本 / Markdown / HTML 撰写器</span>
+                  <span data-lang="en">Rich Text, Markdown &amp; HTML Composer</span>
+                </h3>
+                <span class="ledger-code">TipTap</span>
+              </div>
+              <p>
+                <span data-lang="zh">支持多账户加密签名、本地去重暂存附件，以及显式的 Gmail 云端草稿上传、拉取与联动发送。</span>
+                <span data-lang="en">Compose with encrypted per-account signatures, staged attachments, and explicit Gmail cloud-draft sync.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"></path></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">全局快捷键与命令面板</span>
+                  <span data-lang="en">Keyboard Shortcuts &amp; Command Palette</span>
+                </h3>
+                <span class="ledger-code">⌘K · / · C</span>
+              </div>
+              <p>
+                <span data-lang="zh">全键盘可达焦点环、设置页方向键漫游标签栏与命令面板，双手无需离开键盘即可高效批处理。</span>
+                <span data-lang="en">Full keyboard focus visibility, roving ARIA tablists, and quick command palette navigation.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"></path></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">全局与分账户独立代理路由</span>
+                  <span data-lang="en">Global &amp; Per-Account Proxy Routing</span>
+                </h3>
+                <span class="ledger-code">SOCKS5 / HTTP</span>
+              </div>
+              <p>
+                <span data-lang="zh">可为不同邮箱分别指定直连、全局代理或专属 HTTP CONNECT / SOCKS5 节点，满足内外网混合办公。</span>
+                <span data-lang="en">Route individual accounts via direct connection, global proxy, or custom HTTP CONNECT / SOCKS5 endpoints.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">防碰撞安全附件下载</span>
+                  <span data-lang="en">Safe Attachment Export</span>
+                </h3>
+                <span class="ledger-code">Save As</span>
+              </div>
+              <p>
+                <span data-lang="zh">一键保存至下载目录或唤起原生另存为对话框，内置文件名净化、防覆盖重命名与符号链接越界拦截。</span>
+                <span data-lang="en">Download or Save As via native dialogs with collision-safe naming and symlink-contained cache reads.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">便携多配置目录隔离</span>
+                  <span data-lang="en">Portable Isolated Profiles</span>
+                </h3>
+                <span class="ledger-code">Profile Dir</span>
+              </div>
+              <p>
+                <span data-lang="zh">支持通过环境变量或可执行文件旁置目录隔离多套 Profile，轮转日志仅记录状态码绝不写入邮件内容。</span>
+                <span data-lang="en">Run isolated profiles via GOMAIL_PROFILE_DIR with rotating status-only logs that never record mail payloads.</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="ledger-item">
+            <span class="ledger-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path></svg>
+            </span>
+            <div class="ledger-main">
+              <div class="ledger-top">
+                <h3>
+                  <span data-lang="zh">中英双语与浅/深/跟随系统</span>
+                  <span data-lang="en">Bilingual UI &amp; Adaptive Color Modes</span>
+                </h3>
+                <span class="ledger-code">zh / en</span>
+              </div>
+              <p>
+                <span data-lang="zh">运行时零闪烁切换中文/英文与浅色/深色/跟随系统主题，全程使用操作系统本地字体，零外部 CDN 依赖。</span>
+                <span data-lang="en">Switch Chinese/English and Light/Dark/System modes at runtime with zero CDN requests and zero theme flash.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Two-Column Multi-Platform Download Matrix + Dark Terminal Quick-Start -->
+    <section id="download" class="section">
+      <div class="container">
+        <div class="quickstart-split">
+          <div class="qs-left">
+            <h2>
+              <span data-lang="zh"><span class="cjk-keep">全平台原生安装包，</span><span class="cjk-keep">或从纯 Go 源码自行构建</span></span>
+              <span data-lang="en">Download signed release builds, or compile cleanly from source</span>
+            </h2>
+            <p>
+              <span data-lang="zh"><span class="cjk-keep">每次版本发布均由 GitHub Actions 自动构建</span><span class="cjk-keep">六大目标架构安装包并附带 SHA-256 校验清单。</span></span>
+              <span data-lang="en">Every tagged release builds installers across six desktop targets with verified SHA256SUMS.txt manifests.</span>
+            </p>
+
+            <div class="release-matrix">
+              <a class="rm-row" data-release-os="macos-arm64" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                  <span>macOS (Apple Silicon)</span>
+                </span>
+                <span class="rm-arch">arm64 · .dmg →</span>
+              </a>
+
+              <a class="rm-row" data-release-os="macos-amd64" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                  <span>macOS (Intel)</span>
+                </span>
+                <span class="rm-arch">amd64 · .dmg →</span>
+              </a>
+
+              <a class="rm-row" data-release-os="windows-x64" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+                  <span>Windows (x64)</span>
+                </span>
+                <span class="rm-arch">amd64 · Setup.exe →</span>
+              </a>
+
+              <a class="rm-row" data-release-os="windows-arm64" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+                  <span>Windows (ARM64)</span>
+                </span>
+                <span class="rm-arch">arm64 · Setup.exe →</span>
+              </a>
+
+              <a class="rm-row" data-release-os="linux-deb" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                  <span>Linux (x64)</span>
+                </span>
+                <span class="rm-arch">amd64 · .deb →</span>
+              </a>
+
+              <a class="rm-row" data-release-os="linux-arm64" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                  <span>Linux (ARM64)</span>
+                </span>
+                <span class="rm-arch">arm64 · .deb →</span>
+              </a>
+
+              <a class="rm-row" href="https://github.com/duanyongcheng/gomail/releases/latest" target="_blank" rel="noopener noreferrer">
+                <span class="rm-os">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  <span data-lang="zh">全量归档与校验清单</span>
+                  <span data-lang="en">Tarballs, Script &amp; Checksums</span>
+                </span>
+                <span class="rm-arch">.tar.gz · install.sh · SHA256 →</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="terminal-card">
+            <div class="term-header">
+              <div class="term-tabs" role="tablist" aria-label="Build and install commands">
+                <button type="button" id="tab-build-local" class="term-tab" role="tab" aria-controls="term-tabpanel" data-term-tab="build-local" aria-selected="true" tabindex="0">
+                  <span data-lang="zh">macOS 本地构建</span>
+                  <span data-lang="en">macOS Build</span>
+                </button>
+                <button type="button" id="tab-dev" class="term-tab" role="tab" aria-controls="term-tabpanel" data-term-tab="dev" aria-selected="false" tabindex="-1">
+                  <span data-lang="zh">开发与测试</span>
+                  <span data-lang="en">Dev &amp; Check</span>
+                </button>
+                <button type="button" id="tab-linux" class="term-tab" role="tab" aria-controls="term-tabpanel" data-term-tab="linux" aria-selected="false" tabindex="-1">
+                  <span data-lang="zh">Linux 安装</span>
+                  <span data-lang="en">Linux Install</span>
+                </button>
+              </div>
+
+              <button type="button" id="term-copy-btn" class="copy-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span data-copy-label>
+                  <span data-lang="zh" data-copy-zh>复制命令</span>
+                  <span data-lang="en" data-copy-en>Copy</span>
+                </span>
+              </button>
+            </div>
+
+            <pre id="term-tabpanel" class="term-body" role="tabpanel" aria-labelledby="tab-build-local"><code id="term-code-content"></code></pre>
+          </div>
+        </div>
+
+        <!-- Truthful Product Scope & Roadmap Notice -->
+        <div class="honest-note">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>
+            <strong data-lang="zh">诚实透明的功能边界：</strong>
+            <strong data-lang="en">Transparent Roadmap Scope: </strong>
+            <span data-lang="zh">当前版本已完整实现多账户收发同步、本地 FTS5 检索、隐私净室渲染、加密草稿与可靠发件箱；本地联系人、看板、稍后提醒、邮件规则、WebDAV 备份及可选翻译/AI 助手正处于路线图开发中，在客户端内均以明确的不可用提示诚实呈现。</span>
+            <span data-lang="en">Multi-account sync, local FTS5 search, Go HTML sanitization, encrypted drafts, and the durable Outbox ship today; upcoming roadmap views (Contacts, Kanban, Snooze, Rules, WebDAV backup, and opt-in Translation/AI) remain visibly guarded in-app until backed by local services.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img src="./assets/app-icon.png" alt="" width="22" height="22" />
+        <span data-lang="zh">GoMail · 本地优先桌面邮件客户端</span>
+        <span data-lang="en">GoMail · Local-first desktop email client</span>
+      </div>
+
+      <div class="footer-links">
+        <a href="https://github.com/duanyongcheng/gomail" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/duanyongcheng/gomail/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a href="https://github.com/duanyongcheng/gomail/blob/master/docs/architecture.md" target="_blank" rel="noopener noreferrer">Architecture</a>
+        <a href="https://github.com/duanyongcheng/gomail/blob/master/DESIGN.md" target="_blank" rel="noopener noreferrer">Design System</a>
+        <a href="https://github.com/duanyongcheng/gomail/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>

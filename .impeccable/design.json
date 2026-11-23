@@ -348,6 +348,14 @@
       }
     },
     "typographyMeta": {
+      "hero-display": {
+        "displayName": "Homepage Hero Display",
+        "purpose": "Standalone product homepage (site/) hero h1 heading clamping from 36px to 60px."
+      },
+      "section-display": {
+        "displayName": "Homepage Section Display",
+        "purpose": "Standalone product homepage (site/) section h2 headings clamping from 27px to 40px."
+      },
       "display": {
         "displayName": "Display Subject",
         "purpose": "Message subject headings inside the native Harbor reading sheet (clamps to 22px below 520px)."

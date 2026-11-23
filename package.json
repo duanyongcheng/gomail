@@ -2,7 +2,7 @@
   "name": "gomail",
   "private": true,
   "type": "module",
-  "homepage": "https://github.com/duanyongcheng/gomail#readme",
+  "homepage": "https://duanyongcheng.github.io/gomail/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/duanyongcheng/gomail.git"
