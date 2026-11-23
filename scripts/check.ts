@@ -2,8 +2,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const artifacts = await mkdtemp(join(tmpdir(), "pebble-go-check-"));
-const keepArtifacts = process.env.PEBBLE_CHECK_KEEP_ARTIFACTS === "1";
+const artifacts = await mkdtemp(join(tmpdir(), "gomail-check-"));
+const keepArtifacts = process.env.GOMAIL_CHECK_KEEP_ARTIFACTS === "1";
 
 async function run(name: string, command: string[], extraEnv: Record<string, string> = {}) {
   const child = Bun.spawn(command, { env: { ...process.env, GOTOOLCHAIN: "go1.27.3", ...extraEnv }, stdout: "pipe", stderr: "pipe" });

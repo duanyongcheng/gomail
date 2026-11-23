@@ -962,12 +962,12 @@ export async function markFolderAllRead(
 
 // ─── Autostart API ───────────────────────────────────────────────────────────
 
-/** Whether Pebble is registered to launch when the user logs in. */
+/** Whether GoMail is registered to launch when the user logs in. */
 export async function getAutostartEnabled(): Promise<boolean> {
   return invoke<boolean>("get_autostart_enabled");
 }
 
-/** Enable or disable launching Pebble when the user logs in. */
+/** Enable or disable launching GoMail when the user logs in. */
 export async function setAutostartEnabled(enabled: boolean): Promise<void> {
   return invoke<void>("set_autostart_enabled", { enabled });
 }

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/crypto"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/oauth"
-	"github.com/duanyongcheng/pebble-go/internal/store"
-	"github.com/duanyongcheng/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/gomail/internal/crypto"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/oauth"
+	"github.com/duanyongcheng/gomail/internal/store"
+	"github.com/duanyongcheng/gomail/internal/testgmail"
 	"golang.org/x/oauth2"
 )
 

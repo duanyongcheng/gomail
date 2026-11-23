@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
 )
 
 type draftToken string
@@ -19,7 +19,7 @@ func TestDraftFixtureListMetadataSendAndDelete(t *testing.T) {
 	defer mock.Close()
 	api := mock.API(draftToken("demo-access"))
 	for i := 0; i < 23; i++ {
-		raw := []byte(fmt.Sprintf("From: sender@example.invalid\r\nSubject: Draft %d\r\nMessage-ID: <draft-%d@pebble.invalid>\r\n\r\nbody", i, i))
+		raw := []byte(fmt.Sprintf("From: sender@example.invalid\r\nSubject: Draft %d\r\nMessage-ID: <draft-%d@gomail.invalid>\r\n\r\nbody", i, i))
 		mock.SetDraft(fmt.Sprintf("seed-%02d", i), raw, "reply-thread")
 	}
 	first, err := api.ListDrafts(t.Context(), "")
@@ -30,7 +30,7 @@ func TestDraftFixtureListMetadataSendAndDelete(t *testing.T) {
 	if err != nil || len(second.Drafts) != 3 || second.Next != "" {
 		t.Fatal(second, err)
 	}
-	found, err := api.FindDraft(t.Context(), "draft-5@pebble.invalid")
+	found, err := api.FindDraft(t.Context(), "draft-5@gomail.invalid")
 	if err != nil || len(found.Drafts) != 1 || found.Drafts[0].ID != "seed-05" {
 		t.Fatal(found, err)
 	}

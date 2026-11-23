@@ -13,7 +13,7 @@ export function useTrayI18n() {
     setTrayMenuLabels(
       t("tray.show", "Show Window"),
       t("tray.hide", "Hide Window"),
-      t("tray.quit", "Quit Pebble"),
+      t("tray.quit", "Quit GoMail"),
     ).catch((err) => console.warn("Failed to sync tray menu labels", err));
   }, [language, t]);
 }

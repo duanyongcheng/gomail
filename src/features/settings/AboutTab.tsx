@@ -9,7 +9,7 @@ import { openExternalLink } from "@/lib/external-links";
 import { isCommandAvailable, unavailableReason } from "@/lib/availability";
 import { useUpdateStore } from "@/stores/update.store";
 
-const REPO = "duanyongcheng/pebble-go";
+const REPO = "duanyongcheng/gomail";
 const RELEASES_URL = `https://github.com/${REPO}/releases`;
 
 function openUrl(url: string) {
@@ -129,7 +129,7 @@ export default function AboutTab() {
             onClick={handleDiagnosticIconClick}
             aria-label={t("about.openDiagnosticLog", "Open diagnostic log")}
             disabled={!diagnosticsAvailable}
-            title={diagnosticsAvailable ? "Pebble Go" : unavailableReason()}
+            title={diagnosticsAvailable ? "GoMail" : unavailableReason()}
             style={{
               width: "56px",
               height: "56px",
@@ -150,7 +150,7 @@ export default function AboutTab() {
           </button>
           <div>
             <div style={{ fontSize: "17px", fontWeight: 650, color: "var(--color-text-primary)" }}>
-              Pebble Go
+              GoMail
             </div>
             <div style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginTop: "2px", fontVariantNumeric: "tabular-nums" }}>
               {t("about.version", "Version")} {appVersion || "..."}
@@ -348,7 +348,7 @@ export default function AboutTab() {
             <p className="about-update-hint">
               {t(
                 "about.installedHint",
-                "The signed update has been verified and staged. Restart Pebble Go now, or keep working and apply it automatically next time you launch.",
+                "The signed update has been verified and staged. Restart GoMail now, or keep working and apply it automatically next time you launch.",
               )}
             </p>
             <div className="about-update-actions">

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 func trustedRenderFixture(t *testing.T) (*MessageService, *TrustService) {
@@ -59,7 +59,7 @@ func TestPersistedTrustPolicyMatrix(t *testing.T) {
 			if strings.Contains(html, "images.invalid") != test.images || strings.Contains(html, "tracking.invalid") != test.trackers {
 				t.Fatal("wrong policy", html)
 			}
-			if strings.Contains(html, "script") || strings.Contains(html, "onerror") || !strings.Contains(html, "pebble-attachment://") {
+			if strings.Contains(html, "script") || strings.Contains(html, "onerror") || !strings.Contains(html, "gomail-attachment://") {
 				t.Fatal("trust bypassed sanitizer", html)
 			}
 			if test.mode != `"Off"` && strings.Contains(html, "styles.invalid") {

@@ -176,7 +176,7 @@ export default function AccountSetup({ onClose }: { onClose: () => void }) {
           <label htmlFor="setup-account-label" style={{ ...labelStyle, marginTop: 14 }}>{t("accountSetup.accountLabel", "Account label")}</label>
           <input ref={labelRef} id="setup-account-label" style={inputStyle} maxLength={120} disabled={loading}
             value={accountLabel} onChange={(event) => setAccountLabel(event.target.value)} />
-          <small style={{ display: "block", marginTop: 6, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>{t("accountSetup.accountLabelHelp", "Only used to identify this account in Pebble; never sent as your sender name.")}</small>
+          <small style={{ display: "block", marginTop: 6, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>{t("accountSetup.accountLabelHelp", "Only used to identify this account in GoMail; never sent as your sender name.")}</small>
           <div style={{ marginTop: 16 }}>
             <button
               type="button"

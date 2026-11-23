@@ -1,4 +1,4 @@
-module github.com/duanyongcheng/pebble-go
+module github.com/duanyongcheng/gomail
 
 go 1.27.3
 

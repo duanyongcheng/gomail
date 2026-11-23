@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/crypto"
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/crypto"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/store"
 	"github.com/egoist/mygo"
 )
 
@@ -81,7 +81,7 @@ func reviewSameDraft(a, b app.LocalDraft) bool {
 
 func reviewStoredDraft(ctx context.Context, runtime *app.Runtime, id string) (app.LocalDraft, bool) {
 	stored, err := runtime.DB.ComposeDraft(ctx, reviewAccount, id)
-	if err != nil || stored.Deleted || !bytes.HasPrefix(stored.Data, []byte("PEBBLE\x00\x01")) {
+	if err != nil || stored.Deleted || !bytes.HasPrefix(stored.Data, []byte("GOMAIL\x00\x01")) {
 		return app.LocalDraft{}, false
 	}
 	cipher, err := reviewCipher(runtime)
@@ -98,7 +98,7 @@ func reviewStoredDraft(ctx context.Context, runtime *app.Runtime, id string) (ap
 
 func reviewQueuedContent(runtime *app.Runtime, row store.OutboxRecord, latest app.LocalDraft) bool {
 	cipher, err := reviewCipher(runtime)
-	if err != nil || !bytes.HasPrefix(row.Data, []byte("PEBBLE\x00\x01")) {
+	if err != nil || !bytes.HasPrefix(row.Data, []byte("GOMAIL\x00\x01")) {
 		return false
 	}
 	plain, err := cipher.Decrypt("outbox.data", row.AccountID+"\x00"+row.ID, row.Data)
@@ -129,7 +129,7 @@ func reviewAttachmentsIntact(ctx context.Context, runtime *app.Runtime, draft ap
 			return false
 		}
 		stored, err := runtime.DB.ComposeAttachment(ctx, id)
-		if err != nil || !bytes.HasPrefix(stored.Data, []byte("PEBBLE\x00\x01")) {
+		if err != nil || !bytes.HasPrefix(stored.Data, []byte("GOMAIL\x00\x01")) {
 			return false
 		}
 		plain, err := cipher.Decrypt("compose_attachments.data", id, stored.Data)

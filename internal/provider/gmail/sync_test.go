@@ -14,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
-	"github.com/duanyongcheng/pebble-go/internal/store"
-	"github.com/duanyongcheng/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/provider/gmail"
+	"github.com/duanyongcheng/gomail/internal/store"
+	"github.com/duanyongcheng/gomail/internal/testgmail"
 )
 
 func addMessages(t *testing.T, mock *testgmail.Mock, count int) []testgmail.Ref {

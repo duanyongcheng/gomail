@@ -19,7 +19,7 @@ describe("UI store language initialization", () => {
   });
 
   it("uses Chinese for first launch on a Chinese system", async () => {
-    localStorage.removeItem("pebble-language");
+    localStorage.removeItem("gomail-language");
     stubNavigatorLanguage("zh-Hans-CN");
 
     const { useUIStore } = await import("../../src/stores/ui.store");
@@ -28,7 +28,7 @@ describe("UI store language initialization", () => {
   });
 
   it("uses English for first launch on a non-Chinese system", async () => {
-    localStorage.removeItem("pebble-language");
+    localStorage.removeItem("gomail-language");
     stubNavigatorLanguage("ja-JP");
 
     const { useUIStore } = await import("../../src/stores/ui.store");
@@ -37,7 +37,7 @@ describe("UI store language initialization", () => {
   });
 
   it("does not override a saved user language", async () => {
-    localStorage.setItem("pebble-language", "en");
+    localStorage.setItem("gomail-language", "en");
     stubNavigatorLanguage("zh-CN");
 
     const { useUIStore } = await import("../../src/stores/ui.store");

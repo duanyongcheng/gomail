@@ -35,7 +35,7 @@ describe("showMainWindow", () => {
     const show = vi.fn().mockResolvedValue(undefined);
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     mockGetCurrentWindow.mockReturnValue({ show } as never);
-    localStorage.setItem("pebble-start-hidden-to-tray", "true");
+    localStorage.setItem("gomail-start-hidden-to-tray", "true");
     (window as unknown as { __splashStart: number }).__splashStart = 1_000;
     vi.spyOn(Date, "now").mockReturnValue(1_220);
 
@@ -43,7 +43,7 @@ describe("showMainWindow", () => {
 
     expect(mockGetCurrentWindow).toHaveBeenCalledOnce();
     expect(show).toHaveBeenCalledOnce();
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("true");
+    expect(localStorage.getItem("gomail-start-hidden-to-tray")).toBe("true");
     expect(info).toHaveBeenCalledWith("[startup] main window shown: 220ms since splash start");
   });
 });

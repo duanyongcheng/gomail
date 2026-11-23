@@ -203,7 +203,7 @@ export default function ContactsView() {
       downloadUrl = URL.createObjectURL(new Blob([data], { type: "text/vcard;charset=utf-8" }));
       const anchor = document.createElement("a");
       anchor.href = downloadUrl;
-      anchor.download = "pebble-contacts.vcf";
+      anchor.download = "gomail-contacts.vcf";
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();

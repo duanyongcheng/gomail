@@ -50,7 +50,7 @@ func TestUIThemeSelftestChecksRealUIAndScopedStorage(t *testing.T) {
 		}
 	}
 	assertion := uiThemeRenderedScript("harbor", "light", 88)
-	for _, want := range []string{"pebble:profile-storage-migrated", "'pebble:profile:'+namespace+':pebble-app-theme'", "getBoundingClientRect()", "--ui-mail-row-height", "scroll.scrollWidth", "fontFamily"} {
+	for _, want := range []string{"gomail:profile-storage-migrated", "'gomail:profile:'+namespace+':gomail-app-theme'", "getBoundingClientRect()", "--ui-mail-row-height", "scroll.scrollWidth", "fontFamily"} {
 		if !strings.Contains(assertion, want) {
 			t.Fatalf("theme runtime oracle misses %q", want)
 		}
@@ -61,7 +61,7 @@ func TestUIThemeSelftestChecksRealUIAndScopedStorage(t *testing.T) {
 }
 
 func TestUIThemeSelftestRequiresExplicitSyntheticMode(t *testing.T) {
-	t.Setenv("PEBBLE_SELFTEST", "")
+	t.Setenv("GOMAIL_SELFTEST", "")
 	checks := map[string]bool{}
 	selftestUIThemes(context.Background(), nil, checks, func(string) { t.Fatal("captured a normal user window") })
 	if len(checks) != 0 {
@@ -76,13 +76,13 @@ func TestUIThemeSelftestRestoresProfileSettingsTab(t *testing.T) {
 			t.Fatalf("settings tab restore misses %q", want)
 		}
 	}
-	for _, forbidden := range []string{"setItem", "setAttribute", "setProperty", "pebble-settings-tab"} {
+	for _, forbidden := range []string{"setItem", "setAttribute", "setProperty", "gomail-settings-tab"} {
 		if strings.Contains(script, forbidden) {
 			t.Fatalf("settings tab restore bypasses UI using %q", forbidden)
 		}
 	}
 	assertion := uiThemeSettingsTabRestoredScript("accounts")
-	for _, want := range []string{"sessionStorage.getItem", "pebble:profile-storage-migrated", "===\"accounts\""} {
+	for _, want := range []string{"sessionStorage.getItem", "gomail:profile-storage-migrated", "===\"accounts\""} {
 		if !strings.Contains(assertion, want) {
 			t.Fatalf("settings restore assertion misses %q", want)
 		}

@@ -7,7 +7,7 @@ import { composeHtmlText } from "@/features/compose/html-text";
 
 import type { EditorMode } from "./useComposeEditor";
 
-const DRAFT_STORAGE_KEY = "pebble-compose-draft";
+const DRAFT_STORAGE_KEY = "gomail-compose-draft";
 const MAX_AUTOSAVE_RETRIES = 3;
 const AUTOSAVE_RETRY_BASE_DELAY_MS = 1000;
 

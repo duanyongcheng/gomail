@@ -3,7 +3,7 @@ package store
 import (
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 func TestGmailPageCheckpointCacheSearchAndReconciliationCommitTogether(t *testing.T) {

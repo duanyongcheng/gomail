@@ -201,7 +201,7 @@ describe("KanbanStore", () => {
       messageId: "m1",
       note: "follow up on the selected paragraph",
     });
-    expect(localStorage.getItem("pebble-kanban-context-notes")).toBeNull();
+    expect(localStorage.getItem("gomail-kanban-context-notes")).toBeNull();
   });
 
   it("merges out-of-order context-note responses without dropping another optimistic update", async () => {
@@ -243,12 +243,12 @@ describe("KanbanStore", () => {
 
   it("keeps legacy context notes until the backend acknowledges migration", async () => {
     vi.resetModules();
-    localStorage.setItem("pebble-kanban-context-notes", JSON.stringify({ m1: "legacy note" }));
+    localStorage.setItem("gomail-kanban-context-notes", JSON.stringify({ m1: "legacy note" }));
     const { invoke: isolatedInvoke } = await import("@tauri-apps/api/core");
     const isolatedInvokeMock = vi.mocked(isolatedInvoke);
     const { useKanbanStore: isolatedStore } = await import("../../src/stores/kanban.store");
 
-    expect(localStorage.getItem("pebble-kanban-context-notes"))
+    expect(localStorage.getItem("gomail-kanban-context-notes"))
       .toBe(JSON.stringify({ m1: "legacy note" }));
     isolatedInvokeMock.mockImplementation((command) => {
       if (command === "list_kanban_cards") return Promise.resolve([]);
@@ -263,13 +263,13 @@ describe("KanbanStore", () => {
       notes: { m1: "legacy note" },
     });
     expect(isolatedStore.getState().contextNotes).toEqual({ m1: "legacy note" });
-    expect(localStorage.getItem("pebble-kanban-context-notes")).toBeNull();
+    expect(localStorage.getItem("gomail-kanban-context-notes")).toBeNull();
   });
 
   it("retains legacy context notes when backend migration fails", async () => {
     vi.resetModules();
     const storedNotes = JSON.stringify({ m1: "legacy note" });
-    localStorage.setItem("pebble-kanban-context-notes", storedNotes);
+    localStorage.setItem("gomail-kanban-context-notes", storedNotes);
     const { invoke: isolatedInvoke } = await import("@tauri-apps/api/core");
     const isolatedInvokeMock = vi.mocked(isolatedInvoke);
     const { useKanbanStore: isolatedStore } = await import("../../src/stores/kanban.store");
@@ -282,6 +282,6 @@ describe("KanbanStore", () => {
 
     await expect(isolatedStore.getState().fetchCards()).rejects.toThrow("write failed");
 
-    expect(localStorage.getItem("pebble-kanban-context-notes")).toBe(storedNotes);
+    expect(localStorage.getItem("gomail-kanban-context-notes")).toBe(storedNotes);
   });
 });

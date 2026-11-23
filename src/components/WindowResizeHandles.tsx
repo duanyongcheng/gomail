@@ -15,7 +15,7 @@ import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
  * three quarters of it, by Apple's own geometry). So pressing the corner the way
  * people have always done it -- just inside the window -- no longer reaches
  * AppKit's resize tracking: the press falls through to the webview, or, once the
- * pointer is a few pixels outside, to the window *behind* Pebble, which activates
+ * pointer is a few pixels outside, to the window *behind* GoMail, which activates
  * that app instead of resizing this one.
  *
  * Tauri cannot delegate this back to the OS either: tao returns `NotSupported`

@@ -26,7 +26,7 @@ describe("sender identity upgrade notice", () => {
     expect(screen.queryByText(/Private Description/)).toBeNull();
     expect(screen.queryByText(/Ignored Name/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));
-    expect(profileLocalStorage.setItem).toHaveBeenCalledWith("pebble-sender-identity-notice-v1", "seen");
+    expect(profileLocalStorage.setItem).toHaveBeenCalledWith("gomail-sender-identity-notice-v1", "seen");
     expect(screen.queryByRole("complementary")).toBeNull();
   });
 

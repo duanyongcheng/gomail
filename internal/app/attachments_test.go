@@ -10,13 +10,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 func attachmentFixture(t *testing.T, data []byte) *AttachmentService {
 	t.Helper()
-	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "pebble.sqlite"))
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "gomail.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

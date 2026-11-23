@@ -17,7 +17,7 @@ describe("AppBackground", () => {
     render(
       <AppBackground
         image={{
-          path: "/tmp/pebble/backgrounds/background.webp",
+          path: "/tmp/gomail/backgrounds/background.webp",
           filename: "background.webp",
           fit: "contain",
           opacity: 0.35,
@@ -28,7 +28,7 @@ describe("AppBackground", () => {
 
     const layer = screen.getByTestId("app-background");
     expect(layer.getAttribute("aria-hidden")).toBe("true");
-    expect(layer.style.backgroundImage).toBe('url("asset:///tmp/pebble/backgrounds/background.webp")');
+    expect(layer.style.backgroundImage).toBe('url("asset:///tmp/gomail/backgrounds/background.webp")');
     expect(layer.style.backgroundSize).toBe("contain");
     expect(layer.style.backgroundRepeat).toBe("no-repeat");
     expect(layer.style.opacity).toBe("0.35");

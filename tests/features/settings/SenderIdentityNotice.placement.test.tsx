@@ -73,7 +73,7 @@ describe("sender identity reminder placement", () => {
   it("remembers dismissal when account settings are reopened", () => {
     const view = renderSettings();
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));
-    expect(profileLocalStorage.getItem("pebble-sender-identity-notice-v1")).toBe("seen");
+    expect(profileLocalStorage.getItem("gomail-sender-identity-notice-v1")).toBe("seen");
     expect(screen.queryByRole("complementary", { name: "Review your sender names" })).toBeNull();
 
     view.unmount();

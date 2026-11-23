@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-func TestRustEnvelopeVectorsAndAAD(t *testing.T) {
-	data, err := os.ReadFile("testdata/rust_vectors.json")
+func TestEnvelopeVectorsAndAAD(t *testing.T) {
+	data, err := os.ReadFile("testdata/envelope_vectors.json")
 	if err != nil {
 		t.Fatal(err)
 	}

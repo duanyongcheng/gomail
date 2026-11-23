@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/domain"
 	"github.com/egoist/mygo"
 	protocol "github.com/emersion/go-imap/v2"
 )
@@ -73,7 +73,7 @@ func m2UIEndpoint(ctx context.Context, window *mygo.Window, name string, port in
 // Reads below assert persisted effects; all account/sync/read/send actions use UI.
 func selftestM2UI(ctx context.Context, runtime *app.Runtime, window *mygo.Window, checks map[string]bool) {
 	defer func() {
-		if directory := os.Getenv("PEBBLE_SELFTEST_DIR"); directory != "" {
+		if directory := os.Getenv("GOMAIL_SELFTEST_DIR"); directory != "" {
 			if image, err := window.CapturePage(); err == nil {
 				_ = os.WriteFile(filepath.Join(directory, "m2-ui-stage.png"), image, 0600)
 			}
@@ -106,7 +106,7 @@ func selftestM2UI(ctx context.Context, runtime *app.Runtime, window *mygo.Window
 		return
 	}
 	checks[m2UISelftestChecks[0]] = waitSelftestPage(ctx, window, fmt.Sprintf(`/^(连接验证通过|Connection verified)$/.test(document.querySelector(%q+' [role=status]')?.textContent||'')&&!document.querySelector(%q+' fieldset[disabled]')&&!document.querySelector(%q+' [role=alert]')`, m2UIForm, m2UIForm, m2UIForm), 10*time.Second) && fixture.connections.Load() >= 2
-	if directory := os.Getenv("PEBBLE_SELFTEST_DIR"); directory != "" && checks[m2UISelftestChecks[0]] {
+	if directory := os.Getenv("GOMAIL_SELFTEST_DIR"); directory != "" && checks[m2UISelftestChecks[0]] {
 		if image, err := window.CapturePage(); err == nil {
 			_ = os.WriteFile(filepath.Join(directory, "m2-ui-localized-settings.png"), image, 0600)
 		}
@@ -129,7 +129,7 @@ func selftestM2UI(ctx context.Context, runtime *app.Runtime, window *mygo.Window
 		return
 	}
 	ciphertext, err := runtime.DB.AuthData(ctx, account.ID)
-	checks[m2UISelftestChecks[1]] = err == nil && bytes.HasPrefix(ciphertext, []byte("PEBBLE\x00\x01")) && !bytes.Contains(ciphertext, []byte("synthetic-password"))
+	checks[m2UISelftestChecks[1]] = err == nil && bytes.HasPrefix(ciphertext, []byte("GOMAIL\x00\x01")) && !bytes.Contains(ciphertext, []byte("synthetic-password"))
 	// Locate the account's own settings card; never click another mailbox's edit.
 	if !waitSelftestPage(ctx, window, fmt.Sprintf(`Boolean(document.querySelector('[data-account-settings-id="%s"]'))`, account.ID), 10*time.Second) || !offlineEvalOnce(ctx, window, fmt.Sprintf(`(() => {
 		const card=document.querySelector('[data-account-settings-id="%s"]');

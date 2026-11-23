@@ -30,7 +30,7 @@ func TestOpenLogPublishesRecordsBeforeClose(t *testing.T) {
 	defer log.Close()
 	slog.New(slog.NewJSONHandler(log, nil)).Warn("visible while running", "stage", "http_status")
 
-	path := filepath.Join(root, "logs", "pebble-go.log")
+	path := filepath.Join(root, "logs", "gomail.log")
 	if got := readLog(t, path); !strings.Contains(got, "visible while running") {
 		t.Fatal("diagnostic was not written before Close", got)
 	}
@@ -44,7 +44,7 @@ func TestRotatingLogKeepsPublishingAcrossRotation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer log.Close()
-	path := filepath.Join(root, "logs", "pebble-go.log")
+	path := filepath.Join(root, "logs", "gomail.log")
 
 	// Exceed one rotation budget through the same writer the app uses.
 	line := []byte(strings.Repeat("x", 4096) + "\n")
@@ -90,7 +90,7 @@ func TestRotatingLogSerializesConcurrentWriters(t *testing.T) {
 		}()
 	}
 	group.Wait()
-	if got := strings.Count(readLog(t, filepath.Join(root, "logs", "pebble-go.log")), "record\n"); got != 400 {
+	if got := strings.Count(readLog(t, filepath.Join(root, "logs", "gomail.log")), "record\n"); got != 400 {
 		t.Fatal("concurrent writes lost records", got)
 	}
 }

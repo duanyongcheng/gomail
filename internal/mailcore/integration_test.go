@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/testmail"
+	"github.com/duanyongcheng/gomail/internal/testmail"
 	"github.com/egoist/mygo/plugins/sqlite"
 	"github.com/emersion/go-message/mail"
 )

@@ -36,14 +36,14 @@ export function shadowEmailCss(theme?: MessageTheme | null): string {
         }
         img { max-width: 100%; height: auto; }
         a { color: var(--color-accent); }
-        .pebble-email-content {
+        .gomail-email-content {
           box-sizing: border-box;
           max-width: 100%;
           overflow-x: auto;
           color: inherit;
           background: transparent;
         }
-        :host-context([data-theme="dark"]) .pebble-email-content {
+        :host-context([data-theme="dark"]) .gomail-email-content {
           display: inline-block;
           max-width: 100%;
           color-scheme: light;
@@ -56,7 +56,7 @@ export function shadowEmailCss(theme?: MessageTheme | null): string {
           scrollbar-color: var(--color-scrollbar-thumb) transparent;
           scrollbar-width: thin;
         }
-        pre.pebble-plain-text-email {
+        pre.gomail-plain-text-email {
           font-family: inherit;
           font-size: inherit;
           line-height: inherit;
@@ -76,21 +76,21 @@ export function shadowEmailCss(theme?: MessageTheme | null): string {
           background-color: var(--color-scrollbar-thumb-hover);
         }
         table { border-collapse: collapse; }
-        .pebble-email-content > table[height="100%"],
-        .pebble-email-content > div[height="100%"],
-        .pebble-email-content > center[height="100%"],
-        .pebble-email-content > table[style*="height:100%" i],
-        .pebble-email-content > table[style*="height: 100%" i],
-        .pebble-email-content > table[style*="height:100vh" i],
-        .pebble-email-content > table[style*="height: 100vh" i],
-        .pebble-email-content > div[style*="height:100%" i],
-        .pebble-email-content > div[style*="height: 100%" i],
-        .pebble-email-content > div[style*="height:100vh" i],
-        .pebble-email-content > div[style*="height: 100vh" i],
-        .pebble-email-content > center[style*="height:100%" i],
-        .pebble-email-content > center[style*="height: 100%" i],
-        .pebble-email-content > center[style*="height:100vh" i],
-        .pebble-email-content > center[style*="height: 100vh" i] {
+        .gomail-email-content > table[height="100%"],
+        .gomail-email-content > div[height="100%"],
+        .gomail-email-content > center[height="100%"],
+        .gomail-email-content > table[style*="height:100%" i],
+        .gomail-email-content > table[style*="height: 100%" i],
+        .gomail-email-content > table[style*="height:100vh" i],
+        .gomail-email-content > table[style*="height: 100vh" i],
+        .gomail-email-content > div[style*="height:100%" i],
+        .gomail-email-content > div[style*="height: 100%" i],
+        .gomail-email-content > div[style*="height:100vh" i],
+        .gomail-email-content > div[style*="height: 100vh" i],
+        .gomail-email-content > center[style*="height:100%" i],
+        .gomail-email-content > center[style*="height: 100%" i],
+        .gomail-email-content > center[style*="height:100vh" i],
+        .gomail-email-content > center[style*="height: 100vh" i] {
           height: auto !important;
           min-height: 0 !important;
         }
@@ -156,9 +156,9 @@ export function ShadowDomEmail({ html, className, theme }: ShadowDomEmailProps) 
     const adopted = adoptShadowSheet(shadow, css);
 
     shadow.innerHTML = adopted
-      ? `<div class="pebble-email-content">${safeHtml}</div>`
+      ? `<div class="gomail-email-content">${safeHtml}</div>`
       : `<style>${css}</style>
-      <div class="pebble-email-content">${safeHtml}</div>`;
+      <div class="gomail-email-content">${safeHtml}</div>`;
 
     // The message's own `style` attributes are refused by the same CSP that
     // killed the `<style>` element, so what they carry has to be handed back
@@ -197,7 +197,7 @@ export function ShadowDomEmail({ html, className, theme }: ShadowDomEmailProps) 
     <div
       ref={hostRef}
       className={className}
-      data-pebble-message-theme={theme?.id}
+      data-gomail-message-theme={theme?.id}
     />
   );
 }

@@ -39,7 +39,7 @@ func TestOpenExternalRejectsUnsafeOrMalformedLinksBeforeOpening(t *testing.T) {
 	for _, raw := range []string{
 		"", "/relative", "//example.com/path", "https:example.com", "https:///example.com",
 		"javascript:alert(1)", "data:text/html,test", "file:///etc/passwd", "mailto:a@example.com",
-		"pebble-attachment://localhost/file", "ftp://example.com/", "-https://example.com",
+		"gomail-attachment://localhost/file", "ftp://example.com/", "-https://example.com",
 		" https://example.com", "https://example.com ", "https://example.com/white space",
 		"https://example.com/\nsecret", "https://exam\tple.com/", "https://example.com/\x00",
 		"https://example.com/\u0085", "https://example.com/\u00a0",

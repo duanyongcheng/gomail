@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 func TestRenderedMessageEscapesPlainTextAndDoesNotExposeRawHTML(t *testing.T) {
@@ -55,7 +55,7 @@ func TestRenderedMessageUsesPrivacyModeAndResolvesCIDThroughOpaqueURL(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(result.Rendered.HTML, "script") || !strings.Contains(result.Rendered.HTML, "pebble-attachment://") {
+	if strings.Contains(result.Rendered.HTML, "script") || !strings.Contains(result.Rendered.HTML, "gomail-attachment://") {
 		t.Fatalf("privacy/CID render: %s", result.Rendered.HTML)
 	}
 }

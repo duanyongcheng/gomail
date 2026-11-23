@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
-	"github.com/duanyongcheng/pebble-go/internal/provider/gmail"
-	"github.com/duanyongcheng/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/provider/gmail"
+	"github.com/duanyongcheng/gomail/internal/testgmail"
 )
 
 func lifecycleFixture(t *testing.T) (*ComposeService, *testgmail.Mock) {
@@ -36,7 +36,7 @@ func lifecycleRaw(t *testing.T, subject string) []byte {
 		MessageID: "draft@example.invalid", Date: time.Unix(1700000000, 0),
 		InReplyTo: "parent@example.invalid", References: []string{"grandparent@example.invalid", "parent@example.invalid"},
 		Attachments: []mailmime.Attachment{
-			{Filename: "report.bin", MIMEType: "application/x-pebble", ContentID: "report@example.invalid", Data: []byte{0, 1, 2, 255}},
+			{Filename: "report.bin", MIMEType: "application/x-gomail", ContentID: "report@example.invalid", Data: []byte{0, 1, 2, 255}},
 			{Filename: "logo.png", MIMEType: "image/png", ContentID: "logo@example.invalid", Inline: true, Data: []byte("inline bytes")},
 		},
 	}, mailmime.MaxOutgoingBytes)
@@ -122,7 +122,7 @@ func TestCloudLifecycleListImportEncryptedRoundTripAndMetadata(t *testing.T) {
 	parsed, err := mailmime.ParseDraftWithLimit(updatedRaw, mailmime.MaxOutgoingBytes)
 	if err != nil || updated.Message.ThreadID != "native-thread" || parsed.Subject != "Re: web draft" || parsed.References != d.References || parsed.InReplyTo != d.InReplyTo ||
 		len(parsed.BCC) != 1 || len(parsed.Attachments) != 2 ||
-		parsed.Attachments[0].MIMEType != "application/x-pebble" || parsed.Attachments[0].ContentID != "report@example.invalid" ||
+		parsed.Attachments[0].MIMEType != "application/x-gomail" || parsed.Attachments[0].ContentID != "report@example.invalid" ||
 		!bytes.Equal(parsed.Attachments[0].Data, []byte{0, 1, 2, 255}) || !parsed.Attachments[1].Inline || parsed.Attachments[1].Filename != "logo.png" || parsed.Attachments[1].ContentID != "logo@example.invalid" {
 		t.Fatal(parsed, err)
 	}

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
 	"golang.org/x/oauth2"
 )
 

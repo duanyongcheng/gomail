@@ -38,7 +38,7 @@ const uiThemeOpenInbox = `(() => {
 
 const uiThemeSelectMessage = `(() => {
   const row=Array.from(document.querySelectorAll('.message-list-row')).find(row =>
-    row.querySelector('.message-row-subject')?.textContent.trim()==='Pebble Go selftest');
+    row.querySelector('.message-row-subject')?.textContent.trim()==='GoMail selftest');
   if(!row||!row.getClientRects().length)return false;
   row.click();return true;
 })()`
@@ -55,8 +55,8 @@ func uiThemeRestoreSettingsTabScript(settingsTab string) string {
 
 func uiThemeSettingsTabRestoredScript(settingsTab string) string {
 	return fmt.Sprintf(`(() => {
-  const namespace=localStorage.getItem('pebble:profile-storage-migrated');
-  return Boolean(namespace)&&sessionStorage.getItem('pebble:profile:'+namespace+':pebble-settings-tab')===%s;
+  const namespace=localStorage.getItem('gomail:profile-storage-migrated');
+  return Boolean(namespace)&&sessionStorage.getItem('gomail:profile:'+namespace+':gomail-settings-tab')===%s;
 })()`, strconv.Quote(settingsTab))
 }
 
@@ -104,8 +104,8 @@ func uiThemeRenderedScript(theme, mode string, rowHeight int) string {
   const title=detail?.querySelector('.message-detail-title');
   const sheet=detail?.querySelector('.app-reader-sheet');
   const scroll=detail?.querySelector('.app-reader-scroll');
-  const namespace=localStorage.getItem('pebble:profile-storage-migrated');
-  const stored=namespace?'pebble:profile:'+namespace+':pebble-app-theme':null;
+  const namespace=localStorage.getItem('gomail:profile-storage-migrated');
+  const stored=namespace?'gomail:profile:'+namespace+':gomail-app-theme':null;
   if(root.dataset.uiTheme!==%s||root.dataset.theme!==%s||root.hasAttribute('data-theme-switching')||!stored||localStorage.getItem(stored)!==%s)return false;
   if(parseFloat(css.getPropertyValue('--ui-mail-row-height'))!==%d||!rows.length||!detail||!title||!sheet||!scroll)return false;
   if(document.body.innerText.includes('Something went wrong')||document.body.innerText.includes('发生了一些错误'))return false;
@@ -192,7 +192,7 @@ func selftestUIResponsiveThemes(ctx context.Context, window *mygo.Window, checks
 
 // Only the isolated desktop fixture calls this; all choices use production controls.
 func selftestUIThemes(ctx context.Context, window *mygo.Window, checks map[string]bool, capture func(string)) {
-	if os.Getenv("PEBBLE_SELFTEST") != "1" {
+	if os.Getenv("GOMAIL_SELFTEST") != "1" {
 		return
 	}
 	for _, theme := range uiThemeSelftestMatrix {
@@ -216,9 +216,9 @@ func selftestUIThemes(ctx context.Context, window *mygo.Window, checks map[strin
 		SettingsTab  string `json:"settingsTab"`
 	}
 	value, err := window.Page().EvalContext(ctx, `JSON.stringify((() => {
-  const namespace=localStorage.getItem('pebble:profile-storage-migrated');
-  const mode=namespace?localStorage.getItem('pebble:profile:'+namespace+':pebble-theme'):null;
-  const settingsTab=namespace?sessionStorage.getItem('pebble:profile:'+namespace+':pebble-settings-tab'):null;
+  const namespace=localStorage.getItem('gomail:profile-storage-migrated');
+  const mode=namespace?localStorage.getItem('gomail:profile:'+namespace+':gomail-theme'):null;
+  const settingsTab=namespace?sessionStorage.getItem('gomail:profile:'+namespace+':gomail-settings-tab'):null;
   return {theme:document.documentElement.dataset.uiTheme,mode:mode||'light',
     messageTheme:document.querySelector('[data-message-theme]')?.dataset.messageTheme||'app',
     settingsTab:settingsTab||'accounts'};

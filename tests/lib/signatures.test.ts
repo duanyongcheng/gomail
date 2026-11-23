@@ -23,18 +23,18 @@ describe("signatures secure storage", () => {
   });
 
   it("loads signatures from backend storage and clears legacy localStorage", async () => {
-    localStorage.setItem("pebble-signatures", JSON.stringify({ "account-1": "legacy" }));
+    localStorage.setItem("gomail-signatures", JSON.stringify({ "account-1": "legacy" }));
     invokeMock.mockResolvedValue("secure signature");
 
     const signature = await getSignature("account-1");
 
     expect(invokeMock).toHaveBeenCalledWith("get_email_signature", { accountId: "account-1" });
     expect(signature).toBe("secure signature");
-    expect(localStorage.getItem("pebble-signatures")).toBeNull();
+    expect(localStorage.getItem("gomail-signatures")).toBeNull();
   });
 
   it("migrates a legacy signature when backend storage is empty", async () => {
-    localStorage.setItem("pebble-signatures", JSON.stringify({
+    localStorage.setItem("gomail-signatures", JSON.stringify({
       "account-1": "legacy signature",
       "account-2": "keep me",
     }));
@@ -47,12 +47,12 @@ describe("signatures secure storage", () => {
       accountId: "account-1",
       signature: "legacy signature",
     });
-    expect(JSON.parse(localStorage.getItem("pebble-signatures") ?? "{}"))
+    expect(JSON.parse(localStorage.getItem("gomail-signatures") ?? "{}"))
       .toEqual({ "account-2": "keep me" });
   });
 
   it("does not let delayed legacy migration overwrite a concurrent save", async () => {
-    localStorage.setItem("pebble-signatures", JSON.stringify({ "account-1": "legacy" }));
+    localStorage.setItem("gomail-signatures", JSON.stringify({ "account-1": "legacy" }));
     const delayedGet = deferred<string>();
     let storedSignature = "";
     invokeMock.mockImplementation((command, args) => {
@@ -77,7 +77,7 @@ describe("signatures secure storage", () => {
   });
 
   it("does not restore legacy data after a concurrent explicit clear", async () => {
-    localStorage.setItem("pebble-signatures", JSON.stringify({ "account-1": "legacy" }));
+    localStorage.setItem("gomail-signatures", JSON.stringify({ "account-1": "legacy" }));
     const delayedGet = deferred<string>();
     let storedSignature: string | undefined;
     invokeMock.mockImplementation((command, args) => {
@@ -101,16 +101,16 @@ describe("signatures secure storage", () => {
 
     await expect(delayedLegacyRead).resolves.toBe("");
     expect(storedSignature).toBe("");
-    expect(localStorage.getItem("pebble-signatures")).toBeNull();
+    expect(localStorage.getItem("gomail-signatures")).toBeNull();
   });
 
   it("keeps a legacy signature when migration cannot be persisted", async () => {
-    localStorage.setItem("pebble-signatures", JSON.stringify({ "account-1": "legacy signature" }));
+    localStorage.setItem("gomail-signatures", JSON.stringify({ "account-1": "legacy signature" }));
     invokeMock.mockResolvedValueOnce("").mockRejectedValueOnce(new Error("write failed"));
 
     await expect(getSignature("account-1")).resolves.toBe("legacy signature");
 
-    expect(localStorage.getItem("pebble-signatures"))
+    expect(localStorage.getItem("gomail-signatures"))
       .toBe(JSON.stringify({ "account-1": "legacy signature" }));
   });
 
@@ -123,11 +123,11 @@ describe("signatures secure storage", () => {
       accountId: "account-1",
       signature: "Regards",
     });
-    expect(localStorage.getItem("pebble-signatures")).toBeNull();
+    expect(localStorage.getItem("gomail-signatures")).toBeNull();
   });
 
   it("does not delete another account's legacy signature after saving", async () => {
-    localStorage.setItem("pebble-signatures", JSON.stringify({
+    localStorage.setItem("gomail-signatures", JSON.stringify({
       "account-1": "old",
       "account-2": "keep me",
     }));
@@ -135,7 +135,7 @@ describe("signatures secure storage", () => {
 
     await setSignature("account-1", "new");
 
-    expect(JSON.parse(localStorage.getItem("pebble-signatures") ?? "{}"))
+    expect(JSON.parse(localStorage.getItem("gomail-signatures") ?? "{}"))
       .toEqual({ "account-2": "keep me" });
   });
 });

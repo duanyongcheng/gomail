@@ -1,6 +1,6 @@
 export type AppThemeId = "harbor";
 
-export const APP_THEME_STORAGE_KEY = "pebble-app-theme";
+export const APP_THEME_STORAGE_KEY = "gomail-app-theme";
 export const DEFAULT_APP_THEME: AppThemeId = "harbor";
 
 export interface AppThemePreviewPalette {

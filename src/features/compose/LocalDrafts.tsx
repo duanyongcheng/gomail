@@ -216,7 +216,7 @@ export default function LocalDrafts({ accountId, disabled, initialGmailAccountId
       </button>
     </div>
     {panel && <div>
-      <p style={{ margin: "8px 0", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>{t("cloudDrafts.notice", "Autosave is encrypted on this device only; not synced to Gmail automatically. Upload saved changes explicitly. Sending a linked draft consumes its Gmail copy only after Gmail accepts the send. Do not edit the same draft in Gmail and Pebble at the same time.")}</p>
+      <p style={{ margin: "8px 0", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>{t("cloudDrafts.notice", "Autosave is encrypted on this device only; not synced to Gmail automatically. Upload saved changes explicitly. Sending a linked draft consumes its Gmail copy only after Gmail accepts the send. Do not edit the same draft in Gmail and GoMail at the same time.")}</p>
       {cloudError?.account === accountId && <p role="alert">{cloudError.message}</p>}
       {notice?.account === accountId && <p role="status">{notice.message}</p>}
       {disabled && <p>{t("compose.saveBeforeRestore", "Save and close or discard this message before opening another draft.")}</p>}

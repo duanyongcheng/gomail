@@ -24,7 +24,7 @@ const accounts: Account[] = ["a", "b"].map(id => ({
 }));
 const savedDraft: LocalDraft = {
   id: "saved", accountId: "a", subject: "Saved draft", to: ["recipient@example.com"], cc: [], bcc: [],
-  bodyText: "Saved body", bodyHtml: '<p>Saved body</p><p data-pebble-signature="auto">Old saved signature</p>',
+  bodyText: "Saved body", bodyHtml: '<p>Saved body</p><p data-gomail-signature="auto">Old saved signature</p>',
   rawSource: "", editorMode: "rich", inReplyTo: "", quotedReplyHtml: "<blockquote>Saved quote</blockquote>",
   attachments: [{ name: "saved.txt", size: 5, path: "compose-attachment:saved" }], updatedAt: 1,
 };
@@ -203,7 +203,7 @@ it.each(["body", "signature", "divider"])("protects a real %s edit, including ma
   expect(saves).toHaveLength(1);
   if (kind === "signature") {
     expect(saves[0].bodyHtml).toContain("edited signature");
-    expect(saves[0].bodyHtml).toContain('data-pebble-signature="auto"');
+    expect(saves[0].bodyHtml).toContain('data-gomail-signature="auto"');
   } else if (kind === "divider") expect(saves[0].bodyHtml).toContain("<hr>");
   else expect(saves[0].bodyHtml).toContain("Signature a is also my body");
   for (const mode of ["Markdown", "HTML", "Rich Text"]) {
@@ -293,7 +293,7 @@ it("does not classify prefilled text as automatic even when it matches the signa
 it("protects a restored signature-only draft, including after From and mode changes", async () => {
   useComposeStore.getState().openCompose("new", null, { localDraft: {
     ...savedDraft, to: [], subject: "", attachments: [], quotedReplyHtml: "",
-    bodyHtml: '<p></p><p data-pebble-signature="auto">Signature a</p>',
+    bodyHtml: '<p></p><p data-gomail-signature="auto">Signature a</p>',
   } });
   mount(); await ready();
   expect(await expandDrafts()).toBeDisabled();
@@ -306,9 +306,9 @@ it("protects a restored signature-only draft, including after From and mode chan
 });
 
 it("keeps legacy restored content protected until it is explicitly saved", async () => {
-  localStorage.setItem("pebble-compose-draft", JSON.stringify({
+  localStorage.setItem("gomail-compose-draft", JSON.stringify({
     accountId: "a", to: [], cc: [], bcc: [], subject: "", rawSource: "",
-    richTextHtml: '<p data-pebble-signature="auto">Legacy signature</p>',
+    richTextHtml: '<p data-gomail-signature="auto">Legacy signature</p>',
     attachments: [], editorMode: "rich", savedAt: Date.now(),
   }));
   mount(); await ready();
@@ -318,7 +318,7 @@ it("keeps legacy restored content protected until it is explicitly saved", async
   fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
   await screen.findByText("Compose closed");
   expect(saves[0].bodyHtml).toContain("Legacy signature");
-  expect(localStorage.getItem("pebble-compose-draft")).toBeNull();
+  expect(localStorage.getItem("gomail-compose-draft")).toBeNull();
 });
 
 it("keeps an empty-signature baseline usable across account changes and an exact undo", async () => {

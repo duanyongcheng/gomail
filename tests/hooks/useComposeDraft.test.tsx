@@ -71,10 +71,10 @@ describe("useComposeDraft", () => {
       attachments: [],
       savedAt: Date.now(),
     };
-    localStorage.setItem("pebble-compose-draft", JSON.stringify(legacyDraft));
+    localStorage.setItem("gomail-compose-draft", JSON.stringify(legacyDraft));
 
     expect(loadDraftFromStorage(["account-1"])).toEqual(legacyDraft);
-    expect(localStorage.getItem("pebble-compose-draft")).toBe(JSON.stringify(legacyDraft));
+    expect(localStorage.getItem("gomail-compose-draft")).toBe(JSON.stringify(legacyDraft));
   });
 
   it("clears a restored legacy draft only after backend persistence succeeds", async () => {
@@ -83,7 +83,7 @@ describe("useComposeDraft", () => {
       to: [], cc: [], bcc: [], subject: "Legacy", rawSource: "",
       richTextHtml: "", editorMode: "rich", attachments: [], savedAt: Date.now(),
     });
-    localStorage.setItem("pebble-compose-draft", storedDraft);
+    localStorage.setItem("gomail-compose-draft", storedDraft);
     saveDraftMock.mockResolvedValue("draft-1");
     const props = ({ ...baseProps({ subject: "Legacy" }), migrateLegacyDraft: true }) as Parameters<typeof useComposeDraft>[0];
 
@@ -94,7 +94,7 @@ describe("useComposeDraft", () => {
     });
 
     expect(saveDraftMock).toHaveBeenCalledOnce();
-    expect(localStorage.getItem("pebble-compose-draft")).toBeNull();
+    expect(localStorage.getItem("gomail-compose-draft")).toBeNull();
   });
 
   it("retains a restored legacy draft when backend persistence fails", async () => {
@@ -103,7 +103,7 @@ describe("useComposeDraft", () => {
       to: [], cc: [], bcc: [], subject: "Legacy", rawSource: "",
       richTextHtml: "", editorMode: "rich", attachments: [], savedAt: Date.now(),
     });
-    localStorage.setItem("pebble-compose-draft", storedDraft);
+    localStorage.setItem("gomail-compose-draft", storedDraft);
     saveDraftMock.mockRejectedValue(new Error("write failed"));
     const props = ({ ...baseProps({ subject: "Legacy" }), migrateLegacyDraft: true }) as Parameters<typeof useComposeDraft>[0];
 
@@ -113,7 +113,7 @@ describe("useComposeDraft", () => {
       await Promise.resolve();
     });
 
-    expect(localStorage.getItem("pebble-compose-draft")).toBe(storedDraft);
+    expect(localStorage.getItem("gomail-compose-draft")).toBe(storedDraft);
   });
 
   it("retries a transient autosave failure without requiring another edit", async () => {
@@ -223,7 +223,7 @@ describe("useComposeDraft", () => {
     expect(saveDraftMock).toHaveBeenCalledWith(expect.objectContaining({
       attachmentPaths: ["C:\\tmp\\report.pdf"],
     }));
-    expect(localStorage.getItem("pebble-compose-draft")).toBeNull();
+    expect(localStorage.getItem("gomail-compose-draft")).toBeNull();
   });
 
   it("does not reuse a stale draft id after switching accounts", async () => {

@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/store"
 	"github.com/egoist/mygo"
 )
 
 func TestSaveAttachmentDialogDefaultsCancelAndExport(t *testing.T) {
-	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "pebble.sqlite"))
+	db, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "gomail.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 
-export const PRIVACY_SETTINGS_CHANGED = "pebble:privacy-settings-changed";
+export const PRIVACY_SETTINGS_CHANGED = "gomail:privacy-settings-changed";
 export interface PrivacyChange { accountId?: string; email?: string; settings?: boolean }
 
 // Register before requesting rendered content. Callers invalidate their request

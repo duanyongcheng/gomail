@@ -16,7 +16,7 @@ const turndown = new TurndownService({
 // renderer. Inline HTML preserves both internal and trailing hard breaks.
 turndown.addRule("hardBreak", { filter: "br", replacement: () => "<br>" });
 turndown.addRule("composeSignature", {
-  filter: (node) => node.nodeName === "P" && node.getAttribute("data-pebble-signature") === "auto",
+  filter: (node) => node.nodeName === "P" && node.getAttribute("data-gomail-signature") === "auto",
   replacement: (_content, node) => `\n\n${(node as HTMLElement).outerHTML}\n\n`,
 });
 

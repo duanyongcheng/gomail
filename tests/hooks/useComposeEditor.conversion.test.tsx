@@ -97,7 +97,7 @@ describe.each(["rich", "markdown"] as const)("HTML -> %s", (target) => {
       expect(output).toContain("**literal**, _not italic_ and # text");
       expect(output).not.toContain("<strong>");
     }
-    if (html.includes("Saved signature")) expect(output).toContain('data-pebble-signature="auto"');
+    if (html.includes("Saved signature")) expect(output).toContain('data-gomail-signature="auto"');
     if (html.includes('href="')) expect(output).toContain('href="https://example.invalid/path?q=1&amp;x=2"');
   });
 });
@@ -150,7 +150,7 @@ it("preserves unsupported source and automatic signature identity across From ch
   act(() => result.current.switchMode("markdown"));
   expect(result.current.editorMode).toBe("html");
   expect(result.current.rawSource).toBe(imported + signatureHtml("Signature b"));
-  expect(result.current.rawSource.match(/data-pebble-signature/g)).toHaveLength(1);
+  expect(result.current.rawSource.match(/data-gomail-signature/g)).toHaveLength(1);
 });
 
 it("does not parse remote-loading markup in an active document even on initial restore", async () => {

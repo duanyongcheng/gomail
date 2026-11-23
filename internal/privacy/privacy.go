@@ -67,7 +67,7 @@ func (m Mode) allowsExternalStylesheets() bool { return m == Off }
 
 func AttachmentURL(accountID, messageID, attachmentID string) string {
 	token := base64.RawURLEncoding.EncodeToString([]byte(accountID + "\x00" + messageID + "\x00" + attachmentID))
-	return "pebble-attachment://localhost/" + token
+	return "gomail-attachment://localhost/" + token
 }
 
 func DecodeAttachmentURL(path string) (accountID, messageID, attachmentID string, ok bool) {
@@ -88,11 +88,11 @@ func DecodeAttachmentURL(path string) (accountID, messageID, attachmentID string
 
 func Render(rawHTML, bodyText, accountID, messageID string, attachments []Attachment, mode Mode) Rendered {
 	if strings.TrimSpace(rawHTML) == "" {
-		return Rendered{HTML: "<pre class=\"pebble-plain-text-email\">" + html.EscapeString(bodyText) + "</pre>"}
+		return Rendered{HTML: "<pre class=\"gomail-plain-text-email\">" + html.EscapeString(bodyText) + "</pre>"}
 	}
 	root, err := html.Parse(strings.NewReader(rawHTML))
 	if err != nil {
-		return Rendered{HTML: "<pre class=\"pebble-plain-text-email\">" + html.EscapeString(bodyText) + "</pre>"}
+		return Rendered{HTML: "<pre class=\"gomail-plain-text-email\">" + html.EscapeString(bodyText) + "</pre>"}
 	}
 	ctx := renderer{mode: mode, accountID: accountID, messageID: messageID, cid: map[string]string{}, trackerKeys: map[string]bool{}}
 	for _, attachment := range attachments {

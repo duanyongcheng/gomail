@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 	"github.com/emersion/go-sasl"
 	"golang.org/x/oauth2"
 )
@@ -172,7 +172,7 @@ func AuthorizeMicrosoft(ctx context.Context, cfg *oauth2.Config, client *http.Cl
 			http.Error(w, "Callback already consumed", 409)
 			return
 		}
-		_, _ = io.WriteString(w, "Authorization received. Return to Pebble.")
+		_, _ = io.WriteString(w, "Authorization received. Return to GoMail.")
 	})
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, MaxHeaderBytes: 8192}
 	defer server.Close()

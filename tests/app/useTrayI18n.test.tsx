@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   translations: {
     "tray.show": "显示窗口",
     "tray.hide": "隐藏窗口",
-    "tray.quit": "退出 Pebble",
+    "tray.quit": "退出 GoMail",
   } as Record<string, string>,
 }));
 
@@ -40,7 +40,7 @@ describe("useTrayI18n", () => {
     mocks.translations = {
       "tray.show": "显示窗口",
       "tray.hide": "隐藏窗口",
-      "tray.quit": "退出 Pebble",
+      "tray.quit": "退出 GoMail",
     };
   });
 
@@ -59,7 +59,7 @@ describe("useTrayI18n", () => {
     mocks.translations = {
       "tray.show": "Show Window",
       "tray.hide": "Hide Window",
-      "tray.quit": "Quit Pebble",
+      "tray.quit": "Quit GoMail",
     };
     view.rerender(<Harness />);
 

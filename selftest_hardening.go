@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/desktop"
+	"github.com/duanyongcheng/gomail/internal/desktop"
 	"github.com/egoist/mygo"
 )
 
-const selftestLinkURL = "https://example.invalid/pebble-link-selftest"
-const selftestFailedLinkURL = "https://example.invalid/pebble-link-failure?private=selftest"
+const selftestLinkURL = "https://example.invalid/gomail-link-selftest"
+const selftestFailedLinkURL = "https://example.invalid/gomail-link-failure?private=selftest"
 
 // Installed before the WebView is created. The fixture never launches a browser
 // or makes a request; even an unexpected URL fails locally without being logged.
@@ -52,7 +52,7 @@ func selftestLinkCalls(want int) bool {
 func selftestExternalLinks(ctx context.Context, window *mygo.Window) bool {
 	click := func(text string) bool {
 		return waitSelftestPage(ctx, window, `(() => {
-			const hosts = Array.from(document.querySelectorAll('[data-pebble-message-theme]'));
+			const hosts = Array.from(document.querySelectorAll('[data-gomail-message-theme]'));
 			const anchor = hosts.flatMap(h => Array.from(h.shadowRoot?.querySelectorAll('a') || []))
 				.find(a => a.textContent === '`+text+`');
 			if (!anchor) return false;
@@ -127,8 +127,8 @@ func selftestWindowRestore(ctx context.Context, window *mygo.Window) (bool, bool
 	}
 	const state = `document.getElementById('compose-subject')?.value === 'Edited local draft selftest'
 		&& document.body.innerText.includes('draft-selftest.txt')
-		&& window.__pebbleSelftestWindowIdentity === 'original-page'`
-	if !waitSelftestPage(ctx, window, `(() => { window.__pebbleSelftestWindowIdentity = 'original-page'; return true; })()`, time.Second) {
+		&& window.__gomailSelftestWindowIdentity === 'original-page'`
+	if !waitSelftestPage(ctx, window, `(() => { window.__gomailSelftestWindowIdentity = 'original-page'; return true; })()`, time.Second) {
 		return false, false
 	}
 	window.Close()

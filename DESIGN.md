@@ -1,5 +1,5 @@
 ---
-name: "Pebble Go"
+name: "GoMail"
 description: "Harbor Chartroom — a calm, local-first coastal reading and correspondence workspace for desktop email."
 colors:
   marine-cerulean: "#155e8a"
@@ -210,17 +210,17 @@ components:
     height: "28px"
 ---
 
-# Design System: Pebble Go
+# Design System: GoMail
 
 ## Overview
 
 **Creative North Star: "Harbor Chartroom"**
 
-Pebble Go is designed as a luminous coastal reading room for everyday desktop correspondence. Rather than mimicking crowded browser webmail or fracturing into competing application skins, the entire desktop shell—titlebar, collapsible account rail, message ledger, long-form reading sheet, composer, settings tabs, and guarded upcoming views—shares one disciplined architectural system. Three stepped tonal planes step smoothly toward the reading surface, letting the user's eye settle effortlessly on the message at hand while preserving instant scannability across accounts, unread counts, and sync state.
+GoMail is designed as a luminous coastal reading room for everyday desktop correspondence. Rather than mimicking crowded browser webmail or fracturing into competing application skins, the entire desktop shell—titlebar, collapsible account rail, message ledger, long-form reading sheet, composer, settings tabs, and guarded upcoming views—shares one disciplined architectural system. Three stepped tonal planes step smoothly toward the reading surface, letting the user's eye settle effortlessly on the message at hand while preserving instant scannability across accounts, unread counts, and sync state.
 
 Built as a local-first Go and MyGO WebView desktop client operating across macOS, Linux, and Windows, the visual language pairs unhurried clarity with honest operational feedback. Marine Cerulean marks intentional focus and primary action, while warm Terracotta is held exclusively for high-trust operational signals—blocked trackers and remote images, offline pauses, failed or queued remote writes, and uncertain send outcomes. Everything ships locally with zero network CDN dependencies, pairing OS-native humanist sans-serifs for seamless Chinese (`zh`) and English (`en`) prose across both daylit Harbor and Deep-Harbor dark modes, while leaving independent message-detail reading templates untouched.
 
-Confirmed visual rejections shape this restraint: Pebble Go rejects generic grey-blue SaaS inbox chrome, rejects the legacy five-theme application switcher in favor of one unified Harbor system (`harbor`) with independent `light` / `dark` / `system` modes, rejects thick colored side-stripes on rows or callouts, rejects uppercase eyebrow kickers above view headings, and rejects decorative entrance staggers in favor of brisk, purposeful state feedback.
+Confirmed visual rejections shape this restraint: GoMail rejects generic grey-blue SaaS inbox chrome, rejects the legacy five-theme application switcher in favor of one unified Harbor system (`harbor`) with independent `light` / `dark` / `system` modes, rejects thick colored side-stripes on rows or callouts, rejects uppercase eyebrow kickers above view headings, and rejects decorative entrance staggers in favor of brisk, purposeful state feedback.
 
 **Key Characteristics:**
 - Three-step tonal depth stepping cleanly from Harbor Mist chrome (`#ebf1f4` / `#0e1721`) through Chalk Sea lists (`#f7fafb` / `#131e2a`) to a crisp Reading Sheet (`#ffffff` / `#172432`).
@@ -274,7 +274,7 @@ The Harbor Chartroom palette pairs cool coastal blue-slate neutrals with restrai
 **Label/Mono Font:** `"SF Mono", "Cascadia Code", Menlo, Consolas, monospace` (for keyboard shortcut caps, HTML/Markdown source code mode, and inline `<code>` snippets)
 **Serif Companion (Templates):** `"Iowan Old Style", "Songti SC", "Noto Serif SC", Georgia, serif` (reserved for serif message-detail templates such as Letter and Claude)
 
-**Character:** A single calm, local-first humanist sans-serif spine unifies every workspace pane without jarring display-font theatrics. Pairing macOS/Windows system sans faces directly with `PingFang SC` and `Hiragino Sans GB` keeps English and Chinese glyph metrics balanced at desktop reading sizes while honoring Pebble Go's strict offline, zero-CDN runtime commitment.
+**Character:** A single calm, local-first humanist sans-serif spine unifies every workspace pane without jarring display-font theatrics. Pairing macOS/Windows system sans faces directly with `PingFang SC` and `Hiragino Sans GB` keeps English and Chinese glyph metrics balanced at desktop reading sizes while honoring GoMail's strict offline, zero-CDN runtime commitment.
 
 ### Hierarchy
 - **Display** (`700`, `24px`, `1.32` line-height, `-0.02em` tracking, `text-wrap: balance`, clamping to `22px` below `520px`): Message subject headings inside the native Harbor reading sheet.
@@ -292,8 +292,8 @@ The Harbor Chartroom palette pairs cool coastal blue-slate neutrals with restrai
 
 ## Layout
 
-Pebble Go arranges the desktop window into a fixed vertical shell wrapping a calm three-column horizontal workspace:
-- **Top Titlebar (`40px` height):** Full-width Harbor Mist drag bar carrying the `20px` Pebble Go icon, brand name (`12.5px` `650`), hairline-separated active view breadcrumb (`12px`), and platform window controls (`84px` leading inset on macOS for traffic lights; `44px`-wide minimize/maximize/close buttons on Windows/Linux).
+GoMail arranges the desktop window into a fixed vertical shell wrapping a calm three-column horizontal workspace:
+- **Top Titlebar (`40px` height):** Full-width Harbor Mist drag bar carrying the `20px` GoMail icon, brand name (`12.5px` `650`), hairline-separated active view breadcrumb (`12px`), and platform window controls (`84px` leading inset on macOS for traffic lights; `44px`-wide minimize/maximize/close buttons on Windows/Linux).
 - **Collapsible Navigation Rail (`244px` expanded / `60px` collapsed):** Pinned Compose primary CTA (`12px 12px 10px` wrap), Search entry field, scrollable mailbox & nested-folder column (the only scrolling section in the rail, with `1px` nesting hairline at `17px` left), hairline divider, and pinned bottom tools (Contacts, Kanban, Settings, Collapse toggle).
 - **Message & Thread List Column (`clamp(280px, 36%, 376px)`):** Fixed `56px` pane header flush with the reader toolbar, embedded search & filter chip toolbar (`10px 14px`), and virtualized `88px` rows (`13px 18px 13px 22px` padding).
 - **Reading & Workspace Pane (fluid `1fr`):** Opens with a `56px` action toolbar aligned horizontally with the list header, optional full-width Harbor-Channel Signal Strip directly underneath, and a single scrolling document pane (`32px` top, `clamp(24px, 3.4vw, 44px)` horizontal gutter, `56px` bottom) centering a `740px` reading sheet.
@@ -388,7 +388,7 @@ Every component feels calm, tactile, and immediately legible—signaling state t
 - **Treatment:** `11.5px` `tabular-nums` copy led by a `6px` semantic dot (`--color-success` when Ready, `--color-accent` when Syncing, `--color-signal` on Sync Error or Offline), polite/assertive ARIA live regions (`role="status"` / `role="alert"`), `22px` manual sync & background-run icon buttons, and compact pill beacons surfacing queued, retrying, or failed remote writes.
 
 ### Message Detail Reading Templates
-- **Independent Architecture:** While Pebble Go's application shell is permanently unified under Harbor Chartroom (`harbor`), `MessageDetail` preserves an independent 9-template reading system (`src/lib/messageThemes.ts`) switchable from Appearance Settings or the reader toolbar's palette trigger.
+- **Independent Architecture:** While GoMail's application shell is permanently unified under Harbor Chartroom (`harbor`), `MessageDetail` preserves an independent 9-template reading system (`src/lib/messageThemes.ts`) switchable from Appearance Settings or the reader toolbar's palette trigger.
 - **Template Families:**
   - *Adaptive Templates* (`app` [default "Follow interface"], `card`, `mailbox`): Consume Harbor CSS custom properties directly so light/dark switching is automatic. Default `app` mode renders as one seamless scrolling document (`740px` sheet, `24px` display subject, `38px` circular sender monogram, `15px` / `1.82` body) without nested cards.
   - *Fixed-Palette Templates* (`letter`, `console`, `claude`, `wechat`, `telegram`, `imessage`): Own distinct typography, surface framing, and layout structures (centered serif correspondence, two-column dark console, messaging-inspired layouts) and resolve dedicated night palettes in JS via `resolveMessageTheme`.

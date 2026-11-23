@@ -3,7 +3,7 @@ package oauth
 import (
 	"strings"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 	"golang.org/x/oauth2"
 )
 

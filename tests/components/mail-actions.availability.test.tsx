@@ -109,7 +109,7 @@ it("real detail guards direct AI/translation events without pending command call
     expect(button).toBeDisabled(); fireEvent.click(button);
   }
   await act(async () => {
-    for (const event of ["pebble:translate-selection", "pebble:toggle-bilingual", "pebble:ai-summarize"]) document.dispatchEvent(new CustomEvent(event));
+    for (const event of ["gomail:translate-selection", "gomail:toggle-bilingual", "gomail:ai-summarize"]) document.dispatchEvent(new CustomEvent(event));
   });
   expect(invoke.mock.calls.map(([name]) => name)).toEqual(["get_message", "get_rendered_html"]);
   expect(screen.queryByText("ai.summaryTitle")).toBeNull();

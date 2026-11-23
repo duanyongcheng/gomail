@@ -21,7 +21,7 @@ func Resolve(exeDir, fallback, override string) (string, error) {
 	if clean(override) != "" {
 		return resolve(override), nil
 	}
-	pointer := filepath.Join(exeDir, "pebble-profile.txt")
+	pointer := filepath.Join(exeDir, "gomail-profile.txt")
 	data, err := os.ReadFile(pointer)
 	if err == nil {
 		first := strings.SplitN(string(data), "\n", 2)[0]
@@ -31,7 +31,7 @@ func Resolve(exeDir, fallback, override string) (string, error) {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", err
 	}
-	portable := filepath.Join(exeDir, "pebble-profile")
+	portable := filepath.Join(exeDir, "gomail-profile")
 	if info, err := os.Stat(portable); err == nil && info.IsDir() {
 		return portable, nil
 	}

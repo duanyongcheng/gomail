@@ -251,7 +251,7 @@ describe("Sidebar account list", () => {
     // The `beforeEach` above forces the flag off to keep the other cases
     // readable; this one asks what a fresh install gets, which is the reader's
     // answer for a key that was never written.
-    localStorage.removeItem("pebble-show-unread-count");
+    localStorage.removeItem("gomail-show-unread-count");
     useUIStore.setState({ showFolderUnreadCount: readShowUnreadCountPreference() });
 
     renderSidebar();
@@ -398,7 +398,7 @@ describe("Sidebar account list", () => {
     fireEvent.click(screen.getByTestId("account-toggle-account-work"));
 
     expect(useUIStore.getState().collapsedAccountGroups).toEqual(["account-work"]);
-    expect(localStorage.getItem("pebble-collapsed-account-groups")).toBe('["account-work"]');
+    expect(localStorage.getItem("gomail-collapsed-account-groups")).toBe('["account-work"]');
   });
 
   it("opens a mailbox that has no folders to fold", () => {

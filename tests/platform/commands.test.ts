@@ -46,14 +46,12 @@ function frontendCommands(path: string): Set<string> {
 }
 
 describe("MyGO command adapter", () => {
-  it("covers every invoke command and parity entry", () => {
+  it("covers every invoke command in the manifest", () => {
     const names = [...frontendCommands("src")].sort();
     expect(Object.keys(commands).sort()).toEqual(names);
-    const parity = readFileSync("docs/parity.md", "utf8");
-    expect([...parity.matchAll(/^\| `([^`]+)`/gm)].map((match) => match[1]).sort()).toEqual(names);
   });
   it("keeps advanced search deferred to M3 in generation and product availability", async () => {
-    const root = mkdtempSync(join(tmpdir(), "pebble-command-milestones-"));
+    const root = mkdtempSync(join(tmpdir(), "gomail-command-milestones-"));
     try {
       mkdirSync(join(root, "scripts"));
       mkdirSync(join(root, "src/lib/platform"), { recursive: true });
@@ -62,11 +60,8 @@ describe("MyGO command adapter", () => {
       writeFileSync(join(root, "src/example.ts"), 'invoke("advanced_search"); invoke("preview_oauth_identity");');
       execFileSync("python3", [join(root, "scripts/generate_commands.py")]);
       const manifest = readFileSync(join(root, "src/lib/platform/manifest.ts"), "utf8");
-      const parity = readFileSync(join(root, "docs/parity.md"), "utf8");
       expect(manifest).toContain('advanced_search: pending("advanced_search", "M3")');
       expect(manifest).toContain('preview_oauth_identity: pending("preview_oauth_identity", "M1")');
-      expect(parity).toContain("| `advanced_search` | not-implemented | M3 |");
-      expect(readFileSync("docs/parity.md", "utf8")).toContain("| `advanced_search` | not-implemented | M3 |");
       expect(commands.advanced_search).toMatchObject({ status: "not-implemented", milestone: "M3" });
       expect(isFeatureAvailable("advancedSearch")).toBe(false);
       await expect(invoke("advanced_search", { query: {} })).rejects.toThrow("NotImplemented: advanced_search (M3)");

@@ -4,7 +4,7 @@ import { useAccountsQuery } from "@/hooks/queries";
 import { profileLocalStorage } from "@/lib/profileStorage";
 import { senderIdentityLabel } from "@/lib/accountIdentity";
 
-const NOTICE_KEY = "pebble-sender-identity-notice-v1";
+const NOTICE_KEY = "gomail-sender-identity-notice-v1";
 
 export default function SenderIdentityNotice() {
   const { data: accounts = [] } = useAccountsQuery();

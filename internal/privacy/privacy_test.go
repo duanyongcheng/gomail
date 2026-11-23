@@ -41,7 +41,7 @@ func TestCIDUsesOpaqueAttachmentURLAndUnknownCIDDoesNotLoad(t *testing.T) {
 	if !strings.Contains(rendered.HTML, want) || strings.Contains(rendered.HTML, "unknown") {
 		t.Fatalf("CID mapping wrong: %s", rendered.HTML)
 	}
-	account, message, attachment, ok := DecodeAttachmentURL(strings.TrimPrefix(want, "pebble-attachment://localhost"))
+	account, message, attachment, ok := DecodeAttachmentURL(strings.TrimPrefix(want, "gomail-attachment://localhost"))
 	if !ok || account != "acct" || message != "acct:message" || attachment != "acct:message:attachment:0" {
 		t.Fatal("opaque URL did not round trip")
 	}
@@ -49,7 +49,7 @@ func TestCIDUsesOpaqueAttachmentURLAndUnknownCIDDoesNotLoad(t *testing.T) {
 
 func TestPlainTextFallbackAndModeParsing(t *testing.T) {
 	rendered := Render("", `<b>literal</b> & text`, "a", "a:m", nil, Strict)
-	if rendered.HTML != `<pre class="pebble-plain-text-email">&lt;b&gt;literal&lt;/b&gt; &amp; text</pre>` {
+	if rendered.HTML != `<pre class="gomail-plain-text-email">&lt;b&gt;literal&lt;/b&gt; &amp; text</pre>` {
 		t.Fatalf("plain fallback: %s", rendered.HTML)
 	}
 	if got := ParseMode(json.RawMessage(`{"TrustedSender":"sender@example.invalid"}`)); got != Mode("trusted:sender@example.invalid") {

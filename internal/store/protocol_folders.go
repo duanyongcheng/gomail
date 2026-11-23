@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 // Protocol folder actions share the existing one-intent-per-account journal.

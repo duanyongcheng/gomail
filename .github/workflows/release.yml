@@ -78,7 +78,7 @@ jobs:
     runs-on: macos-latest
     env:
       CGO_ENABLED: "0"
-      PEBBLE_VERSION: ${{ needs.prepare.outputs.version }}
+      GOMAIL_VERSION: ${{ needs.prepare.outputs.version }}
       GH_TOKEN: ${{ github.token }}
       MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
     steps:
@@ -103,8 +103,8 @@ jobs:
       - name: Verify app bundle signatures
         run: |
           set -euo pipefail
-          codesign --verify --deep --strict "build/darwin-arm64/Pebble Go.app"
-          codesign --verify --deep --strict "build/darwin-amd64/Pebble Go.app"
+          codesign --verify --deep --strict "build/darwin-arm64/GoMail.app"
+          codesign --verify --deep --strict "build/darwin-amd64/GoMail.app"
 
       - name: Collect macOS release artifacts
         run: |
@@ -126,7 +126,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pebble-go-macos
+          name: gomail-macos
           path: dist-release/*
           if-no-files-found: error
 
@@ -136,7 +136,7 @@ jobs:
     runs-on: windows-latest
     env:
       CGO_ENABLED: "0"
-      PEBBLE_VERSION: ${{ needs.prepare.outputs.version }}
+      GOMAIL_VERSION: ${{ needs.prepare.outputs.version }}
       GH_TOKEN: ${{ github.token }}
       MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
     steps:
@@ -172,7 +172,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pebble-go-windows
+          name: gomail-windows
           path: dist-release/*
           if-no-files-found: error
 
@@ -182,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: "0"
-      PEBBLE_VERSION: ${{ needs.prepare.outputs.version }}
+      GOMAIL_VERSION: ${{ needs.prepare.outputs.version }}
       GH_TOKEN: ${{ github.token }}
       MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
     steps:
@@ -227,7 +227,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pebble-go-linux
+          name: gomail-linux
           path: dist-release/*
           if-no-files-found: error
 
@@ -277,7 +277,7 @@ jobs:
             gh release create "$RELEASE_TAG" \
               --repo "$GH_REPO" \
               --draft \
-              --title "Pebble Go $RELEASE_TAG" \
+              --title "GoMail $RELEASE_TAG" \
               --generate-notes
           fi
           gh release upload "$RELEASE_TAG" release-artifacts/* --clobber --repo "$GH_REPO"

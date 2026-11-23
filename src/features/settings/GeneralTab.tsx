@@ -147,7 +147,7 @@ export default function GeneralTab() {
         {t("settings.realtimeMode", "Realtime Mode")}
       </h3>
       <p className="settings-section-desc">
-        {t("settings.realtimeModeDesc", "Choose how aggressively Pebble checks for new mail.")}
+        {t("settings.realtimeModeDesc", "Choose how aggressively GoMail checks for new mail.")}
       </p>
       <div
         role="group"
@@ -209,7 +209,7 @@ export default function GeneralTab() {
           checked={isFeatureAvailable("autostart") && launchAtStartup}
           onChange={toggleLaunchAtStartup}
         />
-        <span>{t("settings.launchAtStartup", "Launch Pebble at system startup")}</span>
+        <span>{t("settings.launchAtStartup", "Launch GoMail at system startup")}</span>
       </label>
       <label className="settings-checkbox-row">
         <input
@@ -275,10 +275,10 @@ export default function GeneralTab() {
             }}
             className="settings-button"
           >
-            {t("settings.setDefaultMailClient", "Set Pebble as default email app")}
+            {t("settings.setDefaultMailClient", "Set GoMail as default email app")}
           </button>
           <p className="settings-section-desc" style={{ marginTop: "8px" }}>
-            {t("settings.setDefaultMailClientHint", "Opens Windows Default Apps settings where you can select Pebble for email.")}
+            {t("settings.setDefaultMailClientHint", "Opens Windows Default Apps settings where you can select GoMail for email.")}
           </p>
         </>
       )}

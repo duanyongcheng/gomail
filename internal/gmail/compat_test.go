@@ -3,9 +3,9 @@
 package gmail
 
 import (
-	"github.com/duanyongcheng/pebble-go/internal/googleapi"
-	"github.com/duanyongcheng/pebble-go/internal/oauth"
-	"github.com/duanyongcheng/pebble-go/internal/testgmail"
+	"github.com/duanyongcheng/gomail/internal/googleapi"
+	"github.com/duanyongcheng/gomail/internal/oauth"
+	"github.com/duanyongcheng/gomail/internal/testgmail"
 )
 
 const APIBase = googleapi.APIBase

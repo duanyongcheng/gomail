@@ -233,13 +233,13 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
     const onTranslate = () => openTranslateForSelection();
     const onBilingual = () => { if (isFeatureAvailable("translation")) void handleBilingualToggle(); };
     const onSummarize = () => { if (isFeatureAvailable("ai")) setShowAiSummary((visible) => !visible); };
-    document.addEventListener("pebble:translate-selection", onTranslate);
-    document.addEventListener("pebble:toggle-bilingual", onBilingual);
-    document.addEventListener("pebble:ai-summarize", onSummarize);
+    document.addEventListener("gomail:translate-selection", onTranslate);
+    document.addEventListener("gomail:toggle-bilingual", onBilingual);
+    document.addEventListener("gomail:ai-summarize", onSummarize);
     return () => {
-      document.removeEventListener("pebble:translate-selection", onTranslate);
-      document.removeEventListener("pebble:toggle-bilingual", onBilingual);
-      document.removeEventListener("pebble:ai-summarize", onSummarize);
+      document.removeEventListener("gomail:translate-selection", onTranslate);
+      document.removeEventListener("gomail:toggle-bilingual", onBilingual);
+      document.removeEventListener("gomail:ai-summarize", onSummarize);
     };
   });
 

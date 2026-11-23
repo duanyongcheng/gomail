@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/app"
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/app"
+	"github.com/duanyongcheng/gomail/internal/store"
 	"github.com/egoist/mygo"
 )
 
@@ -24,7 +24,7 @@ var offlineSelftestChecks = []string{
 
 const offlineAccount = "selftest-gmail"
 const offlineMessageID = offlineAccount + ":m1"
-const offlineSubject = "Pebble Go selftest"
+const offlineSubject = "GoMail selftest"
 const offlineSearchTerm = "中文搜索"
 const offlineUnknownSubject = "Unknown send remains unknown"
 
@@ -32,15 +32,15 @@ const offlineUnknownSubject = "Unknown send remains unknown"
 // Save the own descriptor (usually absent) rather than modifying Navigator's
 // prototype. Install the saved state BEFORE a potentially throwing override.
 const offlineBrowserSetup = `(() => {
-	if(window.__pebbleOfflineSelftest)return false;
-	window.__pebbleOfflineSelftest={descriptor:Object.getOwnPropertyDescriptor(navigator,'onLine'),value:navigator.onLine};
+	if(window.__gomailOfflineSelftest)return false;
+	window.__gomailOfflineSelftest={descriptor:Object.getOwnPropertyDescriptor(navigator,'onLine'),value:navigator.onLine};
 	Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>false});
 	window.dispatchEvent(new Event('offline'));
 	return navigator.onLine===false;
 })()`
 
 const offlineBrowserRestore = `(() => {
-	const saved=window.__pebbleOfflineSelftest;if(!saved)return false;
+	const saved=window.__gomailOfflineSelftest;if(!saved)return false;
 	let restored=false;
 	try {
 		if(saved.descriptor)Object.defineProperty(navigator,'onLine',saved.descriptor);
@@ -50,7 +50,7 @@ const offlineBrowserRestore = `(() => {
 			? Boolean(current)&&['get','set','value','writable','enumerable','configurable'].every(k=>current[k]===original[k])
 			: current===undefined);
 	} finally {
-		delete window.__pebbleOfflineSelftest;
+		delete window.__gomailOfflineSelftest;
 		window.dispatchEvent(new Event('online'));
 	}
 	return restored;
@@ -148,7 +148,7 @@ const offlineOutboxWatchRefresh = `(() => {
 	const panel=document.querySelector('[data-offline-selftest-outbox]');
 	const button=Array.from(panel?.querySelectorAll('button')||[]).find(b=>/^(刷新|Refresh)$/.test(b.textContent.trim()));
 	if(!button||button.disabled)return false;
-	const state={started:false,completed:false};window.__pebbleOfflineRefresh=state;
+	const state={started:false,completed:false};window.__gomailOfflineRefresh=state;
 	const observer=new MutationObserver(records=>{
 		if(records.some(r=>r.attributeName==='disabled'&&r.oldValue===null))state.started=true;
 		if(state.started&&!button.disabled)state.completed=true;
@@ -158,7 +158,7 @@ const offlineOutboxWatchRefresh = `(() => {
 })()`
 
 const offlineOutboxCleanup = `(() => {
-	window.__pebbleOfflineRefresh?.observer?.disconnect();delete window.__pebbleOfflineRefresh;
+	window.__gomailOfflineRefresh?.observer?.disconnect();delete window.__gomailOfflineRefresh;
 	document.querySelector('[data-offline-selftest-outbox]')?.removeAttribute('data-offline-selftest-outbox');return true;
 })()`
 
@@ -244,7 +244,7 @@ func selftestOffline(ctx context.Context, runtime *app.Runtime, window *mygo.Win
 		})()`
 		checks[offlineSelftestChecks[5]] = waitSelftestPage(checkCtx, window, refreshReady, 5*time.Second) &&
 			offlineEvalOnce(checkCtx, window, offlineOutboxWatchRefresh) &&
-			waitSelftestPage(checkCtx, window, `window.__pebbleOfflineRefresh?.completed===true`, 5*time.Second) &&
+			waitSelftestPage(checkCtx, window, `window.__gomailOfflineRefresh?.completed===true`, 5*time.Second) &&
 			waitSelftestPage(checkCtx, window, offlineOutboxVisible, time.Second)
 	}
 	after, err := runtime.DB.Outbox(checkCtx, offlineAccount, unknown.ID)

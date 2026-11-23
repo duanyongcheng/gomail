@@ -40,7 +40,7 @@ const DEFAULT_BINDINGS: Record<string, string> = {
   "summarize-message": "Ctrl+Shift+S",
 };
 
-const STORAGE_KEY = "pebble-shortcuts";
+const STORAGE_KEY = "gomail-shortcuts";
 
 function availableBindings(bindings: Record<string, unknown>): Record<string, string> {
   return Object.fromEntries(Object.entries(bindings).filter(

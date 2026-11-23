@@ -2,7 +2,7 @@ import { profileLocalStorage } from "@/lib/profileStorage";
 
 export type Language = "en" | "zh";
 
-export const LANGUAGE_STORAGE_KEY = "pebble-language";
+export const LANGUAGE_STORAGE_KEY = "gomail-language";
 
 type LanguageStorage = Pick<Storage, "getItem">;
 type NavigatorLanguageSource = Pick<Navigator, "language" | "languages">;

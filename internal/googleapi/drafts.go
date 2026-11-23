@@ -13,8 +13,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
-	"github.com/duanyongcheng/pebble-go/internal/mailmime"
+	"github.com/duanyongcheng/gomail/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/mailmime"
 )
 
 // A draft's stable ID is different from its replaceable message ID.
@@ -132,7 +132,7 @@ func (a *API) Draft(ctx context.Context, id string) (Draft, error) {
 }
 func (a *API) FindDraft(ctx context.Context, messageID string) (DraftPage, error) {
 	var page DraftPage
-	if len(messageID) > 200 || !strings.HasSuffix(messageID, "@pebble.invalid") || strings.ContainsAny(messageID, " \r\n\t<>:") {
+	if len(messageID) > 200 || !strings.HasSuffix(messageID, "@gomail.invalid") || strings.ContainsAny(messageID, " \r\n\t<>:") {
 		return page, errors.New("invalid draft search identity")
 	}
 	err := a.request(ctx, http.MethodGet, "/drafts", url.Values{"q": {"rfc822msgid:" + messageID}, "maxResults": {"10"}}, nil, &page)

@@ -3,7 +3,7 @@ package googleapi
 import (
 	"errors"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 func (a *API) checkAccess() error {

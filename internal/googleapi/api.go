@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 const APIBase = "https://gmail.googleapis.com/gmail/v1/users/me"

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/duanyongcheng/pebble-go/internal/domain"
+	"github.com/duanyongcheng/gomail/internal/domain"
 )
 
 func TestAttachmentFileRequiresAccountMessageAndStaysInsideProfile(t *testing.T) {
@@ -49,7 +49,7 @@ func TestOpenAttachmentRejectsTraversalSymlinksAndNonRegularFiles(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"../secret", "pebble.sqlite", file.Path, "attachments/../pebble.sqlite", "attachments/directory"} {
+	for _, path := range []string{"../secret", "gomail.sqlite", file.Path, "attachments/../gomail.sqlite", "attachments/directory"} {
 		if _, err := db.write.ExecContext(ctx, "UPDATE attachments SET local_path=? WHERE id='att'", path); err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestOpenAttachmentRejectsTraversalSymlinksAndNonRegularFiles(t *testing.T) 
 	if err := os.WriteFile(outside, []byte("secret"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for i, target := range []string{outside, "../pebble.sqlite"} {
+	for i, target := range []string{outside, "../gomail.sqlite"} {
 		name := fmt.Sprintf("link%d", i)
 		if err := os.Symlink(target, filepath.Join(filepath.Dir(file.Path), name)); err != nil {
 			t.Skip("symlink unavailable:", err)

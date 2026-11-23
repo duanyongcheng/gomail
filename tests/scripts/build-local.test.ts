@@ -17,7 +17,7 @@ type Call = {
 };
 
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), "pebble-go local-build-"));
+  const root = mkdtempSync(join(tmpdir(), "gomail local-build-"));
   fixtures.push(root);
   const bin = join(root, "bin");
   const script = join(root, "scripts/build-local.sh");
@@ -70,7 +70,7 @@ describe("local macOS build script", () => {
   it.each(["arm64", "amd64"])("builds the %s host from an unrelated cwd with spaces in the project path", (arch) => {
     const { root, envMarker, run } = fixture();
     const { status, stdout, calls } = run({ MOCK_ARCH: arch });
-    const app = join(root, `build/darwin-${arch}/Pebble Go.app`);
+    const app = join(root, `build/darwin-${arch}/GoMail.app`);
     expect(status).toBe(0);
     expect(calls.map(({ tool, args }) => [tool, ...args])).toEqual([
       ["uname", "-s"],

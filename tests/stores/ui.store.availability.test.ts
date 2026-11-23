@@ -21,26 +21,26 @@ describe("UI store availability", () => {
     expect(useUIStore.getState().pendingContactId).toBeNull();
   });
   it.each(["rules", "translation", "ai", "cloudSync", "unknown"])("does not restore unsupported settings tab %s", async (tab) => {
-    sessionStorage.setItem("pebble-settings-tab", tab);
+    sessionStorage.setItem("gomail-settings-tab", tab);
     vi.resetModules();
     const { useUIStore: restored } = await import("../../src/stores/ui.store");
     expect(restored.getState().settingsTab).toBe("accounts");
   });
   it("restores the implemented proxy settings tab", async () => {
-    sessionStorage.setItem("pebble-settings-tab", "proxy");
+    sessionStorage.setItem("gomail-settings-tab", "proxy");
     vi.resetModules();
     const { useUIStore: restored } = await import("../../src/stores/ui.store");
     expect(restored.getState().settingsTab).toBe("proxy");
   });
   it("retains supported restored settings and disables unsupported startup preferences", async () => {
-    sessionStorage.setItem("pebble-settings-tab", "privacy");
-    localStorage.setItem("pebble-notifications-enabled", "true");
-    localStorage.setItem("pebble-start-hidden-to-tray", "true");
+    sessionStorage.setItem("gomail-settings-tab", "privacy");
+    localStorage.setItem("gomail-notifications-enabled", "true");
+    localStorage.setItem("gomail-start-hidden-to-tray", "true");
     vi.resetModules();
     const { useUIStore: restored } = await import("../../src/stores/ui.store");
     expect(restored.getState().settingsTab).toBe("privacy");
     expect(restored.getState().notificationsEnabled).toBe(false);
     expect(restored.getState().startHiddenToTray).toBe(false);
-    expect(localStorage.getItem("pebble-start-hidden-to-tray")).toBe("true");
+    expect(localStorage.getItem("gomail-start-hidden-to-tray")).toBe("true");
   });
 });

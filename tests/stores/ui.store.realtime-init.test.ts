@@ -14,8 +14,8 @@ describe("UIStore realtime initialization", () => {
   });
 
   it("preserves manual mode as a zero poll interval on startup", async () => {
-    localStorage.setItem("pebble-realtime-mode", "manual");
-    localStorage.setItem("pebble-poll-interval", "0");
+    localStorage.setItem("gomail-realtime-mode", "manual");
+    localStorage.setItem("gomail-poll-interval", "0");
 
     const { useUIStore } = await import("../../src/stores/ui.store");
 

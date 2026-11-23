@@ -44,7 +44,7 @@ export default function TitleBar({ viewLabel }: { viewLabel?: string }) {
           data-tauri-drag-region
           className="app-titlebar-name"
         >
-          Pebble Go
+          GoMail
         </span>
         {viewLabel && (
           <span data-tauri-drag-region className="app-titlebar-breadcrumb">

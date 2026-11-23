@@ -12,14 +12,14 @@ func TestProfilePrecedenceAndPersistentNamespace(t *testing.T) {
 	if got, err := Resolve(exe, fallback, ""); err != nil || got != fallback {
 		t.Fatal(got, err)
 	}
-	portable := filepath.Join(exe, "pebble-profile")
+	portable := filepath.Join(exe, "gomail-profile")
 	if err := os.Mkdir(portable, 0700); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := Resolve(exe, fallback, ""); err != nil || got != portable {
 		t.Fatal(got, err)
 	}
-	if err := os.WriteFile(filepath.Join(exe, "pebble-profile.txt"), []byte("\ufeffprofiles/work\ncomment"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(exe, "gomail-profile.txt"), []byte("\ufeffprofiles/work\ncomment"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := Resolve(exe, fallback, ""); err != nil || got != filepath.Join(exe, "profiles/work") {

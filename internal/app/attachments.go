@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/duanyongcheng/pebble-go/internal/store"
+	"github.com/duanyongcheng/gomail/internal/store"
 )
 
 type AttachmentRequest struct {
