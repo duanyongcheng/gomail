@@ -60,6 +60,18 @@ colors:
   night-scrollbar-thumb-hover: "#476684"
   night-scrim-backdrop: "rgb(3 9 16 / 64%)"
 typography:
+  hero-display:
+    fontFamily: '"Avenir Next", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif'
+    fontSize: "60px"
+    fontWeight: 750
+    lineHeight: 1.14
+    letterSpacing: "-0.025em"
+  section-display:
+    fontFamily: '"Avenir Next", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif'
+    fontSize: "40px"
+    fontWeight: 720
+    lineHeight: 1.2
+    letterSpacing: "-0.02em"
   display:
     fontFamily: '"Avenir Next", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif'
     fontSize: "24px"
@@ -114,6 +126,9 @@ rounded:
   sm: "6px"
   md: "8px"
   lg: "12px"
+  xl: "18px"
+  2xl: "24px"
+  stage: "26px"
   pill: "999px"
   full: "50%"
 spacing:
@@ -277,6 +292,7 @@ The Harbor Chartroom palette pairs cool coastal blue-slate neutrals with restrai
 **Character:** A single calm, local-first humanist sans-serif spine unifies every workspace pane without jarring display-font theatrics. Pairing macOS/Windows system sans faces directly with `PingFang SC` and `Hiragino Sans GB` keeps English and Chinese glyph metrics balanced at desktop reading sizes while honoring GoMail's strict offline, zero-CDN runtime commitment.
 
 ### Hierarchy
+- **Hero & Section Display (Homepage Persuade Surface):** `750` `clamp(36px, 5.4vw, 60px)` (`1.14` line-height, `-0.025em` tracking) for the standalone product homepage hero `<h1>`, and `720` `clamp(27px, 3.6vw, 40px)` (`1.2` line-height, `-0.02em` tracking) for homepage section `<h2>` headings (`site/`).
 - **Display** (`700`, `24px`, `1.32` line-height, `-0.02em` tracking, `text-wrap: balance`, clamping to `22px` below `520px`): Message subject headings inside the native Harbor reading sheet.
 - **Headline** (`650`, `22px` in Settings / `20px` in Thread Reader, `1.3`–`1.32` line-height, `-0.015em` tracking): Top-level Settings panel headings and thread conversation subjects.
 - **Title** (`650`, `18px`, `1.3` line-height, `-0.015em` tracking): Pane header titles across Inbox list, Starred, Compose, and empty-reader guidance headings.
@@ -337,7 +353,7 @@ Harbor Chartroom is **tonally layered and flat at rest**. Structural hierarchy b
 Harbor Chartroom uses an approachable, disciplined three-step corner system paired with crisp `1px` borders and zero decorative stripes:
 - **Compact Controls (`6px` radius):** Filter chips, privacy strip action buttons, context menu rows, statusbar icon buttons, and subtle inline alerts (`5px` for micro keyboard shortcut caps).
 - **Primary Interactive Elements (`8px` radius):** Primary/secondary/destructive buttons, sidebar navigation and account rows, search inputs, settings form inputs and choice cards, inline reader privacy banners, attachment cards, floating row action trays, toasts, and context menus.
-- **Structural Containers & Overlays (`12px` radius):** Settings fieldsets, outbox panels, thread message bubbles, Command Palette, Confirm Dialog, empty-state reader icon frame, and the Harbor appearance preview card.
+- **Structural Containers & Overlays (`12px` radius):** Settings fieldsets, outbox panels, thread message bubbles, Command Palette, Confirm Dialog, empty-state reader icon frame, and the Harbor appearance preview card. On the standalone product homepage (`site/`), concentric showcase frames step cleanly from `26px` (outer cushioned stage bezel) to `24px` (Bento feature tiles and ledger sheets) and `18px` (sticky translucent navigation bar and inner live workspace frame).
 - **Full Pills (`999px` radius):** Unread count pills, list count badges, outbox status pills, bottom statusbar beacons, and thin rounded scrollbar thumbs (`10px` shell / `8px` settings).
 - **Circular (`50%` radius):** Sender and account avatars (`26px` sidebar, `38px` native reader), `6px` unread and statusbar indicator dots, `7px` privacy beacon dots, and `24px` toast icon badges.
 
