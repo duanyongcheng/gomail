@@ -58,6 +58,13 @@ import { syncTitlebarTheme } from "@/lib/api";
 import { isCommandAvailable, isFeatureAvailable, isViewAvailable, unavailableReason } from "@/lib/availability";
 import { useToastStore } from "@/stores/toast.store";
 
+/**
+ * On macOS the sidebar runs to the top of the window and the traffic lights sit
+ * in its toolbar row, the way the system's own mail client is laid out. Other
+ * platforms keep a slim title bar row for their window controls.
+ */
+const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("Macintosh");
+
 export default function Layout() {
   const activeView = useUIStore((s) => s.activeView);
   const displayedView = isViewAvailable(activeView) ? activeView : "inbox";
@@ -142,13 +149,19 @@ export default function Layout() {
 
   return (
     <div
-      className={`app-shell flex flex-col h-screen overflow-hidden${isFeatureAvailable("backgroundImage") && backgroundImage ? " app-shell--with-background" : ""}`}
+      className={`app-shell flex flex-col h-screen overflow-hidden${isMac ? " app-shell--mac" : ""}${isFeatureAvailable("backgroundImage") && backgroundImage ? " app-shell--with-background" : ""}`}
     >
       <AppBackground image={isFeatureAvailable("backgroundImage") ? backgroundImage : null} />
       <WindowResizeHandles />
-      <TitleBar viewLabel={viewLabels[displayedView]} />
+      {!isMac && <TitleBar viewLabel={viewLabels[displayedView]} />}
       <div className="flex flex-1 min-h-0 app-shell-content">
-        <Sidebar />
+        {/* The sync and connection status lives at the foot of the sidebar,
+            where the platform's mail client reports it, instead of in a
+            full-width bar under the panes. */}
+        <div className="app-sidebar-column">
+          <Sidebar />
+          <StatusBar />
+        </div>
         <main className="flex-1 min-w-0 overflow-auto scroll-region app-main-scroll" style={{ position: "relative" }}>
           <OfflineBanner />
           <ViewErrorBoundary key={displayedView}>
@@ -165,7 +178,6 @@ export default function Layout() {
           </ViewErrorBoundary>
         </main>
       </div>
-      <StatusBar />
       <CommandPalette />
       <ToastContainer />
       <GlobalConfirmDialog />
@@ -225,7 +237,7 @@ class ViewErrorBoundary extends Component<
             onClick={() => this.setState({ error: null })}
             style={{
               padding: "6px 16px", cursor: "pointer",
-              backgroundColor: "var(--color-accent)", color: "var(--color-accent-contrast)",
+              backgroundColor: "var(--color-accent-fill)", color: "var(--color-accent-contrast)",
               border: "none", borderRadius: "var(--ui-radius-md)", fontSize: 13, fontWeight: 600,
             }}
           >

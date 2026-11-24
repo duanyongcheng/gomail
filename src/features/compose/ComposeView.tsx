@@ -553,7 +553,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
             style={{
               display: "flex", alignItems: "center", gap: "6px",
               padding: "7px 20px",
-              backgroundColor: sendInProgress || sendMutation.isPending ? "var(--color-text-secondary)" : "var(--color-accent, #2563eb)",
+              backgroundColor: sendInProgress || sendMutation.isPending ? "var(--color-text-secondary)" : "var(--color-accent-fill, #0064e0)",
               color: "var(--color-accent-contrast, #fff)", border: "none", borderRadius: "var(--ui-radius-md, 6px)",
               cursor: sendDisabled ? "default" : "pointer",
               opacity: hasToRecipient ? 1 : 0.5,
@@ -949,7 +949,7 @@ function ComposeViewInner({ accounts, accountsLoaded }: { accounts: Account[]; a
                 }}
                 style={{
                   padding: "5px 12px", fontSize: "12px", border: "none",
-                  borderRadius: "4px", backgroundColor: "var(--color-accent)",
+                  borderRadius: "4px", backgroundColor: "var(--color-accent-fill)",
                   color: "#fff", cursor: "pointer",
                 }}
               >

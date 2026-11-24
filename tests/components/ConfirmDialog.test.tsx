@@ -42,7 +42,7 @@ describe("ConfirmDialog", () => {
     opener.remove();
   });
 
-  it("uses the themed dialog surface instead of a plain white panel", () => {
+  it("leaves the sheet surface to the themed stylesheet", () => {
     render(
       <ConfirmDialog
         title="Discard draft?"
@@ -54,9 +54,11 @@ describe("ConfirmDialog", () => {
 
     const panel = screen.getByRole("dialog").firstElementChild as HTMLElement;
 
-    expect(panel.style.backgroundColor).toBe("var(--color-sidebar-bg)");
+    // The sheet's fill, radius and depth live in `.confirm-dialog-surface`, so
+    // light and dark mode can answer them; no inline fill may override that.
+    expect(panel.className).toContain("confirm-dialog-surface");
+    expect(panel.style.backgroundColor).toBe("");
     expect(panel.style.color).toBe("var(--color-text-primary)");
-    expect(panel.style.border).toBe("1px solid var(--color-border)");
   });
 
   it("does not cancel when clicking outside the dialog panel", () => {

@@ -20,7 +20,7 @@ describe("AppThemePicker", () => {
     useUIStore.setState({ theme: "light" });
   });
 
-  it("renders the unified Harbor Chartroom live three-pane preview without multi-theme radio chrome", () => {
+  it("renders the unified Clarity live three-pane preview without multi-theme radio chrome", () => {
     render(<AppThemePicker activeTheme="harbor" onSelect={vi.fn()} />);
     expect(screen.queryByRole("radiogroup")).toBeNull();
     expect(screen.queryByRole("radio")).toBeNull();
@@ -42,10 +42,10 @@ describe("AppThemePicker", () => {
   it("reports selection when clicked and supports controlled rendering", () => {
     const onSelect = vi.fn();
     render(<AppThemePicker activeTheme="harbor" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole("button", { name: "Harbor Chartroom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clarity" }));
     expect(onSelect).toHaveBeenCalledWith("harbor");
     render(<ControlledPicker />);
-    expect(screen.getAllByRole("button", { name: "Harbor Chartroom" })[1].getAttribute("data-active")).toBe("true");
+    expect(screen.getAllByRole("button", { name: "Clarity" })[1].getAttribute("data-active")).toBe("true");
   });
 
   it("updates the preview palette when the independent color mode changes", () => {

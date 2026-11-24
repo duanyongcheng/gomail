@@ -14,7 +14,7 @@ describe("focus-visible CSS", () => {
     const css = readFileSync(join(process.cwd(), "src", "styles", "index.css"), "utf8");
 
     expect(css).toMatch(/\.batch-checkbox\s*\{[^}]*appearance\s*:\s*none/i);
-    expect(css).toMatch(/\.batch-checkbox:checked\s*\{[^}]*background\s*:\s*var\(--color-accent\)/i);
+    expect(css).toMatch(/\.batch-checkbox:checked\s*\{[^}]*background\s*:\s*var\(--color-accent-fill\)/i);
     expect(css).toMatch(/\.batch-checkbox::before\s*\{[^}]*border-left\s*:/i);
   });
 
@@ -30,33 +30,16 @@ describe("focus-visible CSS", () => {
     expect(css).toMatch(/\[data-theme="dark"\]\s*input\[type="date"\]::-webkit-calendar-picker-indicator\s*\{[^}]*filter\s*:\s*invert\(1\)/i);
   });
 
-  it("makes unread message and thread rows visually distinct in dark mode", () => {
+  it("marks unread rows with a gutter dot and full-strength text, never a wash", () => {
     const css = readFileSync(join(process.cwd(), "src", "styles", "index.css"), "utf8");
 
-    expect(css).toMatch(/\.message-list-row--unread\[aria-selected="false"\]:hover/i);
-  });
-
-  it("gives unread rows a wash, a gutter marker and a stronger date", () => {
-    const css = readFileSync(join(process.cwd(), "src", "styles", "index.css"), "utf8");
-
-    // The wash is what separates an unread row from a read one at a glance, and
-    // it has to be answered in dark mode rather than left to a light tint.
-    expect(css).toMatch(
-      /\.message-list-row--unread\[aria-selected="false"\],\s*\.thread-list-row--unread\[aria-selected="false"\]\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--color-accent\)/i,
-    );
-    expect(css).toMatch(
-      /\[data-theme="dark"\]\s*\.message-list-row--unread\[aria-selected="false"\],\s*\[data-theme="dark"\]\s*\.thread-list-row--unread\[aria-selected="false"\]\s*\{[^}]*background:\s*color-mix/i,
-    );
-    // Scoped to the unselected row on purpose: unscoped, the dark-mode wash
-    // would tie with the selection rule on specificity and win by source order,
-    // so a selected unread row would lose its selection fill.
-    expect(css).not.toMatch(/^\.message-list-row--unread,\s*$/m);
-    expect(css).not.toMatch(/^\[data-theme="dark"\]\s*\.message-list-row--unread,\s*$/m);
+    // Only the selected row is ever filled, so unread state must not compete
+    // with it as a background.
+    expect(css).not.toMatch(/\.message-list-row--unread\[aria-selected="false"\][^{]*\{[^}]*background:/i);
 
     // The marker is positioned into the row's padding, so it costs no layout and
     // forms a column at a fixed x down the list.
     expect(css).toMatch(/\.message-row-unread-dot,\s*\.thread-row-unread-dot\s*\{[^}]*position:\s*absolute/i);
-    expect(css).toMatch(/\.message-row-unread-dot,\s*\.thread-row-unread-dot\s*\{[^}]*left:\s*-\d+px/i);
     expect(css).toMatch(/\.message-row-head,\s*\.thread-row-head\s*\{[^}]*position:\s*relative/i);
 
     // Read mail steps back so unread mail can step forward.
@@ -65,12 +48,6 @@ describe("focus-visible CSS", () => {
     );
     expect(css).toMatch(
       /\.message-list-row--unread\s*\.message-row-sender-name[^{]*\{[^}]*color:\s*var\(--color-text-primary\)/i,
-    );
-
-    // Hover deepens the wash instead of replacing it, so an unread row stays
-    // visibly unread under the pointer.
-    expect(css).toMatch(
-      /\.message-list-row--unread\[aria-selected="false"\]:hover[^{]*\{[^}]*background:\s*color-mix\(in srgb, var\(--color-accent\)/i,
     );
   });
 });

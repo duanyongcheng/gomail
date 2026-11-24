@@ -153,7 +153,7 @@ describe("InboxView all accounts", () => {
     expect(screen.getByText("Search bar").closest(".mail-list-panel")).toBeTruthy();
     expect(container.querySelector(".mail-list-title")?.textContent).toBe("sidebar.inbox");
     expect(container.querySelector(".mail-reader-panel--empty")).toBeTruthy();
-    expect(screen.getByText("Your next good read")).toBeTruthy();
+    expect(screen.getByText("No message selected")).toBeTruthy();
     expect(container.querySelector(".mail-workspace--detail-open")).toBeNull();
   });
   it("marks an open detail for the narrow-screen list-to-reader transition", () => {

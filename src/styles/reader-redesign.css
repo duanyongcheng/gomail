@@ -1,23 +1,26 @@
-/* Harbor Chartroom reader: 56px aligned toolbar, Harbor-Channel signal strip, and 65-75ch reading sheet. */
+/* Clarity reader: one toolbar row of plain symbol buttons, the platform's mail
+ * header (avatar, sender and date, subject, recipients), and a calm white
+ * reading column. Blocked remote content is a quiet bar where the body starts. */
+
+/* ── Remote content bar ──────────────────────────────────────────────────── */
 .privacy-banner {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--color-signal-border);
+  gap: 8px 10px;
+  margin: 0 0 20px;
+  padding: 8px 10px 8px 12px;
+  border: 0;
+  border-radius: var(--ui-radius-md);
   background: var(--color-signal-bg);
+  box-shadow: inset 0 0 0 1px var(--color-signal-border);
   color: var(--color-signal-text);
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
 .privacy-banner-beacon {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-signal);
+  display: none;
 }
 
 .privacy-banner-icon {
@@ -39,22 +42,22 @@
 
 .privacy-banner-button {
   flex: none;
-  padding: 4px 10px;
-  border: 1px solid var(--color-signal-border);
-  border-radius: var(--ui-radius-sm, 6px);
-  background: var(--color-bg);
-  color: var(--color-signal-text);
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: var(--color-control-bg);
+  box-shadow: var(--ui-shadow-sm);
+  color: var(--color-text-primary);
   font: inherit;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .privacy-banner-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-signal) 10%, var(--color-bg));
-  border-color: var(--color-signal);
+  background: var(--color-bg-hover);
 }
 
 .privacy-banner-button:disabled {
@@ -62,7 +65,7 @@
   opacity: 0.45;
 }
 
-/* The interface-native template scrolls as one calm document, not nested cards. */
+/* ── Interface-native template ───────────────────────────────────────────── */
 .message-detail-container--app {
   min-width: 0;
   min-height: 0;
@@ -70,34 +73,77 @@
   background: var(--color-reader-bg);
 }
 
-/* Shared 56px horizontal baseline flush with the message-list header */
+/* The toolbar row: actions as bare symbols, grouped, at the window's top. */
 .message-detail-container--app[data-msg-full-bleed="true"] .app-reader-toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: var(--ui-pane-header-height, 56px);
-  padding: 0 24px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-reader-bg);
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-height: var(--ui-toolbar-height, 52px);
+  padding: 0 calc(12px + var(--mygo-titlebar-inset-right, 0px)) 0 12px;
+  /* No rule under the toolbar: the list beside it runs its own header deeper
+     (title plus search), and two hairlines at different heights would read as
+     a misalignment. The toolbar and the page are one white plane. */
+  border-bottom: 0;
+  background: var(--color-toolbar-bg);
+  user-select: none;
+}
+
+.app-reader-toolbar .message-detail-back {
+  display: none;
+  width: 30px;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  border-radius: var(--ui-radius-sm);
+  color: var(--color-accent);
 }
 
 .app-reader-toolbar .message-detail-toolbar {
+  min-width: 0;
   padding: 0;
 }
 
-.app-reader-toolbar .message-detail-actions {
-  margin-left: auto;
+.app-reader-toolbar .message-action-toolbar {
+  gap: 2px !important;
 }
 
 .app-reader-toolbar .message-action-toolbar > button,
+.app-reader-toolbar .message-action-toolbar > div > button,
 .app-reader-toolbar .message-detail-icon-button {
-  border-radius: var(--ui-radius-md, 8px);
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  padding: 0 !important;
+  border-radius: var(--ui-radius-sm) !important;
+  color: var(--color-text-secondary);
+}
+
+.app-reader-toolbar .message-action-toolbar > button:hover:not(:disabled),
+.app-reader-toolbar .message-action-toolbar > div > button:hover:not(:disabled),
+.app-reader-toolbar .message-detail-icon-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text-primary) 7%, transparent) !important;
+  color: var(--color-text-primary);
+}
+
+/* Reply, reply all and forward form one group; star onwards another. */
+.app-reader-toolbar .message-action-toolbar > button:nth-child(4) {
+  margin-left: 10px;
+}
+
+.app-reader-toolbar .message-detail-actions {
+  gap: 2px;
+  margin-left: auto;
+}
+
+.app-reader-toolbar .message-detail-icon-button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  color: var(--color-text-primary);
 }
 
 .app-reader-toolbar .message-detail-icon-button:disabled {
-  opacity: 0.32;
-  cursor: not-allowed;
+  opacity: 0.3;
+  cursor: default;
   background: transparent;
 }
 
@@ -106,7 +152,7 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 32px var(--ui-reader-gutter, 40px) 56px;
+  padding: 22px var(--ui-reader-gutter, 28px) 56px;
 }
 
 .app-reader-sheet {
@@ -114,64 +160,87 @@
   flex-direction: column;
   gap: 0;
   width: 100%;
-  max-width: var(--ui-reader-width, 740px);
+  max-width: var(--ui-reader-width, 760px);
   margin: 0 auto;
   box-sizing: border-box;
   background: var(--color-reader-surface, transparent);
 }
 
-.app-reader-sheet .message-detail-title {
-  align-self: stretch;
-  margin: 0 0 18px;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-  font-family: var(--font-display);
-  font-size: var(--ui-reader-title-size, 24px);
-  font-weight: 700;
-  line-height: 1.32;
-  letter-spacing: -0.02em;
-  color: var(--color-text-primary);
-}
-
+/* ── Mail header ─────────────────────────────────────────────────────────────
+ *  (avatar)  Sender name <address>                     date
+ *            Subject
+ *            To: …                                 [contacts]
+ */
 .app-reader-sender {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding-bottom: 20px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--color-border);
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--color-separator);
 }
 
 .app-reader-sender .message-detail-avatar {
   flex: none;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
+  margin-top: 1px;
   border-radius: 50%;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-weight: 700;
-  font-size: 13.5px;
+  background: color-mix(in srgb, var(--sender-color, #8e8e93) 20%, #ffffff);
+  color: color-mix(in srgb, var(--sender-color, #8e8e93) 72%, #000000);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
-.app-reader-sender .message-detail-identity {
+[data-theme="dark"] .app-reader-sender .message-detail-avatar {
+  background: color-mix(in srgb, var(--sender-color, #8e8e93) 30%, #1e1e20);
+  color: color-mix(in srgb, var(--sender-color, #8e8e93) 55%, #ffffff);
+}
+
+.app-reader-heading {
   flex: 1;
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "from date"
+    "title title"
     "recipients contacts";
   align-items: baseline;
   column-gap: 12px;
-  row-gap: 3px;
+  row-gap: 2px;
+}
+
+.app-reader-heading .message-detail-identity {
+  display: contents;
+}
+
+.app-reader-sheet .message-detail-title {
+  grid-area: title;
+  align-self: stretch;
+  margin: 1px 0 2px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+  font-family: var(--font-display);
+  font-size: var(--ui-reader-title-size, 17px);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  color: var(--color-text-primary);
+  text-align: start;
 }
 
 .app-reader-sender .message-detail-from {
   grid-area: from;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-reader-sender .message-detail-recipients {
@@ -188,13 +257,18 @@
 
 .app-reader-sender .message-detail-from-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-primary);
 }
 
-.app-reader-sender .message-detail-from-address,
+.app-reader-sender .message-detail-from-address {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
 .app-reader-sender .message-detail-recipients {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--color-text-secondary);
 }
 
@@ -209,10 +283,11 @@
 }
 
 @media (max-width: 520px) {
-  .app-reader-sender .message-detail-identity {
+  .app-reader-heading {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "from"
+      "title"
       "recipients"
       "date"
       "contacts";
@@ -231,11 +306,12 @@
   scrollbar-gutter: auto;
 }
 
+/* ── Attachments ─────────────────────────────────────────────────────────── */
 .app-reader-sheet .attachment-list {
   flex: none;
-  padding: 20px 0 0;
+  padding: 16px 0 0;
   margin-top: 28px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-separator);
   background: transparent;
 }
 
@@ -244,24 +320,24 @@
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 
 .app-reader-sheet .attachment-list-items {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
+  gap: 8px;
   margin-top: 10px;
 }
 
 .app-reader-sheet .attachment-list-row {
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--ui-radius-md, 8px);
-  background: var(--color-list-bg);
+  padding: 8px 10px 8px 12px;
+  border: 0;
+  border-radius: var(--ui-radius-lg);
+  background: var(--color-bg-secondary);
 }
 
-/* Thread reader */
+/* ── Conversation reader ─────────────────────────────────────────────────── */
 .thread-reader {
   display: flex;
   flex-direction: column;
@@ -276,45 +352,50 @@
 .thread-reader-header {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex: none;
-  min-height: var(--ui-pane-header-height, 56px);
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-reader-bg);
+  min-height: var(--ui-toolbar-height, 52px);
+  padding: 6px calc(16px + var(--mygo-titlebar-inset-right, 0px)) 6px 16px;
+  border-bottom: 0;
+  background: var(--color-toolbar-bg);
+  user-select: none;
 }
 
 .thread-reader-title {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-family: var(--msg-title-font, var(--font-display));
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 1.32;
-  letter-spacing: -0.015em;
-  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .thread-message-scroll {
   flex: 1;
   overflow: auto;
-  padding: 24px var(--ui-reader-gutter, 36px) 48px;
+  padding: 18px var(--ui-reader-gutter, 28px) 48px;
+  background: var(--color-bg-secondary);
 }
 
+/* Each message in a conversation is its own sheet, stacked. */
 .thread-message-bubble {
-  max-width: var(--msg-content-width, 740px);
-  margin: 0 auto 12px;
+  max-width: var(--msg-content-width, 760px);
+  margin: 0 auto 10px;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--ui-radius-lg, 12px);
+  border: 0;
+  border-radius: var(--ui-radius-lg);
   background: var(--msg-surface-background, var(--color-reader-surface, var(--color-bg)));
-  transition: border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  box-shadow: var(--ui-shadow-sm);
+  transition: box-shadow var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .thread-message-bubble[data-expanded="true"] {
-  border-color: var(--color-border-strong);
-  box-shadow: var(--ui-shadow-sm);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .thread-message-bubble-toggle {
@@ -322,19 +403,22 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 13px 18px;
+  padding: 11px 16px;
   border: none;
   background: transparent;
   text-align: left;
   color: inherit;
   font: inherit;
   cursor: pointer;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
-.thread-message-bubble[data-expanded="true"] .thread-message-bubble-toggle,
 .thread-message-bubble-toggle:hover {
-  background: var(--color-list-bg);
+  background: var(--color-bg-hover);
+}
+
+.thread-message-bubble[data-expanded="true"] .thread-message-bubble-toggle {
+  background: transparent;
 }
 
 .thread-message-bubble-date {
@@ -346,41 +430,38 @@
 }
 
 .thread-message-bubble-content {
-  padding: 20px 22px;
-  border-top: 1px solid var(--color-border);
+  padding: 4px 20px 20px;
+  border-top: 0;
 }
 
 .thread-message-bubble-content > .privacy-banner {
-  margin: 0 0 18px;
-  padding: 10px 14px;
-  border: 1px solid var(--color-signal-border);
-  border-radius: var(--ui-radius-md, 8px);
+  margin: 0 0 16px;
 }
 
 .thread-message-bubble-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 22px;
+  margin-top: 20px;
 }
 
 .thread-message-bubble-actions button {
-  padding: 6px 13px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--ui-radius-md, 8px);
-  background: var(--color-list-bg);
+  min-height: 26px;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: var(--color-control-bg);
+  box-shadow: var(--ui-shadow-sm);
   color: var(--color-text-primary);
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .thread-message-bubble-actions button:hover:not(:disabled) {
   background: var(--color-bg-hover);
-  border-color: var(--color-border-strong);
 }
 
 .thread-message-bubble-actions button:disabled {
@@ -390,40 +471,39 @@
 
 @media (max-width: 900px) {
   .app-reader-scroll {
-    padding-right: 22px;
-    padding-left: 22px;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+}
+
+/* Single-pane widths: the list is gone, so the reader needs its way back. */
+@media (max-width: 760px) {
+  .app-reader-toolbar .message-detail-back {
+    display: inline-flex;
   }
 }
 
 @media (max-width: 520px) {
   .message-detail-container--app[data-msg-full-bleed="true"] .app-reader-toolbar {
-    gap: 4px;
-    padding: 6px 10px;
+    gap: 2px;
+    padding: 6px 8px;
+    overflow-x: auto;
   }
 
-  .app-reader-toolbar .message-action-toolbar > button {
-    padding-right: 6px;
-    padding-left: 6px;
+  .app-reader-toolbar .message-action-toolbar > button:nth-child(4) {
+    margin-left: 0;
   }
 
   .app-reader-toolbar .message-detail-actions {
     margin-left: 0;
   }
 
-  .privacy-banner {
-    padding: 9px 14px;
-  }
-
   .app-reader-scroll {
-    padding: 20px 16px 36px;
-  }
-
-  .app-reader-sheet .message-detail-title {
-    font-size: min(var(--ui-reader-title-size, 24px), 22px);
+    padding: 16px 14px 36px;
   }
 
   .thread-message-scroll {
-    padding: 14px;
+    padding: 12px;
   }
 
   .thread-message-bubble-date {
@@ -440,5 +520,13 @@
   .thread-message-bubble-toggle,
   .thread-message-bubble-actions button {
     transition: none;
+  }
+}
+
+/* Three panes on screen: the list is right there, so the conversation needs
+   no back control of its own. */
+@media (min-width: 761px) {
+  .thread-reader-header > div > button:first-child {
+    display: none !important;
   }
 }

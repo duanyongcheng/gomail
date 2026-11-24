@@ -1,11 +1,11 @@
 {
   "appThemes": {
     "title": "界面主题",
-    "description": "统一采用海图阅览室界面设计，兼顾清爽阅读与清晰扫描。明暗模式与邮件阅读模板仍可独立选择。",
+    "description": "统一采用澄明三栏界面：通顶侧栏、头像邮件列表、清爽的阅读区。明暗模式与邮件阅读模板仍可独立选择。",
     "colorMode": "明暗模式",
     "selected": "使用中",
-    "harbor": "海图阅览室",
-    "harborDesc": "海图灰蓝层次分栏、高对比阅读区、海蓝主强调与赤陶隐私提示条，随明暗模式自适应切换。"
+    "harbor": "澄明",
+    "harborDesc": "桌面原生的三栏布局：通顶侧栏、带头像的舒适邮件列表、随焦点变化的选中态和安静的白色阅读区，随明暗模式自适应切换。"
   },
   "cloudDrafts": {
     "notice": "自动保存仅在本机加密，不会自动同步 Gmail。请主动上传已保存的修改；发送已关联的草稿时，Gmail 接受发送后才会移除其云端副本。请勿同时在 Gmail 和 GoMail 编辑同一份草稿。",
@@ -135,7 +135,9 @@
   "inbox": {
     "loadedMessages": "已载入 {{count}} 封",
     "loadedThreads": "已载入 {{count}} 个会话",
-    "selectMessage": "选一封邮件，静心阅读",
+    "listSubtitleMessages": "{{n}} 封邮件",
+    "listSubtitleThreads": "{{n}} 个会话",
+    "selectMessage": "未选择邮件",
     "selectMessageHint": "从列表中选择邮件或会话，即可在此阅读。",
     "mailbox": "邮箱",
     "searchPlaceholder": "搜索邮件...",

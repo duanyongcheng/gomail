@@ -1252,7 +1252,7 @@ function EditAccountModal({ account, initialColor, onClose, onSaved }: {
                 padding: "9px 16px",
                 borderRadius: "6px",
                 border: "none",
-                backgroundColor: "var(--color-accent)",
+                backgroundColor: "var(--color-accent-fill)",
                 color: "#fff",
                 fontSize: "13px",
                 fontWeight: 600,

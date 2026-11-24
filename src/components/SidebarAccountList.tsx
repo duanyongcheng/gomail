@@ -91,7 +91,7 @@ interface Props {
   pinnedRows?: React.ReactNode;
 }
 
-const AVATAR_SIZE = 26;
+const AVATAR_SIZE = 20;
 
 /** The collapsed rail is wider than the avatar needs, so the avatar grows with it. */
 const COLLAPSED_AVATAR_SIZE = 30;
@@ -189,7 +189,7 @@ function avatarStyle(color: string, isActive: boolean, collapsed: boolean): Reac
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    fontSize: collapsed ? 12 : 10.5,
+    fontSize: collapsed ? 12 : 10,
     fontWeight: 700,
     backgroundColor: `color-mix(in srgb, ${color} ${isActive ? 26 : 14}%, transparent)`,
     color,
@@ -227,7 +227,7 @@ function unreadBadgeStyle(): React.CSSProperties {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "var(--color-accent)",
+    backgroundColor: "var(--color-accent-fill)",
     color: "#ffffff",
     fontSize: "9.5px",
     fontWeight: 700,

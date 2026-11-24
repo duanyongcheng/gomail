@@ -93,7 +93,7 @@ export default function AppearanceTab() {
     <div className="appearance-settings">
       <h3 className="appearance-section-title">{t("appThemes.title", "Interface theme")}</h3>
       <p className="appearance-section-description">
-        {t("appThemes.description", "Unified Harbor Chartroom workspace design. Color mode and message templates stay independent.")}
+        {t("appThemes.description", "Unified Clarity workspace design. Color mode and message templates stay independent.")}
       </p>
       <AppThemePicker activeTheme={appTheme} onSelect={setAppTheme} />
       <h3 className="appearance-section-title appearance-section-title--spaced">{t("appThemes.colorMode", "Color mode")}</h3>

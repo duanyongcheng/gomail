@@ -546,7 +546,7 @@ export default function CloudSyncTab() {
         <button
           style={{
             ...buttonStyle,
-            background: "var(--color-accent)",
+            background: "var(--color-accent-fill)",
             color: "#fff",
             opacity: anyLoading ? 0.6 : 1,
           }}
@@ -582,7 +582,7 @@ export default function CloudSyncTab() {
         <button
           style={{
             ...buttonStyle,
-            background: "var(--color-accent)",
+            background: "var(--color-accent-fill)",
             color: "#fff",
             opacity: anyLoading ? 0.6 : 1,
           }}
@@ -695,7 +695,7 @@ export default function CloudSyncTab() {
             style={{
               ...buttonStyle,
               marginTop: "12px",
-              background: "var(--color-accent)",
+              background: "var(--color-accent-fill)",
               color: "#fff",
               opacity: anyLoading ? 0.6 : 1,
             }}

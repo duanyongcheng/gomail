@@ -11,11 +11,11 @@ describe("UI store interface themes", () => {
     document.documentElement.style.removeProperty("--ui-mail-row-height");
   });
 
-  it("defaults to Harbor Chartroom and applies it before the first render", async () => {
+  it("defaults to Clarity and applies it before the first render", async () => {
     const { useUIStore } = await import("@/stores/ui.store");
     expect(useUIStore.getState().appTheme).toBe("harbor");
     expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
-    expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("88px");
+    expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("92px");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBeNull();
   });
 
@@ -27,7 +27,7 @@ describe("UI store interface themes", () => {
     expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe(`${APP_THEMES.find((option) => option.id === theme)?.rowHeight}px`);
   });
 
-  it("preserves a legacy or damaged stored preference while falling back to Harbor", async () => {
+  it("preserves a legacy or damaged stored preference while falling back to Clarity", async () => {
     localStorage.setItem(APP_THEME_STORAGE_KEY, "unrecognized");
     const { useUIStore } = await import("@/stores/ui.store");
     expect(useUIStore.getState().appTheme).toBe("harbor");
@@ -43,7 +43,7 @@ describe("UI store interface themes", () => {
     useUIStore.getState().setAppTheme("harbor");
     expect(useUIStore.getState()).toMatchObject({ appTheme: "harbor", theme: "dark", messageTheme: "telegram" });
     expect(document.documentElement.getAttribute("data-ui-theme")).toBe("harbor");
-    expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("88px");
+    expect(document.documentElement.style.getPropertyValue("--ui-mail-row-height")).toBe("92px");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     expect(localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe("harbor");
     expect(localStorage.getItem("gomail-theme")).toBe("dark");

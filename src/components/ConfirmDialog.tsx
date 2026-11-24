@@ -109,9 +109,7 @@ export default function ConfirmDialog({
         ref={dialogRef}
         className="confirm-dialog-surface"
         style={{
-          backgroundColor: "var(--color-sidebar-bg)",
           color: "var(--color-text-primary)",
-          border: "1px solid var(--color-border)",
         }}
       >
         <h3

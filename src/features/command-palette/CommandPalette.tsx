@@ -128,6 +128,7 @@ export default function CommandPalette() {
               <div>
                 <span style={{ fontSize: "13.5px", fontWeight: 500 }}>{cmd.name}</span>
                 <span
+                  className="command-palette-category"
                   style={{
                     fontSize: "11.5px",
                     color: "var(--color-text-secondary)",

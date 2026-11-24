@@ -1,129 +1,172 @@
-/* Harbor Chartroom — unified application design tokens (light and dark). */
+/* Clarity — unified application design tokens (light and dark).
+ *
+ * The world is the native desktop mail client: a full-height source-list
+ * sidebar, a toolbar that is also the window's title area, a white list and
+ * reading pane, system type, and one system-blue accent. Selection follows
+ * focus the way the platform does: a filled accent row while the list has
+ * focus, a quiet neutral row once focus moves elsewhere.
+ *
+ * The theme id stays `harbor` on purpose: it is a stored preference key, and
+ * renaming it would silently reset every existing profile's choice.
+ */
 :root,
 [data-ui-theme="harbor"] {
-  --font-ui: "Avenir Next", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif;
-  --font-serif: "Iowan Old Style", "Songti SC", "Noto Serif SC", Georgia, serif;
-  --font-mono: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
-  --font-display: var(--font-ui);
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-serif: "New York", "Iowan Old Style", "Songti SC", "Noto Serif SC", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB",
+    "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
   --font-reading: var(--font-ui);
 
-  --ui-font-size: 13.5px;
-  --ui-line-height: 1.55;
-  --ui-titlebar-height: 40px;
-  --ui-pane-header-height: 56px;
-  --ui-statusbar-height: 28px;
-  --ui-sidebar-width: 244px;
-  --ui-list-width: 376px;
-  --ui-mail-row-height: 88px;
-  --ui-reader-gutter: clamp(24px, 3.4vw, 44px);
-  --ui-reader-width: 740px;
-  --ui-reader-title-size: 24px;
-  --ui-reader-body-size: 15px;
-  --ui-reader-leading: 1.82;
+  --ui-font-size: 13px;
+  --ui-line-height: 1.45;
+  --ui-titlebar-height: 36px;
+  --ui-toolbar-height: 52px;
+  --ui-pane-header-height: 52px;
+  --ui-statusbar-height: 0px;
+  --ui-sidebar-width: 236px;
+  --ui-sidebar-collapsed-width: 64px;
+  --ui-list-width: 360px;
+  --ui-mail-row-height: 92px;
+  --ui-reader-gutter: clamp(20px, 3vw, 36px);
+  --ui-reader-width: 760px;
+  --ui-reader-title-size: 17px;
+  --ui-reader-body-size: 14px;
+  --ui-reader-leading: 1.7;
 
-  --ui-radius-sm: 6px;
-  --ui-radius-md: 8px;
-  --ui-radius-lg: 12px;
+  --ui-radius-sm: 5px;
+  --ui-radius-md: 7px;
+  --ui-radius-lg: 10px;
+  --ui-radius-xl: 12px;
 
-  --ui-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --ui-motion-fast: 150ms;
-  --ui-motion-base: 190ms;
+  --ui-motion-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --ui-motion-fast: 120ms;
+  --ui-motion-base: 180ms;
 
-  --ui-shadow-sm: 0 1px 2px rgb(20 37 56 / 6%), 0 2px 6px rgb(20 37 56 / 4%);
-  --ui-shadow-md: 0 6px 20px rgb(20 37 56 / 10%), 0 2px 6px rgb(20 37 56 / 5%);
-  --ui-shadow-lg: 0 18px 44px rgb(12 24 38 / 22%), 0 4px 14px rgb(12 24 38 / 10%);
+  --ui-shadow-sm: 0 1px 2px rgb(0 0 0 / 7%), 0 0 0 0.5px rgb(0 0 0 / 6%);
+  --ui-shadow-md: 0 4px 14px rgb(0 0 0 / 10%), 0 1px 3px rgb(0 0 0 / 6%), 0 0 0 0.5px rgb(0 0 0 / 8%);
+  --ui-shadow-lg: 0 22px 56px rgb(0 0 0 / 20%), 0 6px 16px rgb(0 0 0 / 8%), 0 0 0 0.5px rgb(0 0 0 / 12%);
 
-  --color-sidebar-bg: #ebf1f4;
-  --color-sidebar-hover: #dfe9ef;
-  --color-sidebar-active: #d6e6f0;
-  --color-titlebar-bg: #ebf1f4;
-  --color-main-bg: #f7fafb;
-  --color-statusbar-bg: #ebf1f4;
-  --color-list-bg: #f7fafb;
+  /* Window chrome: the sidebar is the only tinted plane. */
+  --color-sidebar-bg: #efeef2;
+  --color-sidebar-hover: #e4e3e9;
+  --color-sidebar-active: #dad9e0;
+  --color-sidebar-text: #1d1d1f;
+  --color-titlebar-bg: #efeef2;
+  --color-toolbar-bg: #ffffff;
+  --color-main-bg: #ffffff;
+  --color-statusbar-bg: #efeef2;
+  --color-list-bg: #ffffff;
   --color-reader-bg: #ffffff;
   --color-reader-surface: #ffffff;
   --color-bg: #ffffff;
   --color-bg-primary: #ffffff;
-  --color-bg-hover: #edf3f6;
-  --color-bg-secondary: #e3ecf1;
-  --color-border: #d4e0e7;
-  --color-border-strong: #b6c9d5;
+  --color-bg-hover: #f3f3f6;
+  --color-bg-secondary: #f0f0f3;
+  --color-control-bg: #ffffff;
+  --color-field-bg: #f0f0f3;
+  --color-border: #e2e1e6;
+  --color-border-strong: #c9c8cf;
+  --color-separator: #e8e7ec;
 
-  --color-text-primary: #142538;
-  --color-text-secondary: #435a70;
-  --color-text-tertiary: #526a80;
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #5c5c61;
+  --color-text-tertiary: #737378;
 
-  --color-accent: #155e8a;
-  --color-accent-hover: #104c71;
-  --color-accent-soft: #dfecf3;
+  --color-accent: #0064e0;
+  --color-accent-hover: #0057c4;
+  --color-accent-fill: #0064e0;
+  --color-accent-fill-hover: #0057c4;
+  --color-accent-soft: #e2edfc;
   --color-accent-contrast: #ffffff;
-  --color-active-border: #b7d3e3;
-  --color-row-selected-bg: #ebf4fa;
-  --color-row-selected-border: #a6cadf;
+  --color-active-border: #b9d2f5;
+  --color-row-selected-bg: #0064e0;
+  --color-row-selected-border: transparent;
+  --color-selection-fill: #0064e0;
+  --color-selection-text: #ffffff;
+  --color-selection-muted: rgb(255 255 255 / 82%);
+  --color-selection-inactive: #e3e3e8;
+  --color-unread: #0a6ef0;
+  --color-flag: #f5a300;
 
-  --color-signal: #b84a24;
-  --color-signal-bg: #fdf4ee;
-  --color-signal-border: #edd0be;
-  --color-signal-text: #843115;
+  /* Signal: remote content blocked, offline, queued or uncertain writes. */
+  --color-signal: #c27400;
+  --color-signal-bg: #fff6df;
+  --color-signal-border: #f0dca8;
+  --color-signal-text: #6f4500;
 
-  --color-success: #1b6e56;
-  --color-warning: #9a5710;
-  --color-error: #b83327;
-  --color-danger: #b83327;
+  --color-success: #1a7f37;
+  --color-warning: #9a5800;
+  --color-error: #c4161c;
+  --color-danger: #d70015;
 
-  --color-backdrop: rgb(14 23 33 / 44%);
+  --color-backdrop: rgb(0 0 0 / 24%);
   --color-scrollbar-track: transparent;
-  --color-scrollbar-thumb: #bfd0db;
-  --color-scrollbar-thumb-hover: #90abc0;
+  --color-scrollbar-thumb: rgb(0 0 0 / 22%);
+  --color-scrollbar-thumb-hover: rgb(0 0 0 / 38%);
 }
 
 [data-theme="dark"],
 [data-ui-theme="harbor"][data-theme="dark"] {
-  --ui-shadow-sm: 0 2px 6px rgb(4 10 18 / 28%);
-  --ui-shadow-md: 0 8px 24px rgb(4 10 18 / 40%);
-  --ui-shadow-lg: 0 22px 52px rgb(2 8 15 / 56%);
+  --ui-shadow-sm: 0 1px 2px rgb(0 0 0 / 40%), 0 0 0 0.5px rgb(255 255 255 / 6%);
+  --ui-shadow-md: 0 6px 18px rgb(0 0 0 / 45%), 0 0 0 0.5px rgb(255 255 255 / 9%);
+  --ui-shadow-lg: 0 24px 60px rgb(0 0 0 / 60%), 0 0 0 0.5px rgb(255 255 255 / 12%);
 
-  --color-sidebar-bg: #0e1721;
-  --color-sidebar-hover: #162433;
-  --color-sidebar-active: #1c3145;
-  --color-titlebar-bg: #0e1721;
-  --color-main-bg: #131e2a;
-  --color-statusbar-bg: #0e1721;
-  --color-list-bg: #131e2a;
-  --color-reader-bg: #172432;
-  --color-reader-surface: #172432;
-  --color-bg: #172432;
-  --color-bg-primary: #172432;
-  --color-bg-hover: #1e2e3f;
-  --color-bg-secondary: #223548;
-  --color-border: #25384b;
-  --color-border-strong: #38516a;
+  --color-sidebar-bg: #28282b;
+  --color-sidebar-hover: #333336;
+  --color-sidebar-active: #3e3e42;
+  --color-sidebar-text: #f5f5f7;
+  --color-titlebar-bg: #28282b;
+  --color-toolbar-bg: #1e1e20;
+  --color-main-bg: #1e1e20;
+  --color-statusbar-bg: #28282b;
+  --color-list-bg: #1e1e20;
+  --color-reader-bg: #1e1e20;
+  --color-reader-surface: #1e1e20;
+  --color-bg: #1e1e20;
+  --color-bg-primary: #1e1e20;
+  --color-bg-hover: #2a2a2d;
+  --color-bg-secondary: #2c2c2f;
+  --color-control-bg: #3a3a3d;
+  --color-field-bg: #2c2c2f;
+  --color-border: #38383b;
+  --color-border-strong: #4c4c50;
+  --color-separator: #303033;
 
-  --color-text-primary: #ebf2f7;
-  --color-text-secondary: #a8bfd2;
-  --color-text-tertiary: #88a4bc;
+  --color-text-primary: #f5f5f7;
+  --color-text-secondary: #ababb0;
+  --color-text-tertiary: #929297;
 
-  --color-accent: #62b3e3;
-  --color-accent-hover: #7bc3ec;
-  --color-accent-soft: #1b3449;
-  --color-accent-contrast: #08131d;
-  --color-active-border: #335b7d;
-  --color-row-selected-bg: #1c3349;
-  --color-row-selected-border: #3d6d94;
+  --color-accent: #4a9eff;
+  --color-accent-hover: #6cb0ff;
+  --color-accent-fill: #1c6fe3;
+  --color-accent-fill-hover: #2b7cf0;
+  --color-accent-soft: #1d2e47;
+  --color-accent-contrast: #ffffff;
+  --color-active-border: #2f4f7a;
+  --color-row-selected-bg: #0f5bd0;
+  --color-row-selected-border: transparent;
+  --color-selection-fill: #0f5bd0;
+  --color-selection-text: #ffffff;
+  --color-selection-muted: rgb(255 255 255 / 80%);
+  --color-selection-inactive: #3a3a3d;
+  --color-unread: #4a9eff;
+  --color-flag: #ffb340;
 
-  --color-signal: #ee936e;
-  --color-signal-bg: #2a1d19;
-  --color-signal-border: #5a382c;
-  --color-signal-text: #f6baa0;
+  --color-signal: #ffb340;
+  --color-signal-bg: #2f2615;
+  --color-signal-border: #5a4723;
+  --color-signal-text: #ffd48a;
 
-  --color-success: #5cc49f;
-  --color-warning: #ebb567;
-  --color-error: #f18c82;
-  --color-danger: #f18c82;
+  --color-success: #4cd277;
+  --color-warning: #ffc864;
+  --color-error: #ff7a73;
+  --color-danger: #ff6961;
 
-  --color-backdrop: rgb(3 9 16 / 64%);
-  --color-scrollbar-thumb: #31485e;
-  --color-scrollbar-thumb-hover: #476684;
+  --color-backdrop: rgb(0 0 0 / 48%);
+  --color-scrollbar-thumb: rgb(255 255 255 / 22%);
+  --color-scrollbar-thumb-hover: rgb(255 255 255 / 38%);
 }
 
 html[data-ui-theme],
@@ -135,6 +178,8 @@ html[data-ui-theme],
   color: var(--color-text-primary);
   background: var(--color-main-bg);
   -webkit-font-smoothing: antialiased;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
 }
 
 [data-ui-theme] button,
@@ -158,17 +203,17 @@ html[data-ui-theme],
 }
 
 [data-ui-theme] button:disabled {
-  cursor: not-allowed;
+  cursor: default;
 }
 
 [data-ui-theme] :is(button, a, input, textarea, select, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: 3px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  outline-offset: 1px;
 }
 
 [data-ui-theme] ::selection {
-  background: var(--color-accent-soft);
-  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-accent) 26%, transparent);
+  color: inherit;
 }
 
 html[data-theme-switching] {
