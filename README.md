@@ -160,7 +160,7 @@ open "build/darwin-arm64/GoMail.app"
 Pass MyGO build flags via `bun run build` (optionally overriding `GOMAIL_VERSION`):
 
 ```sh
-GOMAIL_VERSION=0.2.2 bun run build -skip-dmg -skip-notarize
+GOMAIL_VERSION=0.3.0 bun run build -skip-dmg -skip-notarize
 ```
 
 GitHub Actions workflows under `.github/workflows/`:

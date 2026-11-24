@@ -1,43 +1,43 @@
 (() => {
   const REPO_URL = "https://github.com/duanyongcheng/gomail";
   const RELEASES_LATEST = `${REPO_URL}/releases/latest`;
-  const DEFAULT_VERSION = "v0.2.2";
+  const DEFAULT_VERSION = "v0.3.0";
 
   const PLATFORMS = {
     "macos-arm64": {
       zh: "下载 macOS 版 (Apple Silicon .dmg)",
       en: "Download for macOS (Apple Silicon .dmg)",
-      match: (name) => /darwin[-_]?arm64.*\.dmg$/i.test(name) || (/arm64.*\.dmg$/i.test(name) && !/win|linux/i.test(name)),
+      match: (name) => /(arm64|aarch64).*\.dmg$/i.test(name) && !/win|linux/i.test(name),
       fallback: RELEASES_LATEST,
     },
     "macos-amd64": {
       zh: "下载 macOS 版 (Intel .dmg)",
       en: "Download for macOS (Intel .dmg)",
-      match: (name) => /darwin[-_]?(amd64|x64|x86_64).*\.dmg$/i.test(name),
+      match: (name) => /(amd64|x64|x86_64).*\.dmg$/i.test(name) && !/win|linux/i.test(name),
       fallback: RELEASES_LATEST,
     },
     "windows-x64": {
       zh: "下载 Windows 版 (x64 Setup.exe)",
       en: "Download for Windows (x64 Setup.exe)",
-      match: (name) => /(win|windows)[-_]?(amd64|x64).*setup.*\.exe$/i.test(name) || (/setup.*\.exe$/i.test(name) && !/arm64/i.test(name)),
+      match: (name) => /setup.*\.exe$/i.test(name) && !/(arm64|aarch64)/i.test(name),
       fallback: RELEASES_LATEST,
     },
     "windows-arm64": {
       zh: "下载 Windows 版 (ARM64 Setup.exe)",
       en: "Download for Windows (ARM64 Setup.exe)",
-      match: (name) => /arm64.*setup.*\.exe$/i.test(name),
+      match: (name) => /setup.*\.exe$/i.test(name) && /(arm64|aarch64)/i.test(name),
       fallback: RELEASES_LATEST,
     },
     "linux-deb": {
       zh: "下载 Linux 版 (x64 .deb 安装包)",
       en: "Download for Linux (x64 .deb Package)",
-      match: (name) => /(amd64|x64|x86_64).*\.deb$/i.test(name) || (/\.deb$/i.test(name) && !/arm64|aarch64/i.test(name)),
+      match: (name) => /\.deb$/i.test(name) && !/(arm64|aarch64)/i.test(name),
       fallback: RELEASES_LATEST,
     },
     "linux-arm64": {
       zh: "下载 Linux 版 (ARM64 .deb 安装包)",
       en: "Download for Linux (ARM64 .deb Package)",
-      match: (name) => /(arm64|aarch64).*\.deb$/i.test(name),
+      match: (name) => /\.deb$/i.test(name) && /(arm64|aarch64)/i.test(name),
       fallback: RELEASES_LATEST,
     },
   };
@@ -54,8 +54,8 @@
       email: "release@gomail.local",
       recipient: { zh: "收件人：林默 <lin.mo@gmail.com>", en: "To: Lin Mo <lin.mo@gmail.com>" },
       subject: {
-        zh: "GoMail v0.2.2：签名增量更新与应用内 OAuth 加密配置",
-        en: "GoMail v0.2.2: Signed Delta Updates & In-App Encrypted OAuth",
+        zh: "GoMail v0.3.0：签名增量更新与应用内 OAuth 加密配置",
+        en: "GoMail v0.3.0: Signed Delta Updates & In-App Encrypted OAuth",
       },
       snippet: {
         zh: "纯本地 SQLite WAL 存储与 Ed25519 签名 bsdiff 增量补丁现已就绪…",
@@ -64,11 +64,11 @@
       body: {
         zh: [
           "你好，欢迎在本地桌面体验 GoMail（示例演示信件）。所有邮件归档、FTS5 全文检索索引、HTML 隐私清洗以及加密草稿均完整保存在你的电脑中，不经过任何第三方云服务器。",
-          "在 v0.2.2 版本中，我们引入了基于 Ed25519 校验的 bsdiff 增量自动更新机制，并支持在「设置 → 账户」中直接加密保存 Google OAuth 客户端凭据（由系统钥匙串 dev.bary.gomail 托管主密钥，修改后免重启立即生效）。"
+          "在 v0.3.0 版本中，我们引入了基于 Ed25519 校验的 bsdiff 增量自动更新机制，并支持在「设置 → 账户」中直接加密保存 Google OAuth 客户端凭据（由系统钥匙串 dev.bary.gomail 托管主密钥，修改后免重启立即生效）。"
         ],
         en: [
           "Welcome to GoMail on your desktop (interactive sample message). Your mail archive, FTS5 search index, Go HTML sanitizer, and encrypted drafts live entirely on your machine—never relayed through cloud middleware.",
-          "Version 0.2.2 brings Ed25519-verified bsdiff incremental updates and in-app Google OAuth credential storage sealed by your OS keyring (dev.bary.gomail), applying changes immediately without restarting."
+          "Version 0.3.0 brings Ed25519-verified bsdiff incremental updates and in-app Google OAuth credential storage sealed by your OS keyring (dev.bary.gomail), applying changes immediately without restarting."
         ],
       },
       attachment: { name: "SHA256SUMS.txt", size: "4.2 KB" },
@@ -204,13 +204,13 @@ curl -fsSL https://github.com/duanyongcheng/gomail/releases/latest/download/inst
 
 # 或校验 SHA-256 后手动安装 Debian / Ubuntu 软件包
 sha256sum --check --ignore-missing SHA256SUMS.txt
-sudo dpkg -i GoMail_*_amd64.deb`,
+sudo dpkg -i gomail_*_amd64.deb`,
       en: `# Run the release install script or install the .deb package directly
 curl -fsSL https://github.com/duanyongcheng/gomail/releases/latest/download/install.sh | sh
 
 # Or verify SHA-256 checksums and install on Debian / Ubuntu
 sha256sum --check --ignore-missing SHA256SUMS.txt
-sudo dpkg -i GoMail_*_amd64.deb`,
+sudo dpkg -i gomail_*_amd64.deb`,
     },
   };
 

@@ -160,7 +160,7 @@ open "build/darwin-arm64/GoMail.app"
 可通过 `bun run build` 透传 MyGO 构建参数（可选指定 `GOMAIL_VERSION`）：
 
 ```sh
-GOMAIL_VERSION=0.2.2 bun run build -skip-dmg -skip-notarize
+GOMAIL_VERSION=0.3.0 bun run build -skip-dmg -skip-notarize
 ```
 
 仓库内置三条自动化工作流（`.github/workflows/`）：
