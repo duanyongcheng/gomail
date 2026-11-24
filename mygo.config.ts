@@ -3,7 +3,7 @@ import { defineConfig } from "mygo-cli";
 export default defineConfig({
   name: "GoMail",
   identifier: "dev.bary.gomail",
-  version: (process.env.GOMAIL_VERSION || "0.3.0").replace(/^v/, ""),
+  version: (process.env.GOMAIL_VERSION || "0.4.0").replace(/^v/, ""),
   devUrl: "http://localhost:5173",
   devCommand: "bun run dev:web",
   buildCommand: "bun run build:web",
