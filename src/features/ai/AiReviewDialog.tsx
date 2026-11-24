@@ -251,7 +251,7 @@ export default function AiReviewDialog({
               style={{
                 ...footerButtonStyle,
                 border: "none",
-                background: "var(--color-accent)",
+                background: "var(--color-accent-fill)",
                 color: "#fff",
                 fontWeight: 600,
                 opacity: !result || loading ? 0.5 : 1,

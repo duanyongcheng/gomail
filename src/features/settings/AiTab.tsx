@@ -328,7 +328,7 @@ export default function AiTab() {
 
       <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
         <button
-          style={{ ...buttonStyle, background: "var(--color-accent)", color: "#fff", opacity: saving ? 0.6 : 1 }}
+          style={{ ...buttonStyle, background: "var(--color-accent-fill)", color: "#fff", opacity: saving ? 0.6 : 1 }}
           onClick={handleSave}
           disabled={saving}
         >

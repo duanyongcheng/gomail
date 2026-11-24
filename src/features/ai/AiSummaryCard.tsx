@@ -183,7 +183,7 @@ export default function AiSummaryCard({ messageId, onClose }: Props) {
                   padding: "5px 12px",
                   border: "none",
                   borderRadius: "4px",
-                  background: "var(--color-accent)",
+                  background: "var(--color-accent-fill)",
                   color: "#fff",
                   fontSize: "12px",
                   cursor: "pointer",

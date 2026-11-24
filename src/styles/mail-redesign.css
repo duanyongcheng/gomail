@@ -1,17 +1,16 @@
-/* Harbor Chartroom mail workspace: chalk-sea list, active focus isolation, and calm reader pane. */
+/* Clarity mail workspace: a toolbar title with a quiet subtitle, comfortable
+ * avatar rows inset like the platform's lists, and focus-aware selection — a
+ * filled accent row while the list has focus, a neutral row once you move on. */
 [data-ui-theme] {
-  --mail-row-height: var(--ui-mail-row-height, 88px);
-  --mail-row-padding: 13px 18px 13px 22px;
-  --mail-row-margin: 0;
-  --mail-row-radius: 0;
-  --mail-row-rule: solid;
-  --mail-row-rule-color: color-mix(in srgb, var(--color-border) 72%, transparent);
-  --mail-selected-bg: var(--color-row-selected-bg, #ebf4fa);
-  --mail-selected-shadow: inset 0 0 0 1px var(--color-row-selected-border, #a6cadf);
+  --mail-row-height: var(--ui-mail-row-height, 92px);
+  --mail-row-padding: 11px 12px 11px 24px;
+  --mail-row-margin: 0 8px;
+  --mail-row-radius: 8px;
+  --mail-row-text-inset: 72px;
   --mail-unread-bg: transparent;
-  --mail-avatar-display: none;
+  --mail-avatar-display: grid;
   --mail-index-display: none;
-  --mail-heading-size: 18px;
+  --mail-heading-size: 15px;
   --mail-subject-font: var(--font-ui);
   --mail-unread-marker-display: block;
 }
@@ -29,21 +28,33 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: clamp(280px, 36%, var(--ui-list-width, 376px));
+  width: clamp(300px, 36%, var(--ui-list-width, 360px));
   min-height: 0;
   border-right: 1px solid var(--color-border);
   background: var(--color-list-bg);
 }
 
-/* Shared 56px horizontal baseline aligned flush with the reader toolbar */
+/* ── Toolbar title ───────────────────────────────────────────────────────────
+ * The mailbox name with its count under it, the way the platform titles a
+ * window's toolbar, and the list's view controls at the trailing edge. */
 [data-ui-theme] .mail-list-heading {
   display: flex;
   align-items: center;
   flex: none;
-  min-height: var(--ui-pane-header-height, 56px);
-  padding: 0 16px 0 20px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-list-bg);
+  gap: 8px;
+  min-height: var(--ui-toolbar-height, 52px);
+  padding: 0 10px 0 20px;
+  border-bottom: 0;
+  background: var(--color-toolbar-bg);
+  user-select: none;
+}
+
+[data-ui-theme] .mail-list-title-block {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
 [data-ui-theme] .mail-list-title-row {
@@ -61,64 +72,88 @@
   color: var(--color-text-primary);
   font-family: var(--font-display);
   font-size: var(--mail-heading-size);
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  line-height: 19px;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-ui-theme] .mail-list-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 1px 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 [data-ui-theme] .mail-list-scope {
   overflow: hidden;
-  max-width: 130px;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  font-weight: 500;
+  min-width: 0;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+[data-ui-theme] .mail-list-scope::after {
+  content: "·";
+  margin-left: 5px;
 }
 
 [data-ui-theme] .mail-list-count {
   flex-shrink: 0;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-weight: 400;
 }
 
 [data-ui-theme] .mail-list-view-tools {
   display: flex;
   flex-shrink: 0;
-  gap: 4px;
+  gap: 2px;
   margin-left: auto;
 }
 
 [data-ui-theme] .mail-list-panel .inbox-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
-  height: 30px;
+  height: 28px;
   flex-basis: 30px;
   padding: 0;
-  border-radius: var(--ui-radius-md);
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
   color: var(--color-text-secondary);
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease),
+    color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 [data-ui-theme] .mail-list-panel .inbox-toolbar-button:hover:not(:disabled) {
-  background: var(--color-bg-hover);
+  background: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
   color: var(--color-text-primary);
 }
 
+[data-ui-theme] .mail-list-panel .inbox-toolbar-button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  color: var(--color-text-primary);
+}
+
+/* ── Search field under the title ────────────────────────────────────────── */
 [data-ui-theme] .mail-list-panel .inbox-toolbar-row {
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  background: transparent;
+  gap: 6px;
+  padding: 0 12px 8px;
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-toolbar-bg);
   box-shadow: none;
 }
 
@@ -127,48 +162,55 @@
 }
 
 [data-ui-theme] .mail-list-panel .search-toolbar {
-  gap: 6px;
+  gap: 4px;
   padding: 0;
 }
 
 [data-ui-theme] .mail-list-panel .search-input-shell {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 11px;
-  border: 1px solid var(--color-border);
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
   border-radius: var(--ui-radius-md);
-  background: var(--color-bg);
-  transition: border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  background: var(--color-field-bg);
+  box-shadow: none;
+  transition: box-shadow var(--ui-motion-fast) var(--ui-motion-ease),
+    background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 [data-ui-theme] .mail-list-panel .search-input-shell:focus-within {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  background: var(--color-bg);
+  box-shadow: 0 0 0 1px var(--color-accent), 0 0 0 4px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 [data-ui-theme] .mail-list-panel .search-input {
-  font-size: 12.5px;
+  font-size: 13px;
+}
+
+/* The field's shell draws the focus ring; the bare input inside must not
+   draw a second one. */
+[data-ui-theme] .search-input-shell .search-input:focus-visible {
+  outline: none;
 }
 
 [data-ui-theme] .mail-toolbar-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 10px;
-  border: 1px solid var(--color-border);
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
   border-radius: var(--ui-radius-sm);
-  background: var(--color-bg);
+  background: var(--color-control-bg);
+  box-shadow: var(--ui-shadow-sm);
   color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 500;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 [data-ui-theme] .mail-toolbar-chip:hover:not(:disabled) {
   background: var(--color-bg-hover);
-  border-color: var(--color-border-strong);
 }
 
 [data-ui-theme] .mail-toolbar-chip:disabled {
@@ -181,10 +223,21 @@
   overflow: hidden;
 }
 
-[data-ui-theme] .mail-batch-toolbar {
-  flex-wrap: wrap;
+[data-ui-theme] .mail-list-rows [role="listbox"]:focus {
+  outline: none;
 }
 
+[data-ui-theme] .message-list-scroll,
+[data-ui-theme] .thread-list-scroll {
+  padding-top: 4px;
+}
+
+[data-ui-theme] .mail-batch-toolbar {
+  flex-wrap: wrap;
+  border-bottom-color: var(--color-separator) !important;
+}
+
+/* ── Reader pane shell ───────────────────────────────────────────────────── */
 [data-ui-theme] .mail-reader-panel {
   flex: 1;
   min-width: 0;
@@ -194,65 +247,99 @@
 }
 
 [data-ui-theme] .mail-reader-panel--empty {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+/* With nothing open the toolbar row stays, so the window keeps one title area
+   across all three panes. */
+[data-ui-theme] .mail-reader-toolbar {
+  flex: none;
+  height: var(--ui-toolbar-height, 52px);
+  border-bottom: 0;
+  background: var(--color-toolbar-bg);
 }
 
 [data-ui-theme] .mail-reader-empty {
-  max-width: 340px;
-  padding: 36px 28px;
+  max-width: 320px;
+  margin: auto;
+  padding: 0 28px 52px;
   text-align: center;
 }
 
 [data-ui-theme] .mail-reader-empty-mark {
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 20px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--ui-radius-lg);
-  color: var(--color-accent);
-  background: var(--color-list-bg);
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-secondary);
 }
 
 [data-ui-theme] .mail-reader-empty h2 {
-  margin: 0 0 8px;
-  color: var(--color-text-primary);
+  margin: 0 0 4px;
+  color: var(--color-text-secondary);
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
 }
 
 [data-ui-theme] .mail-reader-empty p {
   margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  line-height: 1.65;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
-/* Message & thread list rows */
+/* ── Message & thread rows ───────────────────────────────────────────────────
+ * Avatar, sender and date, subject, two lines of preview. The unread dot sits
+ * in the row's leading gutter; rows are inset with rounded selection and the
+ * separators start where the text does. */
 [data-ui-theme] .mail-row {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   box-sizing: border-box;
   min-height: var(--mail-row-height);
   margin: var(--mail-row-margin);
   padding: var(--mail-row-padding);
   overflow: hidden;
-  border-bottom: 1px var(--mail-row-rule) var(--mail-row-rule-color);
+  border: 0;
   border-radius: var(--mail-row-radius);
   color: var(--color-text-primary);
   font-weight: 400;
-  cursor: pointer;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  cursor: default;
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
-/* One selector owns each state so unread styling never obscures active focus isolation. */
+[data-ui-theme] .mail-row::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 0;
+  left: var(--mail-row-text-inset);
+  height: 1px;
+  background: var(--color-separator);
+  pointer-events: none;
+}
+
+/* No hairline against a selected row, above or below it. */
+[data-ui-theme] .mail-row[aria-selected="true"]::after,
+[data-ui-theme] [data-index]:has(+ [data-index] > .mail-row[aria-selected="true"]) > .mail-row::after {
+  opacity: 0;
+}
+
+[data-ui-theme] .mail-row:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline-offset: -2px;
+}
+
+/* One selector owns each state so unread styling never hides the selection. */
 [data-ui-theme] .mail-row:is(.message-list-row, .thread-list-row)[aria-selected="false"] {
   background: var(--mail-unread-bg);
 }
@@ -262,9 +349,22 @@
 }
 
 [data-ui-theme] .mail-row:is(.message-list-row, .thread-list-row)[aria-selected="true"] {
-  background: var(--mail-selected-bg);
-  box-shadow: var(--mail-selected-shadow);
+  background: var(--color-selection-inactive);
+  box-shadow: none;
   z-index: 1;
+}
+
+/* The list has focus: the selected row takes the accent and its text turns
+   white. Re-pointing the colour tokens inside the row also reaches icons whose
+   colour is set inline. */
+[data-ui-theme] [role="listbox"]:focus-within .mail-row:is(.message-list-row, .thread-list-row)[aria-selected="true"] {
+  --color-text-primary: var(--color-selection-text);
+  --color-text-secondary: var(--color-selection-muted);
+  --color-text-tertiary: var(--color-selection-muted);
+  --color-accent: var(--color-selection-text);
+  --color-unread: var(--color-selection-text);
+  background: var(--color-selection-fill);
+  color: var(--color-selection-text);
 }
 
 [data-ui-theme] .mail-row-main {
@@ -280,8 +380,8 @@
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
-  margin-bottom: 3px;
-  line-height: 19px;
+  margin-bottom: 1px;
+  line-height: 18px;
 }
 
 [data-ui-theme] .mail-row-contact {
@@ -305,9 +405,9 @@
 [data-ui-theme] .mail-row .message-row-sender-name,
 [data-ui-theme] .mail-row .thread-row-participants {
   overflow: hidden;
-  color: var(--color-text-secondary);
-  font-size: 13.5px;
-  font-weight: 500;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -315,12 +415,12 @@
 [data-ui-theme] .mail-row .message-row-subject,
 [data-ui-theme] .mail-row .thread-row-subject {
   overflow: hidden;
-  margin-bottom: 3px;
-  color: var(--color-text-secondary);
+  margin-bottom: 1px;
+  color: var(--color-text-primary);
   font-family: var(--mail-subject-font);
-  font-size: 13px;
-  font-weight: 450;
-  line-height: 18px;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 17px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -329,9 +429,14 @@
   color: var(--color-text-primary);
 }
 
+/* Read mail steps back a little; unread mail carries the weight. */
+[data-ui-theme] .mail-row:not(.message-list-row--unread, .thread-list-row--unread) :is(.message-row-sender-name, .thread-row-participants) {
+  font-weight: 500;
+}
+
 [data-ui-theme] .mail-row:is(.message-list-row--unread, .thread-list-row--unread) :is(.message-row-sender-name, .thread-row-participants) {
   color: var(--color-text-primary);
-  font-weight: 650;
+  font-weight: 700;
 }
 
 [data-ui-theme] .mail-row:is(.message-list-row--unread, .thread-list-row--unread) :is(.message-row-subject, .thread-row-subject) {
@@ -340,13 +445,18 @@
 }
 
 [data-ui-theme] .mail-row-snippet {
+  display: -webkit-box;
   overflow: hidden;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 400;
-  line-height: 18px;
+  line-height: 16.5px;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 [data-ui-theme] .mail-row-flags {
@@ -359,72 +469,78 @@
 [data-ui-theme] .mail-row :is(.message-row-date, .thread-row-date) {
   color: var(--color-text-tertiary);
   font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 11.5px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 [data-ui-theme] .mail-row:is(.message-list-row--unread, .thread-list-row--unread) :is(.message-row-date, .thread-row-date) {
   color: var(--color-accent);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 [data-ui-theme] .mail-row :is(.message-row-unread-dot, .thread-row-unread-dot) {
+  position: absolute;
   display: var(--mail-unread-marker-display);
-  top: 20px;
-  left: 8px;
-  width: 6px;
-  height: 6px;
+  top: 17px;
+  left: 9px;
+  width: 9px;
+  height: 9px;
   margin: 0;
-  background: var(--color-accent);
+  border-radius: 50%;
+  background: var(--color-unread);
 }
 
 [data-ui-theme] .mail-row-avatar {
   display: var(--mail-avatar-display);
   place-items: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  margin-top: 2px;
+  width: 36px;
+  height: 36px;
+  margin-top: 1px;
   border-radius: 50%;
-  color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--sender-color) 24%, var(--color-bg));
+  color: color-mix(in srgb, var(--sender-color) 72%, #000000);
+  background: color-mix(in srgb, var(--sender-color) 20%, #ffffff);
   font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+[data-theme="dark"] .mail-row-avatar {
+  color: color-mix(in srgb, var(--sender-color) 55%, #ffffff);
+  background: color-mix(in srgb, var(--sender-color) 30%, #1e1e20);
 }
 
 [data-ui-theme] .mail-row-index {
   display: var(--mail-index-display);
-  flex-shrink: 0;
-  min-width: 16px;
-  padding-top: 3px;
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
 }
 
+/* Quick actions take the date's place on hover, the way a desktop client
+   offers archive, star and the rest without opening the message. */
 [data-ui-theme] .mail-row-actions {
   position: absolute;
-  top: 50%;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--color-bg);
-  box-shadow: var(--ui-shadow-sm);
-  transform: translateY(-50%);
+  gap: 1px;
+  padding: 1px 2px;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: inherit;
+  box-shadow: none;
+  transform: none;
 }
 
 [data-ui-theme] .mail-row-action {
   display: flex;
   align-items: center;
-  padding: 5px;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
   border: 0;
   border-radius: var(--ui-radius-sm);
   color: var(--color-text-secondary);
@@ -434,7 +550,7 @@
 
 [data-ui-theme] .mail-row-action:hover:not(:disabled) {
   color: var(--color-text-primary);
-  background: var(--color-bg-hover);
+  background: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
 }
 
 [data-ui-theme] .mail-row-action:disabled {
@@ -442,6 +558,7 @@
   cursor: default;
 }
 
+/* ── Centre states (welcome, not synced) ─────────────────────────────────── */
 .mail-state-center {
   display: flex;
   flex-direction: column;
@@ -449,15 +566,16 @@
   justify-content: center;
   height: 100%;
   padding: 32px;
-  gap: 12px;
+  gap: 8px;
   text-align: center;
   color: var(--color-text-secondary);
   background: var(--color-reader-bg);
 }
 
 .mail-state-center-title {
-  margin: 0;
-  font-size: 16px;
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 17px;
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -465,49 +583,53 @@
 .mail-state-center-hint,
 .mail-state-detail {
   margin: 0;
-  max-width: 360px;
+  max-width: 340px;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.55;
   color: var(--color-text-secondary);
 }
 
 .mail-state-error {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--color-error);
 }
 
 .mail-state-primary-btn {
-  margin-top: 4px;
-  padding: 8px 18px;
-  border: 1px solid transparent;
+  margin-top: 10px;
+  min-height: 28px;
+  padding: 4px 16px;
+  border: 0;
   border-radius: var(--ui-radius-md);
-  background: var(--color-accent);
+  background: var(--color-accent-fill);
   color: var(--color-accent-contrast);
   font-size: 13px;
-  font-weight: 600;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  font-weight: 500;
+  box-shadow: var(--ui-shadow-sm);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .mail-state-primary-btn:hover:not(:disabled) {
-  background: var(--color-accent-hover);
+  background: var(--color-accent-fill-hover);
 }
 
 .mail-state-primary-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 .mail-state-secondary-btn {
   margin-top: 4px;
-  padding: 7px 16px;
-  border: 1px solid var(--color-border-strong);
+  min-height: 28px;
+  padding: 4px 14px;
+  border: 0;
   border-radius: var(--ui-radius-md);
-  background: var(--color-bg);
-  color: var(--color-accent);
+  background: var(--color-control-bg);
+  box-shadow: var(--ui-shadow-sm);
+  color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 500;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .mail-state-secondary-btn:hover:not(:disabled) {
@@ -534,12 +656,8 @@
   }
 
   [data-ui-theme] .mail-list-heading {
-    padding-right: 12px;
-    padding-left: 14px;
-  }
-
-  [data-ui-theme] .mail-list-title {
-    font-size: min(var(--mail-heading-size), 20px);
+    padding-right: 8px;
+    padding-left: 16px;
   }
 }
 

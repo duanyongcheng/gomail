@@ -1,11 +1,11 @@
 {
   "appThemes": {
     "title": "Interface theme",
-    "description": "Unified Harbor Chartroom interface designed for comfortable reading and effortless scanning. Color mode and message templates stay independent.",
+    "description": "Unified Clarity interface: a full-height sidebar, an avatar message list, and a calm reading pane. Color mode and message templates stay independent.",
     "colorMode": "Color mode",
     "selected": "Selected",
-    "harbor": "Harbor Chartroom",
-    "harborDesc": "Layered chartroom panes, high-contrast reading surface, marine-cerulean focus, and terracotta privacy strip—adapting cleanly across light and dark modes."
+    "harbor": "Clarity",
+    "harborDesc": "A native three-pane desktop layout: full-height sidebar, comfortable avatar message list, focus-aware selection, and a quiet white reading pane in light and dark."
   },
   "cloudDrafts": {
     "notice": "Autosave is encrypted on this device only; not synced to Gmail automatically. Upload saved changes explicitly. Sending a linked draft consumes its Gmail copy only after Gmail accepts the send. Do not edit the same draft in Gmail and GoMail at the same time.",
@@ -135,7 +135,9 @@
   "inbox": {
     "loadedMessages": "{{count}} loaded",
     "loadedThreads": "{{count}} conversations loaded",
-    "selectMessage": "Your next good read",
+    "listSubtitleMessages": "{{n}} messages",
+    "listSubtitleThreads": "{{n}} conversations",
+    "selectMessage": "No message selected",
     "selectMessageHint": "Select a message or conversation from the list to read it here.",
     "mailbox": "Mailbox",
     "searchPlaceholder": "Search messages...",

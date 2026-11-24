@@ -422,7 +422,7 @@ export default function TranslateTab() {
         <button
           style={{
             ...buttonStyle,
-            background: "var(--color-accent)",
+            background: "var(--color-accent-fill)",
             color: "#fff",
             opacity: saving ? 0.6 : 1,
           }}

@@ -11,11 +11,10 @@ import {
   Clock,
   Star,
   ContactRound,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelLeft,
   Inbox,
   Send,
-  PenLine,
+  SquarePen,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -642,19 +641,33 @@ export default function Sidebar() {
         flexShrink: 0,
       }}
     >
-      <div className="sidebar-compose-wrap">
-        <button
-          type="button"
-          className="sidebar-compose-button"
-          aria-label={t("sidebar.compose", "Compose")}
-          title={t("sidebar.compose", "Compose")}
-          disabled={activeView === "compose"}
-          onClick={() => openCompose("new")}
-        >
-          <PenLine size={sidebarCollapsed ? COLLAPSED_ICON_SIZE : ICON_SIZE} aria-hidden="true" />
-          {!sidebarCollapsed && <span>{t("sidebar.compose", "Compose")}</span>}
-          {!sidebarCollapsed && composeShortcut && <kbd>{composeShortcut}</kbd>}
-        </button>
+      {/* The sidebar's own toolbar row. On macOS it is also the window's title
+          area: the traffic lights sit at its leading edge and the empty part of
+          the row drags the window. The two controls are the ones the platform's
+          mail client keeps here — fold the sidebar, write a new message. */}
+      <div className="sidebar-topbar" data-tauri-drag-region>
+        <div className="sidebar-topbar-actions">
+          <button
+            type="button"
+            className="sidebar-topbar-button sidebar-toggle-button"
+            aria-label={collapseLabel}
+            title={collapseLabel}
+            aria-pressed={!sidebarCollapsed}
+            onClick={toggleSidebar}
+          >
+            <PanelLeft size={17} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="sidebar-topbar-button sidebar-compose-button"
+            aria-label={t("sidebar.compose", "Compose")}
+            title={composeShortcut ? `${t("sidebar.compose", "Compose")} (${composeShortcut})` : t("sidebar.compose", "Compose")}
+            disabled={activeView === "compose"}
+            onClick={() => openCompose("new")}
+          >
+            <SquarePen size={17} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        </div>
       </div>
       {/* Search. It reads as a field because it opens a view rather than
           filtering the list in place, and it names the key that gets there. */}
@@ -718,11 +731,7 @@ export default function Sidebar() {
         )}
       </nav>
 
-      <div className="sidebar-divider" />
-
-      {/* Bottom nav: the app's own destinations, then the control that folds the
-          sidebar away. That control lives here rather than in a header so it is
-          still reachable once the labels are gone. */}
+      {/* Bottom nav: the app's own destinations that belong to no mailbox. */}
       <nav
         className="sidebar-nav sidebar-nav--bottom"
         aria-label={t("sidebar.tools", "Tools")}
@@ -750,13 +759,6 @@ export default function Sidebar() {
           collapsed={sidebarCollapsed}
           indicatorDot={hasUpdateDot}
           onClick={() => safeSetActiveView("settings")}
-        />
-        <SidebarButton
-          icon={sidebarCollapsed ? <PanelLeftOpen size={iconSize} /> : <PanelLeftClose size={iconSize} />}
-          label={collapseLabel}
-          isActive={false}
-          collapsed={sidebarCollapsed}
-          onClick={toggleSidebar}
         />
       </nav>
 

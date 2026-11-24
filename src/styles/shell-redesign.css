@@ -1,10 +1,16 @@
-/* Harbor Chartroom shell: titlebar, collapsible navigation rail, and status horizon. */
+/* Clarity shell: a full-height source-list sidebar whose top row is also the
+ * window's title area, toolbar rows that drag the window, and the sync status
+ * at the foot of the sidebar instead of a bar under the panes. */
+
+/* ── Title bar (Windows / Linux only) ─────────────────────────────────────────
+ * macOS draws no title bar row at all; the traffic lights sit in the sidebar's
+ * toolbar. Elsewhere a slim row keeps the window controls. */
 .app-titlebar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  height: var(--ui-titlebar-height, 40px);
+  height: var(--ui-titlebar-height, 36px);
   min-width: 0;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-titlebar-bg);
@@ -15,10 +21,10 @@
 .app-titlebar-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-width: 0;
   height: 100%;
-  padding: 0 16px;
+  padding: 0 14px;
 }
 
 .app-titlebar--mac .app-titlebar-brand {
@@ -26,26 +32,25 @@
 }
 
 .app-titlebar-logo {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .app-titlebar-name {
   flex-shrink: 0;
-  font-size: 12.5px;
-  font-weight: 650;
-  letter-spacing: -0.005em;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .app-titlebar-breadcrumb {
   min-width: 0;
-  margin-left: 4px;
-  padding-left: 12px;
+  margin-left: 2px;
+  padding-left: 10px;
   border-left: 1px solid var(--color-border-strong);
   color: var(--color-text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -61,15 +66,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  width: 46px;
   height: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease),
+    color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .app-window-button:hover {
@@ -78,146 +83,232 @@
 }
 
 .app-window-button--close:hover {
-  background: var(--color-error);
+  background: #c42b1c;
   color: #ffffff;
 }
 
-.app-window-button:focus-visible,
-.sidebar-compose-button:focus-visible {
+.app-window-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -3px;
 }
 
-[data-ui-theme] .sidebar {
-  --sidebar-avatar-radius: 50%;
+/* ── Toolbar rows drag the window ─────────────────────────────────────────────
+ * Every pane's 52px header is part of the window's title area, so an empty
+ * stretch of any of them moves the window. Buttons and fields inside stay
+ * clickable: the bridge never starts a drag on an interactive element. */
+.app-shell--mac :is(
+  .sidebar-topbar,
+  .mail-list-heading,
+  .app-reader-toolbar,
+  .mail-reader-toolbar,
+  .thread-reader-header,
+  .compose-workspace-header,
+  .secondary-mail-heading,
+  .settings-navigation
+) {
+  --app-region: drag;
+}
+
+/* ── Sidebar column ───────────────────────────────────────────────────────────
+ * One tinted plane from the top of the window to the bottom: the source list,
+ * then the status footer under it. */
+.app-sidebar-column {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: var(--ui-sidebar-width, 244px);
   height: 100%;
-  min-width: 0;
-  overflow: hidden;
+  min-height: 0;
   border-right: 1px solid var(--color-border);
   background: var(--color-sidebar-bg);
-  transition: width var(--ui-motion-base, 190ms) var(--ui-motion-ease, ease);
+}
+
+[data-ui-theme] .sidebar {
+  --sidebar-avatar-radius: 6px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--ui-sidebar-width, 236px);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 0;
+  background: transparent;
+  color: var(--color-sidebar-text);
+  transition: width var(--ui-motion-base) var(--ui-motion-ease);
 }
 
 [data-ui-theme] .sidebar--collapsed {
-  width: 60px;
+  width: var(--ui-sidebar-collapsed-width, 64px);
 }
 
-.sidebar-compose-wrap {
-  flex-shrink: 0;
-  padding: 12px 12px 10px;
+/* The traffic lights need their own room even when the labels are gone. */
+[data-ui-theme] .app-shell--mac .sidebar--collapsed {
+  width: max(var(--ui-sidebar-collapsed-width, 64px), var(--mygo-titlebar-inset-left, 78px));
 }
 
-.sidebar-compose-button {
+/* ── Sidebar toolbar row ─────────────────────────────────────────────────── */
+.sidebar-topbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 38px;
-  padding: 8px 13px;
-  border: 1px solid transparent;
-  border-radius: var(--ui-radius-md, 8px);
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
-  font: 600 13px var(--font-ui, inherit);
-  text-align: left;
-  cursor: pointer;
-  box-shadow: var(--ui-shadow-sm);
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    box-shadow var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    opacity var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
-}
-
-.sidebar-compose-button:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  box-shadow: var(--ui-shadow-md);
-}
-
-.sidebar-compose-button:disabled {
-  cursor: default;
-  opacity: 0.6;
-  box-shadow: none;
-}
-
-.sidebar-compose-button > svg {
+  justify-content: flex-end;
   flex-shrink: 0;
+  height: 44px;
+  padding: 0 10px;
+  user-select: none;
 }
 
-.sidebar-compose-button > kbd {
-  margin-left: auto;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: color-mix(in srgb, currentColor 16%, transparent);
-  font-family: var(--font-mono, monospace);
-  font-size: 10.5px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+.app-shell--mac .sidebar-topbar {
+  height: var(--ui-toolbar-height, 52px);
+  padding-left: var(--mygo-titlebar-inset-left, 78px);
 }
 
-[data-ui-theme] .sidebar--collapsed .sidebar-compose-wrap {
-  padding: 12px 10px 8px;
+.sidebar-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
-[data-ui-theme] .sidebar--collapsed .sidebar-compose-button {
+.sidebar-topbar-button {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 8px;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease),
+    color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
+.sidebar-topbar-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  color: var(--color-text-primary);
+}
+
+.sidebar-topbar-button:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text-primary) 13%, transparent);
+}
+
+.sidebar-topbar-button:disabled {
+  opacity: 0.35;
+}
+
+/* Folded: the traffic lights keep the top row, the two controls stack under
+ * them in the rail's centre column. */
+[data-ui-theme] .sidebar--collapsed .sidebar-topbar {
+  flex-direction: column;
+  justify-content: flex-start;
+  height: auto;
+  padding: 8px 0 4px;
+}
+
+[data-ui-theme] .app-shell--mac .sidebar--collapsed .sidebar-topbar {
+  padding-top: var(--ui-toolbar-height, 52px);
+  padding-left: 0;
+}
+
+[data-ui-theme] .sidebar--collapsed .sidebar-topbar-actions {
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-ui-theme] .sidebar--collapsed .sidebar-topbar-button {
+  width: 36px;
+  height: 30px;
+}
+
+/* ── Search field ────────────────────────────────────────────────────────── */
 [data-ui-theme] .sidebar-nav--top {
   padding: 0 10px 6px;
 }
 
 [data-ui-theme] .sidebar-search {
-  background: color-mix(in srgb, var(--color-bg) 72%, var(--color-sidebar-bg));
-  border: 1px solid var(--color-border);
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--ui-radius-md);
+  background: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+}
+
+[data-ui-theme] .sidebar-search .sidebar-row-icon {
+  color: var(--color-text-tertiary);
 }
 
 [data-ui-theme] .sidebar-search:hover:not(:disabled) {
-  background: var(--color-bg);
-  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+  color: var(--color-text-secondary);
 }
 
-[data-ui-theme] .sidebar-section-label {
-  padding: 14px 10px 6px;
+[data-ui-theme] .sidebar-search[data-selected="true"] {
+  background: var(--color-sidebar-active);
+  color: var(--color-text-primary);
+}
+
+[data-ui-theme] .sidebar--collapsed .sidebar-search {
+  background: transparent;
+}
+
+[data-ui-theme] .sidebar-kbd {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: transparent;
   color: var(--color-text-tertiary);
   font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: none;
+  font-weight: 500;
+  line-height: 16px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
 }
 
-[data-ui-theme] .sidebar-row,
-[data-ui-theme] .sidebar-account-row,
-[data-ui-theme] .sidebar-account-button {
-  border-radius: var(--ui-radius-md, 8px);
+/* ── Source list rows ────────────────────────────────────────────────────────
+ * 28px rows, accent-coloured symbols, plain unread numbers and a neutral
+ * rounded fill for the selected destination — no bold, no border. */
+[data-ui-theme] .sidebar-mail-scroll {
+  padding-top: 2px;
+}
+
+[data-ui-theme] .sidebar-mailboxes {
+  gap: 1px;
+  padding: 0 10px 8px;
+}
+
+[data-ui-theme] .sidebar-nav {
+  gap: 1px;
 }
 
 [data-ui-theme] .sidebar-row {
-  min-height: 34px;
-  padding-top: 6px;
-  padding-bottom: 6px;
-  color: var(--color-text-secondary);
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  color: var(--color-sidebar-text);
   font-size: 13px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  transition: color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  font-weight: 400;
+  line-height: 20px;
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
+}
+
+[data-ui-theme] .sidebar-row .sidebar-row-icon {
+  color: var(--color-accent);
 }
 
 [data-ui-theme] .sidebar-row:hover:not(:disabled) {
   background: var(--color-sidebar-hover);
-  color: var(--color-text-primary);
+  color: var(--color-sidebar-text);
 }
 
 [data-ui-theme] .sidebar-row[data-selected="true"],
 [data-ui-theme] .sidebar-row--active {
   background: var(--color-sidebar-active);
-  border-color: var(--color-active-border);
-  color: var(--color-text-primary);
-  font-weight: 600;
+  color: var(--color-sidebar-text);
+  font-weight: 500;
 }
 
 [data-ui-theme] .sidebar-row[data-selected="true"] .sidebar-row-icon,
@@ -225,12 +316,98 @@
   color: var(--color-accent);
 }
 
+[data-ui-theme] .sidebar-row:disabled {
+  opacity: 0.42;
+}
+
+[data-ui-theme] .sidebar-row:disabled .sidebar-row-icon {
+  color: var(--color-text-secondary);
+}
+
+[data-ui-theme] .sidebar-row--collapsed {
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px;
+}
+
 [data-ui-theme] .sidebar-row--nested {
-  font-size: 12.5px;
+  padding-left: 26px;
+  font-size: 13px;
+}
+
+[data-ui-theme] .sidebar-row--nested .sidebar-row-icon {
+  color: var(--color-accent);
+}
+
+[data-ui-theme] .sidebar-unread-dot {
+  top: -1px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  background: var(--color-unread);
+  box-shadow: 0 0 0 1.5px var(--color-sidebar-bg);
+}
+
+/* Unread counts are plain numerals in a fixed trailing column. */
+[data-ui-theme] .sidebar-count-slot {
+  width: 30px;
+}
+
+[data-ui-theme] .sidebar-count {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-ui-theme] .sidebar-row[data-selected="true"] .sidebar-count,
+[data-ui-theme] .sidebar-account-row[data-selected="true"] .sidebar-count {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+/* Section headings: small, grey, sentence case. */
+[data-ui-theme] .sidebar-section-label {
+  padding: 14px 8px 3px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Mailbox groups ──────────────────────────────────────────────────────────
+ * Each account reads as a section of the source list: a small monogram, its
+ * name, its total, and its folders indented under it. */
+[data-ui-theme] .sidebar-mailbox-group {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+[data-ui-theme] .sidebar-section-label + .sidebar-mailbox-group,
+[data-ui-theme] .sidebar-mailbox-group--combined {
+  margin-top: 0;
+}
+
+[data-ui-theme] .sidebar--collapsed .sidebar-mailbox-group {
+  margin: 4px 0 0;
 }
 
 [data-ui-theme] .sidebar-account-row {
-  border: 1px solid transparent;
+  gap: 0;
+  min-height: 28px;
+  padding: 0 8px 0 0;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 [data-ui-theme] .sidebar-account-row:hover {
@@ -238,8 +415,75 @@
 }
 
 [data-ui-theme] .sidebar-account-row[data-selected="true"] {
-  background: var(--color-sidebar-active);
-  border-color: var(--color-active-border);
+  background: transparent;
+}
+
+[data-ui-theme] .sidebar-account-row[data-selected="true"]:hover {
+  background: var(--color-sidebar-hover);
+}
+
+[data-ui-theme] .sidebar-group-toggle,
+[data-ui-theme] .sidebar-group-toggle-spacer {
+  width: 18px;
+  height: 22px;
+}
+
+[data-ui-theme] .sidebar-group-toggle {
+  color: var(--color-text-tertiary);
+}
+
+[data-ui-theme] .sidebar-account-button {
+  gap: 7px;
+  padding: 4px 4px 4px 2px;
+  border-radius: var(--ui-radius-sm);
+}
+
+[data-ui-theme] .sidebar-account-button--collapsed {
+  justify-content: center;
+  padding: 5px;
+}
+
+[data-ui-theme] .sidebar-account-title {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-ui-theme] .sidebar-account-row[data-selected="true"] .sidebar-account-title {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+[data-ui-theme] .sidebar-account-address {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+[data-ui-theme] .sidebar-group-children {
+  gap: 1px;
+  margin: 1px 0 2px;
+}
+
+[data-ui-theme] .sidebar-group-children::before {
+  display: none;
+}
+
+[data-ui-theme] .sidebar-row-action {
+  opacity: 0;
+  transition: opacity var(--ui-motion-fast) var(--ui-motion-ease);
+}
+
+[data-ui-theme] .sidebar-account-row:is(:hover, :focus-within) .sidebar-row-action {
+  opacity: 1;
+}
+
+[data-ui-theme] .sidebar-divider {
+  display: none;
+}
+
+[data-ui-theme] .sidebar-nav--bottom {
+  flex-shrink: 0;
+  padding: 6px 10px 4px;
 }
 
 [data-theme="dark"] .sidebar-account-row,
@@ -247,67 +491,31 @@
   transition: none;
 }
 
-[data-ui-theme] .sidebar-mailbox-group {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
-}
-
-[data-ui-theme] .sidebar-section-label + .sidebar-mailbox-group,
-[data-ui-theme] .sidebar-mailbox-group--combined {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
-[data-ui-theme] .sidebar--collapsed .sidebar-mailbox-group {
-  margin: 4px 0 0;
-  padding: 0;
-  border-top: 0;
-}
-
-[data-ui-theme] .sidebar-count {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  color: var(--color-accent);
-}
-
-[data-ui-theme] .sidebar-row[data-selected="true"] .sidebar-count,
-[data-ui-theme] .sidebar-account-row[data-selected="true"] .sidebar-count {
-  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg));
-  color: var(--color-accent);
-}
-
-[data-ui-theme] .sidebar-kbd {
-  font-family: var(--font-mono, monospace);
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--color-text-tertiary);
-}
-
-[data-ui-theme] .sidebar-nav--bottom {
-  padding: 6px 10px 10px;
-}
-
-/* Harbor-Channel bottom status horizon */
+/* ── Status footer ───────────────────────────────────────────────────────────
+ * Sync state, connection and queued writes read as one quiet line at the foot
+ * of the sidebar. It never sets the column's width: the sidebar does. */
 .app-statusbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   flex-shrink: 0;
-  gap: 12px;
-  min-width: 0;
-  height: var(--ui-statusbar-height, 28px);
-  padding: 0 14px;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-statusbar-bg);
-  color: var(--color-text-secondary);
-  font-size: 11.5px;
+  gap: 4px 8px;
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  min-height: 38px;
+  padding: 7px 10px 9px 18px;
+  border-top: 1px solid color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
+}
+
+.app-statusbar > .truncate {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .app-statusbar-primary {
@@ -315,11 +523,13 @@
   align-items: center;
   flex-shrink: 0;
   gap: 6px;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
 .app-statusbar-primary::before {
   content: "";
+  flex: none;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -328,31 +538,41 @@
 
 .app-statusbar[data-sync="syncing"] .app-statusbar-primary::before {
   background: var(--color-accent);
+  animation: status-pulse 1.4s var(--ui-motion-ease) infinite;
 }
 
-.app-statusbar[data-sync="error"] .app-statusbar-primary::before,
-.app-statusbar[data-network="offline"] .app-statusbar-primary::before {
+.app-statusbar[data-sync="error"] .app-statusbar-primary::before {
   background: var(--color-signal);
+}
+
+/* Offline already carries its own symbol; a dot beside it would say it twice. */
+.app-statusbar[data-network="offline"] .app-statusbar-primary::before {
+  display: none;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 .app-statusbar-beacon {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 1px 8px;
+  max-width: 100%;
+  padding: 1px 7px;
+  border: 0;
   border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
   color: var(--color-text-secondary);
   font-size: 11px;
   font-weight: 500;
-  max-width: 240px;
 }
 
 .app-statusbar-beacon--signal {
-  border-color: var(--color-signal-border);
   background: var(--color-signal-bg);
   color: var(--color-signal-text);
+  box-shadow: inset 0 0 0 1px var(--color-signal-border);
   font-weight: 600;
 }
 
@@ -363,21 +583,20 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
-  color: var(--color-text-secondary);
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  color: var(--color-text-tertiary);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease),
+    color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .app-statusbar-icon-btn:hover:not(:disabled) {
-  background: var(--color-sidebar-hover);
+  background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
   color: var(--color-text-primary);
 }
 
 .app-statusbar-icon-btn[aria-pressed="true"] {
-  background: var(--color-accent-soft);
   color: var(--color-accent);
 }
 
@@ -386,8 +605,8 @@
   align-items: center;
   gap: 5px;
   height: 20px;
-  padding: 0 9px;
-  border: 1px solid var(--color-active-border);
+  padding: 0 8px;
+  border: 0;
   border-radius: 999px;
   background: var(--color-accent-soft);
   color: var(--color-accent);
@@ -397,25 +616,46 @@
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease),
-    border-color var(--ui-motion-fast, 150ms) var(--ui-motion-ease, ease);
+  transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
 .app-statusbar-update-pill:hover {
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg));
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-sidebar-bg));
 }
 
+/* Folded rail: the dot and the sync control, nothing that needs words. */
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar {
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0 10px;
+}
+
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar > :not(.app-statusbar-primary, .app-statusbar-icon-btn) {
+  display: none;
+}
+
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-primary {
+  font-size: 0;
+}
+
+/* Offline strip under the toolbar of whichever view is open. */
 .app-offline-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 18px;
+  gap: 8px;
+  padding: 7px 16px;
   background: var(--color-signal-bg);
   border-bottom: 1px solid var(--color-signal-border);
   color: var(--color-signal-text);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
+}
+
+/* Over a wallpaper the sidebar plane turns translucent with the rest. */
+.app-shell--with-background .app-sidebar-column {
+  background-color: color-mix(in srgb, var(--color-sidebar-bg) 76%, transparent);
+  backdrop-filter: blur(18px);
 }
 
 @media (max-width: 760px) {
@@ -426,15 +666,21 @@
   }
 
   [data-ui-theme] .sidebar:not(.sidebar--collapsed) {
-    width: min(var(--ui-sidebar-width, 244px), 42vw);
+    width: min(var(--ui-sidebar-width, 236px), 42vw);
   }
 
-  .app-shell-content:has(.mail-workspace--detail-open) > .sidebar {
+  .app-shell-content:has(.mail-workspace--detail-open) > .app-sidebar-column,
+  .app-shell-content:has(.mail-workspace--detail-open) .sidebar {
     display: none;
   }
 
+  /* With the sidebar gone the reader's toolbar is the window's leading edge,
+     so it makes room for the traffic lights itself. */
+  .app-shell--mac .app-shell-content:has(.mail-workspace--detail-open, .secondary-mail-workspace--detail-open) :is(.app-reader-toolbar, .thread-reader-header) {
+    padding-left: var(--mygo-titlebar-inset-left, 78px);
+  }
+
   [data-ui-theme] .sidebar-account-row {
-    gap: 0;
     padding-right: 4px;
   }
 
@@ -442,51 +688,24 @@
     width: 24px;
   }
 
-  [data-ui-theme] .sidebar-account-title {
-    font-size: 12px;
-  }
-
   .app-titlebar-brand {
     padding-right: 8px;
     gap: 6px;
   }
 
-  .app-titlebar-breadcrumb {
-    margin-left: 2px;
-    padding-left: 8px;
-  }
-
   .app-window-button {
-    width: 34px;
-  }
-
-  .app-statusbar {
-    gap: 8px;
-    padding-inline: 10px;
-    overflow: hidden;
+    width: 36px;
   }
 }
 
 @media (max-width: 560px) {
-  /* Collapse the navigation rail to icons while viewing Settings on narrow phones
-     so Settings tabs and forms have full readable breathing room without hiding nav. */
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar {
-    width: 52px;
+  /* Viewing Settings on a very narrow window folds the source list to its
+     icons, so the forms keep a readable width without losing navigation. */
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar {
+    width: 56px;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar .sidebar-compose-wrap {
-    padding: 10px 7px 8px;
-  }
-
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar .sidebar-compose-button {
-    justify-content: center;
-    padding: 8px;
-    gap: 0;
-  }
-
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar :is(
-    .sidebar-compose-button > span,
-    .sidebar-compose-button > kbd,
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar :is(
     .sidebar-row-label,
     .sidebar-count-slot,
     .sidebar-kbd,
@@ -499,40 +718,49 @@
     display: none;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar .sidebar-group-children::before {
-    display: none;
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar .sidebar-topbar {
+    justify-content: center;
+    padding-inline: 0;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar :is(.sidebar-nav, .sidebar-mailboxes) {
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar :is(.sidebar-nav, .sidebar-mailboxes) {
     padding-inline: 6px;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar :is(.sidebar-row, .sidebar-row--nested) {
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar :is(.sidebar-row, .sidebar-row--nested) {
     justify-content: center;
-    padding: 7px 0;
+    padding: 6px 0;
     gap: 0;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar .sidebar-account-row {
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar .sidebar-account-row {
     justify-content: center;
     padding: 0;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) > .sidebar .sidebar-account-button {
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .sidebar .sidebar-account-button {
     justify-content: center;
     padding: 6px 0;
     gap: 0;
+  }
+
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar > :not(.app-statusbar-primary, .app-statusbar-icon-btn) {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   [data-ui-theme] .sidebar,
-  .sidebar-compose-button,
+  .sidebar-topbar-button,
   [data-ui-theme] .sidebar-row,
   [data-ui-theme] .sidebar-account-row,
   .app-window-button,
   .app-statusbar-icon-btn,
   .app-statusbar-update-pill {
     transition: none;
+  }
+
+  .app-statusbar[data-sync="syncing"] .app-statusbar-primary::before {
+    animation: none;
   }
 }

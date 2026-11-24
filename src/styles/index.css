@@ -7,48 +7,18 @@
 }
 
 :root {
-  --color-sidebar-bg: #ebf1f4;
-  --color-sidebar-hover: #dfe9ef;
-  --color-sidebar-active: #d6e6f0;
-  --color-titlebar-bg: #ebf1f4;
-  --color-main-bg: #f7fafb;
-  --color-statusbar-bg: #ebf1f4;
-  --color-border: #d4e0e7;
-  --color-text-primary: #142538;
-  --color-text-secondary: #435a70;
-  --color-accent: #155e8a;
-  --color-bg: #ffffff;
-  --color-bg-hover: #edf3f6;
-  --color-bg-secondary: #e3ecf1;
-  --color-scrollbar-track: transparent;
-  --color-scrollbar-thumb: #bfd0db;
-  --color-scrollbar-thumb-hover: #90abc0;
+  color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --color-sidebar-bg: #0e1721;
-  --color-sidebar-hover: #162433;
-  --color-sidebar-active: #1c3145;
-  --color-titlebar-bg: #0e1721;
-  --color-main-bg: #131e2a;
-  --color-statusbar-bg: #0e1721;
-  --color-border: #25384b;
-  --color-text-primary: #ebf2f7;
-  --color-text-secondary: #a8bfd2;
-  --color-accent: #62b3e3;
-  --color-bg: #172432;
-  --color-bg-hover: #1e2e3f;
-  --color-bg-secondary: #223548;
-  --color-scrollbar-track: transparent;
-  --color-scrollbar-thumb: #31485e;
-  --color-scrollbar-thumb-hover: #476684;
+  color-scheme: dark;
 }
 
 html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui, system-ui, sans-serif);
   color: var(--color-text-primary);
   background: var(--color-main-bg);
 }
@@ -81,14 +51,8 @@ html, body, #root {
   backdrop-filter: blur(18px);
 }
 
-.app-shell--with-background .app-shell-content > aside {
-  background-color: color-mix(in srgb, var(--color-sidebar-bg) 76%, transparent) !important;
-  backdrop-filter: blur(18px);
-}
-
-.app-shell--with-background > footer {
-  background-color: color-mix(in srgb, var(--color-statusbar-bg) 76%, transparent) !important;
-  backdrop-filter: blur(18px);
+.app-shell--with-background .app-shell-content > .app-sidebar-column .sidebar {
+  background-color: transparent;
 }
 
 .app-shell--with-background .app-main-scroll {
@@ -327,7 +291,7 @@ option {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--color-accent);
+  background-color: var(--color-accent-fill);
 }
 
 .sidebar-row-label {
@@ -369,7 +333,7 @@ option {
    selection fill instead of blending into it. */
 .sidebar-row[data-selected="true"] .sidebar-count,
 .sidebar-account-row[data-selected="true"] .sidebar-count {
-  background-color: var(--color-accent);
+  background-color: var(--color-accent-fill);
   color: #ffffff;
 }
 
@@ -827,7 +791,7 @@ option {
   background: var(--msg-avatar-background, var(--color-bg-hover));
   color: var(--msg-avatar-color, var(--color-accent));
   font-size: var(--msg-avatar-font-size, 12px);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.02em;
   user-select: none;
 }
@@ -1093,27 +1057,10 @@ option {
   background: var(--color-bg-hover);
 }
 
-/* Unread mail.
-   One cue was not enough. An unread row now carries three: a wash of the accent
-   colour, a marker in the left gutter that lines up as a column down the list,
-   and the sender and subject left at full strength. Read mail recedes to the
-   secondary colour instead, and it is that contrast — not the marker on its own
-   — which lets a list be scanned rather than read a row at a time.
-
-   The wash is scoped to the unselected row so the selection fill always wins.
-   Left unscoped, the dark-mode rule below would tie on specificity with
-   `.message-list-row[aria-selected="true"]` and take the row by source order,
-   painting a selected unread row as unread and losing the selection. */
-.message-list-row--unread[aria-selected="false"],
-.thread-list-row--unread[aria-selected="false"] {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-}
-
-[data-theme="dark"] .message-list-row--unread[aria-selected="false"],
-[data-theme="dark"] .thread-list-row--unread[aria-selected="false"] {
-  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-
+/* Unread mail carries two cues, never a background wash: a dot in the row's
+   leading gutter that lines up as a column down the list, and the sender and
+   subject at full weight. A wash would compete with the selection, which is
+   the only row that is ever filled. */
 /* The marker rides in the row's own left padding, so it costs no layout: the
    sender, subject and snippet keep one left edge whether a row is unread or
    not. Pinned to the first line rather than to the row, it forms a column at a
@@ -1136,7 +1083,7 @@ option {
   height: 7px;
   margin-top: -3.5px;
   border-radius: 999px;
-  background: var(--color-accent);
+  background: var(--color-accent-fill);
 }
 
 /* Read mail steps back so unread mail can step forward. */
@@ -1179,29 +1126,12 @@ option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent);
+  background: var(--color-accent-fill);
   color: #ffffff;
   font-size: 9.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-}
-
-/* Hover deepens the wash rather than replacing it, so an unread row stays
-   visibly unread under the pointer and the fill stays translucent over a
-   wallpaper. */
-.message-list-row--unread[aria-selected="false"]:hover,
-.message-list-row--unread[aria-selected="false"]:focus,
-.thread-list-row--unread[aria-selected="false"]:hover,
-.thread-list-row--unread[aria-selected="false"]:focus {
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-}
-
-[data-theme="dark"] .message-list-row--unread[aria-selected="false"]:hover,
-[data-theme="dark"] .message-list-row--unread[aria-selected="false"]:focus,
-[data-theme="dark"] .thread-list-row--unread[aria-selected="false"]:hover,
-[data-theme="dark"] .thread-list-row--unread[aria-selected="false"]:focus {
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .app-shell--with-background .message-list-row[aria-selected="true"],
@@ -1481,7 +1411,7 @@ textarea:focus-visible {
 }
 
 .compose-source-input.is-code {
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: var(--font-mono, ui-monospace, monospace);
 }
 
 .compose-preview-split {
@@ -1832,7 +1762,7 @@ textarea:focus-visible {
 
 .batch-checkbox:checked {
   border-color: var(--color-accent);
-  background: var(--color-accent);
+  background: var(--color-accent-fill);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
@@ -2016,7 +1946,7 @@ textarea:focus-visible {
 .contacts-empty-state h2 {
   margin: 0;
   color: var(--color-text-primary);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.025em;
 }
 
@@ -2338,7 +2268,7 @@ textarea:focus-visible {
   margin: 0 0 12px;
   color: var(--color-text-secondary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -2443,7 +2373,7 @@ textarea:focus-visible {
 
 .contact-primary-button {
   border: 1px solid var(--color-accent);
-  background: var(--color-accent);
+  background: var(--color-accent-fill);
   color: #fff;
 }
 

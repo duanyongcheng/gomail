@@ -15,7 +15,7 @@ var uiThemeSelftestMatrix = []struct {
 	id        string
 	rowHeight int
 }{
-	{"harbor", 88},
+	{"harbor", 92},
 }
 
 func uiThemeSelftestCheck(theme, mode string) string {
@@ -113,7 +113,7 @@ func uiThemeRenderedScript(theme, mode string, rowHeight int) string {
   const box=detail.getBoundingClientRect(),row=rows[0].getBoundingClientRect();
   if(box.width<200||box.right>innerWidth+2||box.left<0||row.height<%d-12||row.height>%d+80)return false;
   const size=parseFloat(getComputedStyle(title).fontSize);
-  const expected={harbor:24};
+  const expected={harbor:17};
   if(Math.abs(size-expected[%s])>1)return false;
   if(!getComputedStyle(title).fontFamily)return false;
   return true;

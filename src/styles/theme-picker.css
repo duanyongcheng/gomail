@@ -1,9 +1,9 @@
-/* Appearance settings: unified Harbor preview card, color mode, and message templates. */
+/* Appearance settings: unified Clarity preview card, color mode, and message templates. */
 .appearance-section-title {
   margin: 0 0 8px;
   color: var(--color-text-primary);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .appearance-section-title--spaced {
@@ -32,19 +32,19 @@
   min-width: 0;
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border-strong);
+  border: 0;
   border-radius: var(--ui-radius-lg);
   background: var(--color-bg);
   color: var(--color-text-primary);
   text-align: left;
   font-family: inherit;
-  box-shadow: var(--ui-shadow-sm);
+  box-shadow: var(--ui-shadow-sm), 0 0 0 1px var(--color-border);
   cursor: default;
   transition: border-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
-.app-theme-option:hover {
-  border-color: var(--color-border-strong);
+.app-theme-option[data-active="true"] {
+  box-shadow: var(--ui-shadow-sm), 0 0 0 2px var(--color-accent);
 }
 
 .app-theme-option:focus-visible {
@@ -53,6 +53,7 @@
 }
 
 .app-theme-preview {
+  position: relative;
   width: 100%;
   height: 126px;
   flex: none;
@@ -62,36 +63,45 @@
   color: var(--app-preview-text);
 }
 
+/* The preview draws the window the way the app is laid out: the sidebar runs
+   to the top and carries the window controls. */
 .app-theme-preview-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   height: 14px;
-  padding: 0 8px;
-  background: var(--app-preview-sidebar);
-  border-bottom: 1px solid var(--app-preview-line);
+  padding: 0 7px;
+  background: transparent;
+  border: 0;
 }
 
 .app-theme-preview-titlebar > i {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--app-preview-muted);
+  background: #ff5f57;
+}
+
+.app-theme-preview-titlebar > i:nth-child(2) {
+  background: #febc2e;
+}
+
+.app-theme-preview-titlebar > i:nth-child(3) {
+  background: #28c840;
 }
 
 .app-theme-preview-titlebar > span {
-  width: 28px;
-  height: 3px;
-  margin-left: 6px;
-  border-radius: 2px;
-  background: var(--app-preview-text);
-  opacity: 0.6;
+  display: none;
 }
 
 .app-theme-preview-panes {
   display: grid;
   grid-template-columns: 24% 33% 1fr;
-  height: calc(100% - 14px);
+  height: 100%;
 }
 
 .app-theme-preview-sidebar,
@@ -106,12 +116,16 @@
   border-right: 1px solid var(--app-preview-line);
 }
 
+.app-theme-preview-sidebar {
+  padding-top: 18px;
+}
+
 .app-theme-preview-sidebar > b {
   display: block;
-  height: 10px;
+  height: 7px;
   margin-bottom: 8px;
   border-radius: 3px;
-  background: var(--app-preview-accent);
+  background: color-mix(in srgb, var(--app-preview-text) 9%, transparent);
 }
 
 .app-theme-preview-sidebar > i {
@@ -187,8 +201,22 @@
   margin-top: 4px;
 }
 
+.app-theme-preview-row {
+  border-radius: 3px;
+}
+
 .app-theme-preview-row:nth-child(3) {
-  background: var(--app-preview-reader);
+  border-bottom-color: transparent;
+  background: var(--app-preview-accent);
+}
+
+.app-theme-preview-row:nth-child(3) > i {
+  background: transparent;
+}
+
+.app-theme-preview-row:nth-child(3) :is(b, em) {
+  background: #ffffff;
+  opacity: 0.85;
 }
 
 .app-theme-preview-reader {
@@ -257,7 +285,7 @@
 .app-theme-option-name {
   flex: 1;
   font-size: 13.5px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .app-theme-option-info > p {

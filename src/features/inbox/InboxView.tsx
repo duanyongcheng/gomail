@@ -112,9 +112,12 @@ export default function InboxView() {
     ? t("inbox.loadedThreads", "{{count}} conversations loaded", { count: loadedCount })
     : t("inbox.loadedMessages", "{{count}} loaded", { count: loadedCount });
   const moreAvailable = threadView ? moreThreads : hasNextPage;
+  const loadedCountText = `${loadedCount.toLocaleString()}${moreAvailable ? "+" : ""}`;
   const mailboxLabel = activeAccountId
     ? accounts.find((account) => account.id === activeAccountId)?.account_label || accounts.find((account) => account.id === activeAccountId)?.email
     : t("sidebar.allAccounts", "All accounts");
+  // A single mailbox needs no scope line: the sidebar already says whose it is.
+  const showMailboxScope = accounts.length > 1;
 
   // Escape closes whatever this view has open — a thread or a single message.
   useCloseMessageDetail(detailOpen, () => {
@@ -177,37 +180,42 @@ export default function InboxView() {
     <div className={`mail-workspace${detailOpen ? " mail-workspace--detail-open" : ""}`}>
       <section className="mail-list-panel" aria-label={folderTitle}>
         <header className="mail-list-heading">
-          <div className="mail-list-title-row">
+          <div className="mail-list-title-block">
             <h1 className="mail-list-title" title={mailboxLabel}>{folderTitle}</h1>
-            <span
-              className="mail-list-count"
-              title={loadedCountLabel}
-              aria-label={loadedCountLabel}
-            >
-              {loadedCount.toLocaleString()}{moreAvailable ? "+" : ""}
-            </span>
-            <div className="mail-list-view-tools">
-              {!threadView && (
-                <button
-                  type="button"
-                  onClick={() => useMailStore.getState().toggleBatchMode()}
-                  aria-label={t("batch.toggle", "Batch select")}
-                  className="inbox-toolbar-button"
-                  title={t("batch.toggle", "Batch select")}
-                >
-                  <CheckSquare size={15} />
-                </button>
-              )}
+            <p className="mail-list-subtitle">
+              {showMailboxScope && <span className="mail-list-scope">{mailboxLabel}</span>}
+              <span
+                className="mail-list-count"
+                title={loadedCountLabel}
+                aria-label={loadedCountLabel}
+              >
+                {threadView
+                  ? t("inbox.listSubtitleThreads", "{{n}} conversations", { n: loadedCountText })
+                  : t("inbox.listSubtitleMessages", "{{n}} messages", { n: loadedCountText })}
+              </span>
+            </p>
+          </div>
+          <div className="mail-list-view-tools">
+            {!threadView && (
               <button
                 type="button"
-                onClick={toggleThreadView}
-                aria-label={threadView ? t("inbox.messageView") : t("inbox.threadView")}
+                onClick={() => useMailStore.getState().toggleBatchMode()}
+                aria-label={t("batch.toggle", "Batch select")}
                 className="inbox-toolbar-button"
-                title={threadView ? t("inbox.messageView") : t("inbox.threadView")}
+                title={t("batch.toggle", "Batch select")}
               >
-                {threadView ? <List size={15} /> : <MessageSquare size={15} />}
+                <CheckSquare size={16} strokeWidth={1.75} />
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={toggleThreadView}
+              aria-label={threadView ? t("inbox.messageView") : t("inbox.threadView")}
+              className="inbox-toolbar-button"
+              title={threadView ? t("inbox.messageView") : t("inbox.threadView")}
+            >
+              {threadView ? <List size={16} strokeWidth={1.75} /> : <MessageSquare size={16} strokeWidth={1.75} />}
+            </button>
           </div>
         </header>
         <div className="inbox-toolbar-row">
@@ -299,11 +307,14 @@ export default function InboxView() {
             ) : null}
           </>
         ) : (
+          <>
+          <div className="mail-reader-toolbar" aria-hidden="true" />
           <div className="mail-reader-empty">
             <div className="mail-reader-empty-mark" aria-hidden="true"><Mail size={30} strokeWidth={1.1} /></div>
-            <h2>{t("inbox.selectMessage", "Your next good read")}</h2>
+            <h2>{t("inbox.selectMessage", "No message selected")}</h2>
             <p>{t("inbox.selectMessageHint", "Select a message or conversation from the list to read it here.")}</p>
           </div>
+          </>
         )}
       </section>
     </div>

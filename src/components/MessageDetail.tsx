@@ -29,6 +29,7 @@ import type { EmailAddress } from "@/lib/api";
 import ContactAddressAction from "./ContactAddressAction";
 import { uniqueContactParticipants } from "./contact-participants";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
+import { deriveAccountColor } from "@/lib/accountColors";
 
 interface Props {
   messageId: string;
@@ -377,7 +378,13 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   // Kept as one node so header and sidebar share the exact same markup — only
   // the surrounding grid container differs.
   const avatarNode = layout.avatar ? (
-    <span className="message-detail-avatar" aria-hidden="true">
+    <span
+      className="message-detail-avatar"
+      aria-hidden="true"
+      // The same colour the sender's avatar carries in the message list, so the
+      // two read as one person.
+      style={{ "--sender-color": deriveAccountColor(message.from_address) } as CSSProperties}
+    >
       {senderInitials(message.from_name, message.from_address)}
     </span>
   ) : null;
@@ -594,14 +601,22 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
             {actionToolbar}
             {headerActions}
           </div>
-          {privacyNode}
           <div className="scroll-region app-reader-scroll">
             <article className="app-reader-sheet">
-              {titleNode}
-              <div className="app-reader-sender">
+              {/* The platform's mail header: avatar, then sender and date, the
+                  subject, and the recipients. The subject comes first in the
+                  document so it is still the heading a screen reader lands on;
+                  the grid places it on the second line. */}
+              <header className="app-reader-sender">
                 {avatarNode}
-                {identityNode}
-              </div>
+                <div className="app-reader-heading">
+                  {titleNode}
+                  {identityNode}
+                </div>
+              </header>
+              {/* Blocked remote content is reported where the body starts, so
+                  the choice to load it sits next to what it would change. */}
+              {privacyNode}
               {summaryNode}
               {bodyNode}
               {attachmentNode}

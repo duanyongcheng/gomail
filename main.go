@@ -143,7 +143,13 @@ func main() {
 				if !mygo.App.IsPackaged() {
 					mygo.SetFrontend(os.DirFS("dist"))
 				}
-				window := mygo.NewWindow(mygo.WindowOptions{Title: "GoMail", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "#f7fafb"})
+				windowOptions := mygo.WindowOptions{Title: "GoMail", Width: 1200, Height: 850, MinWidth: 800, MinHeight: 600, URL: "/", TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: "light-dark(#ffffff, #1e1e20)"}
+				if stdruntime.GOOS == "darwin" {
+					// The sidebar runs to the top of the window, so the traffic
+					// lights sit centred in its 52px toolbar row.
+					windowOptions.TrafficLightPosition = &mygo.Point{X: 20, Y: 19}
+				}
+				window := mygo.NewWindow(windowOptions)
 				windowService.Window.Store(window)
 				// Click handlers route links through the validating typed service.
 				// Disable MyGO's default target=_blank Shell.OpenExternal fallback,

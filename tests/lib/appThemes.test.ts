@@ -11,10 +11,11 @@ import {
 } from "@/lib/appThemes";
 
 describe("interface theme registry", () => {
-  it("registers the unified Harbor Chartroom design system", () => {
+  it("registers the unified Clarity design system under the stored harbor id", () => {
     expect(APP_THEMES.map((theme) => theme.id)).toEqual(["harbor"]);
     expect(APP_THEMES.map((theme) => theme.letter)).toEqual(["A"]);
-    expect(APP_THEMES[0].rowHeight).toBe(88);
+    expect(APP_THEMES[0].rowHeight).toBe(92);
+    expect(APP_THEMES[0].name).toBe("Clarity");
   });
 
   it("provides complete and distinct light and dark previews", () => {
