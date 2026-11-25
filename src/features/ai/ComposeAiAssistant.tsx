@@ -184,7 +184,7 @@ export default function ComposeAiAssistant({
   }
 
   async function run(selected: AiReviewAction, current: Scope) {
-    if (!isFeatureAvailable("ai")) return;
+    if (!isFeatureAvailable("aiCompose")) return;
     setAction(selected);
     setScope(current);
     setResult("");
@@ -228,7 +228,7 @@ export default function ComposeAiAssistant({
   }
 
   function handlePick(selected: AiReviewAction) {
-    if (!isFeatureAvailable("ai")) return;
+    if (!isFeatureAvailable("aiCompose")) return;
     const current = readScope();
     if (!current) return;
 
@@ -317,9 +317,9 @@ export default function ComposeAiAssistant({
     <div ref={menuRef} style={{ position: "relative", marginLeft: "auto" }}>
       <button
         type="button"
-        disabled={!isFeatureAvailable("ai")}
-        onClick={() => { if (isFeatureAvailable("ai")) setMenuOpen((open) => !open); }}
-        title={isFeatureAvailable("ai") ? t("ai.menuTooltip") : unavailableReason()}
+        disabled={!isFeatureAvailable("aiCompose")}
+        onClick={() => { if (isFeatureAvailable("aiCompose")) setMenuOpen((open) => !open); }}
+        title={isFeatureAvailable("aiCompose") ? t("ai.menuTooltip") : unavailableReason()}
         aria-label={t("ai.menuTooltip")}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
@@ -329,7 +329,7 @@ export default function ComposeAiAssistant({
         {t("ai.menu")}
       </button>
 
-      {isFeatureAvailable("ai") && menuOpen && (
+      {isFeatureAvailable("aiCompose") && menuOpen && (
         <div role="menu" style={panelStyle}>
           {!privacyAcked ? (
             <div style={{ padding: "4px", maxWidth: "280px" }}>
@@ -437,7 +437,7 @@ export default function ComposeAiAssistant({
         </div>
       )}
 
-      {isFeatureAvailable("ai") && action && scope && (
+      {isFeatureAvailable("aiCompose") && action && scope && (
         <AiReviewDialog
           action={action}
           original={scope.text}

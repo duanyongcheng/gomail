@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, Sparkles } from "lucide-react";
 import { useMailStore } from "@/stores/mail.store";
 import { useAccountsQuery, useFoldersForAccountsQuery, useThreadMessagesQuery, useThreadsQuery } from "@/hooks/queries";
 import { folderIdsForSelection } from "@/lib/folderAggregation";
 import ThreadMessageBubble from "@/components/ThreadMessageBubble";
+import AiSummaryCard from "@/features/ai/AiSummaryCard";
 import Spinner from "@/components/Spinner";
 import { useUIStore } from "@/stores/ui.store";
 import { useResolvedAppTheme } from "@/hooks/useResolvedAppTheme";
 import { getMessageTheme, messageThemeVariables, resolveMessageTheme } from "@/lib/messageThemes";
+import { isFeatureAvailable } from "@/lib/availability";
 
 export default function ThreadView() {
   const { t } = useTranslation();
@@ -31,8 +33,13 @@ export default function ThreadView() {
   const { data: threadMessages = [], isLoading, isError, refetch } = useThreadMessagesQuery(selectedThreadId);
   const { data: threads = [] } = useThreadsQuery(queryFolderId, 50, 0, queryFolderIds);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showThreadSummary, setShowThreadSummary] = useState(false);
 
   const thread = threads.find((t) => t.thread_id === selectedThreadId);
+
+  useEffect(() => {
+    setShowThreadSummary(false);
+  }, [selectedThreadId]);
 
   const lastMessageId = threadMessages[threadMessages.length - 1]?.id;
   useEffect(() => {
@@ -72,10 +79,28 @@ export default function ThreadView() {
             <span>{threadMessages.length}</span>
           </div>
         </div>
+        {isFeatureAvailable("aiSummary") && selectedThreadId && threadMessages.length > 0 && (
+          <div className="thread-reader-actions">
+            <button
+              type="button"
+              className="thread-reader-icon-btn"
+              aria-pressed={showThreadSummary}
+              aria-label={t("ai.summarizeThread")}
+              title={t("ai.summarizeThread")}
+              onClick={() => setShowThreadSummary((v) => !v)}
+            >
+              <Sparkles size={15} />
+              <span>{t("ai.summarizeThread")}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="scroll-region thread-message-scroll">
+        {isFeatureAvailable("aiSummary") && showThreadSummary && selectedThreadId && (
+          <AiSummaryCard threadId={selectedThreadId} onClose={() => setShowThreadSummary(false)} />
+        )}
         {threadMessages.length === 0 && <p>{t("common.noThreads")}</p>}
         {threadMessages.map((msg, i) => (
           <ThreadMessageBubble

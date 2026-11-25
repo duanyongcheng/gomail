@@ -6,16 +6,20 @@ import { useMessageQuery } from "@/hooks/queries/useMessageQuery";
 import { manualUnreadVersion } from "@/hooks/queries/messageFlagsCache";
 import { useComposeStore } from "@/stores/compose.store";
 import AttachmentList from "./AttachmentList";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getRenderedHtml, getMessage } from "@/lib/api";
 import type { Message, RenderedHtml, PrivacyMode } from "@/lib/api";
 import { defaultPrivacyMode } from "@/lib/privacyMode";
 import { subscribePrivacyChanges } from "@/lib/privacyEvents";
 import { useSenderTrust } from "@/hooks/useSenderTrust";
+import { useBilingualTranslation } from "@/hooks/useBilingualTranslation";
+import { isFeatureAvailable } from "@/lib/availability";
 import PrivacyBanner from "./PrivacyBanner";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { ShadowDomEmail } from "./ShadowDomEmail";
+import BilingualView from "../features/translate/BilingualView";
+import TranslationBar from "../features/translate/TranslationBar";
 import ContactAddressAction from "./ContactAddressAction";
 import { uniqueContactParticipants } from "./contact-participants";
 import { messageThemeVariables, type MessageTheme } from "@/lib/messageThemes";
@@ -59,6 +63,8 @@ function ThreadBubble({ message, defaultExpanded = false, theme }: Props) {
   const flagsMutation = useUpdateFlagsMutation();
   const refreshPrivacy = () => { generation.current++; setRendered(null); setRetry((v) => v + 1); };
   const trust = useSenderTrust(message, refreshPrivacy);
+  const effectiveMessage = metadata.data ?? message;
+  const translation = useBilingualTranslation(expanded ? message.id : null, rendered, effectiveMessage);
   useEffect(() => subscribePrivacyChanges((change) => {
     if (change.settings) setMode(defaultPrivacyMode());
     if (change.settings || (change.accountId === message.account_id && (!change.email || change.email.toLowerCase() === message.from_address.trim().toLowerCase()))) refreshPrivacy();
@@ -188,8 +194,46 @@ function ThreadBubble({ message, defaultExpanded = false, theme }: Props) {
           {actionError && <p role="alert">{t("thread.actionFailed", "Could not update or open this message.")} <button onClick={() => { readMarked.current = false; setActionError(false); setRetry((v) => v + 1); }}>{t("common.retry", "Retry")}</button></p>}
           {rendered && <PrivacyBanner rendered={rendered} onLoadImages={() => setMode("LoadOnce")} onTrustSender={(type) => void trust.save(type)} busy={trust.busy} error={trust.error} />}
           {trust.error && !rendered && <p role="alert">{trust.error}</p>}
+          {isFeatureAvailable("translation") && translation.bilingualMode && (
+            <TranslationBar
+              displayMode={translation.displayMode}
+              onDisplayModeChange={translation.setDisplayMode}
+              targetLang={translation.targetLang}
+              onTargetLangChange={translation.setTargetLang}
+              loading={translation.bilingualLoading}
+              progress={translation.progress}
+              cached={translation.bilingualResult?.cached}
+              model={translation.bilingualResult?.model}
+              warning={translation.bilingualWarning}
+              configIssue={translation.configIssue}
+              needsPrivacyAck={translation.needsPrivacyAck}
+              endpointHost={translation.endpointHost}
+              onAcceptPrivacy={translation.acceptPrivacyAndTranslate}
+              onRetranslate={translation.handleRetranslate}
+              onStop={translation.handleStopTranslation}
+              onClose={() => void translation.handleBilingualToggle()}
+            />
+          )}
+          {translation.bilingualMode && translation.displayMode !== "original" && translation.bilingualError && (
+            <div role="alert" className="ai-inline-notice" style={{ marginBottom: "12px" }}>
+              <span>{translation.bilingualError.detail || t("common.translationFailed", "Translation failed")}</span>
+            </div>
+          )}
           {/* Body content */}
-          {rendered?.html ? (
+          {translation.bilingualMode && translation.displayMode !== "original" && translation.bilingualResult ? (
+            translation.bilingualResult._isHtml ? (
+              <ShadowDomEmail
+                html={translation.bilingualResult.translated}
+                theme={theme}
+                translatedOnly={translation.displayMode === "translated"}
+              />
+            ) : (
+              <BilingualView
+                segments={translation.bilingualResult.segments ?? []}
+                displayMode={translation.displayMode === "translated" ? "translated" : "bilingual"}
+              />
+            )
+          ) : rendered?.html ? (
             <ShadowDomEmail html={rendered.html} theme={theme} />
           ) : (
             <pre style={{
@@ -201,13 +245,24 @@ function ThreadBubble({ message, defaultExpanded = false, theme }: Props) {
               fontFamily: "var(--msg-body-font, var(--font-reading, inherit))",
               lineHeight: "var(--msg-body-line-height, var(--ui-reader-leading, 1.82))",
             }}>
-              {message.body_text}
+              {effectiveMessage.body_text}
             </pre>
           )}
           <div className="thread-message-bubble-actions">
             {(["reply", "reply-all", "forward"] as const).map((mode) => <button key={mode} disabled={busy} onClick={() => void compose(mode)}>
               {t(mode === "reply-all" ? "messageActions.replyAll" : `messageActions.${mode}`)}
             </button>)}
+            {isFeatureAvailable("translation") && (
+              <button
+                type="button"
+                aria-pressed={translation.bilingualMode}
+                onClick={() => void translation.handleBilingualToggle()}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}
+              >
+                <Languages size={13} />
+                {t("ai.translateMessage")}
+              </button>
+            )}
           </div>
           {message.has_attachments && <AttachmentList messageId={message.id} />}
         </div>

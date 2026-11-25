@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MessageDetail from "../../src/components/MessageDetail";
-import { aiSummarizeMessage } from "@/lib/api";
 
 vi.mock("react-i18next", () => ({
   initReactI18next: {
@@ -13,9 +12,35 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("@/mygo", () => ({
+  AIService: {
+    getConfig: vi.fn().mockResolvedValue({
+      configured: true,
+      enabled: true,
+      endpointHost: "api.openai.com",
+      isLocalEndpoint: false,
+      keyringError: false,
+      summaryStyle: "standard",
+      summaryLanguage: "",
+    }),
+    summarizeMessage: vi.fn().mockResolvedValue({
+      tldr: "Numbers attached.",
+      key_points: ["Review before Friday"],
+      action_items: [],
+      raw_text: "Numbers attached.",
+      model: "gpt-4o-mini",
+      target_lang: "zh",
+      cached: false,
+      truncated: false,
+      generated_at: 1,
+    }),
+    cancel: vi.fn().mockResolvedValue({}),
+  },
+  events: { aiStream: { on: vi.fn(() => () => {}) } },
+}));
+
 vi.mock("../../src/lib/api", () => ({
   trustSender: vi.fn(),
-  aiSummarizeMessage: vi.fn(),
 }));
 
 vi.mock("../../src/hooks/useMessageLoader", () => ({
@@ -59,14 +84,28 @@ vi.mock("../../src/hooks/queries", () => ({
   useAccountsQuery: () => ({ data: [] }),
 }));
 
+const handleBilingualToggle = vi.fn();
+
 vi.mock("../../src/hooks/useBilingualTranslation", () => ({
   useBilingualTranslation: () => ({
     bilingualMode: false,
+    displayMode: "bilingual",
+    setDisplayMode: vi.fn(),
+    targetLang: "zh",
+    setTargetLang: vi.fn(),
     bilingualResult: null,
     bilingualLoading: false,
+    progress: null,
     bilingualError: null,
     bilingualWarning: null,
-    handleBilingualToggle: vi.fn(),
+    configIssue: null,
+    needsPrivacyAck: false,
+    endpointHost: "",
+    isLocalEndpoint: false,
+    acceptPrivacyAndTranslate: vi.fn(),
+    handleBilingualToggle,
+    handleRetranslate: vi.fn(),
+    handleStopTranslation: vi.fn(),
     resetBilingual: vi.fn(),
   }),
 }));
@@ -94,6 +133,7 @@ vi.mock("../../src/components/ContactAddressAction", () => ({
 describe("MessageDetail AI summary entry", () => {
   beforeEach(() => {
     localStorage.clear();
+    handleBilingualToggle.mockClear();
   });
 
   it("keeps the summary closed until the user asks for it", () => {
@@ -103,33 +143,31 @@ describe("MessageDetail AI summary entry", () => {
     expect(screen.getByRole("button", { name: "ai.summarize" })).toBeTruthy();
   });
 
-  it("disables the summary button rather than opening a nonworking card", () => {
+  it("opens and toggles the summary card when clicked", () => {
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
-    const button = screen.getByRole("button", { name: "ai.summarize" });
+    const button = screen.getByRole("button", { name: "ai.summarize" }) as HTMLButtonElement;
 
+    expect(button.disabled).toBe(false);
     fireEvent.click(button);
-    expect(screen.queryByText("ai.summaryTitle")).toBeNull();
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-    expect(button.getAttribute("title")).toBeTruthy();
+    expect(screen.getByText("ai.summaryTitle")).toBeTruthy();
+    expect(button.getAttribute("aria-pressed")).toBe("true");
 
     fireEvent.click(button);
     expect(screen.queryByText("ai.summaryTitle")).toBeNull();
     expect(button.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("guards direct legacy keyboard events for AI and translation", () => {
+  it("responds to AI and bilingual keyboard events while keeping snooze disabled", () => {
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
 
     act(() => {
       document.dispatchEvent(new CustomEvent("gomail:ai-summarize"));
       document.dispatchEvent(new CustomEvent("gomail:toggle-bilingual"));
-      document.dispatchEvent(new CustomEvent("gomail:translate-selection"));
     });
 
-    expect(screen.queryByText("ai.summaryTitle")).toBeNull();
-    expect(screen.queryByText("translate popover")).toBeNull();
-    expect(aiSummarizeMessage).not.toHaveBeenCalled();
-    expect((screen.getByRole("button", { name: "Toggle bilingual view" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("ai.summaryTitle")).toBeTruthy();
+    expect(handleBilingualToggle).toHaveBeenCalledOnce();
+    expect((screen.getByRole("button", { name: "Toggle bilingual view" }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByRole("button", { name: "Snooze message" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -137,6 +175,7 @@ describe("MessageDetail AI summary entry", () => {
     render(<MessageDetail messageId="message-1" onBack={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "ai.summarize" }));
 
+    expect(screen.getByText("ai.summaryTitle")).toBeTruthy();
     const body = screen.getByRole("region", { name: "Message body" });
     expect(body.textContent).not.toContain("ai.summaryTitle");
   });

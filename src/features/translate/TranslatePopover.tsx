@@ -1,9 +1,19 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Check, X } from "lucide-react";
-import { translateText } from "@/lib/api";
+import { Check, Copy, Settings, X } from "lucide-react";
+import { AIService, type AIConfigView } from "@/mygo";
 import { profileLocalStorage } from "@/lib/profileStorage";
 import { useUIStore } from "@/stores/ui.store";
+import {
+  AI_LANGUAGE_OPTIONS,
+  acceptAiPrivacy,
+  classifyAiError,
+  isAiPrivacyAccepted,
+  nextAiRequestId,
+  openAiSettings,
+  resolveUiLanguageOption,
+  type AiErrorKind,
+} from "@/lib/ai";
 
 interface Props {
   text: string;
@@ -20,173 +30,224 @@ function readSavedTargetLang(): string | null {
 
 export default function TranslatePopover({ text, position, onClose }: Props) {
   const { t } = useTranslation();
+  const interfaceLanguage = useUIStore((state) => state.language);
+  const [config, setConfig] = useState<AIConfigView | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [translated, setTranslated] = useState("");
+  const [resolvedLang, setResolvedLang] = useState("");
   const [loading, setLoading] = useState(true);
+  const [errorKind, setErrorKind] = useState<AiErrorKind | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  // Default to the reader's own language: they selected foreign text because it
-  // is foreign. Picking the "opposite" of the UI language sent English back in
-  // English, which reads as a broken translator.
-  const interfaceLanguage = useUIStore((state) => state.language);
+  const [manualLangSelected, setManualLangSelected] = useState(false);
   const [targetLang, setTargetLang] = useState(
-    () => readSavedTargetLang() ?? interfaceLanguage,
+    () => readSavedTargetLang() ?? resolveUiLanguageOption(interfaceLanguage),
   );
+  const [privacyAcked, setPrivacyAcked] = useState(false);
 
-  function handleTargetLangChange(next: string) {
-    setTargetLang(next);
-    profileLocalStorage.setItem(TARGET_LANG_STORAGE_KEY, next);
-  }
-
-  const [privacyAcked, setPrivacyAcked] = useState(() =>
-    profileLocalStorage.getItem("gomail-translate-privacy-ack") === "1",
-  );
+  const activeReqRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    let active = true;
+    void AIService.getConfig({})
+      .then((cfg) => {
+        if (!active) return;
+        setConfig(cfg);
+        if (!readSavedTargetLang() && cfg.translateLanguage && AI_LANGUAGE_OPTIONS.some((o) => o.code === cfg.translateLanguage)) {
+          setTargetLang(cfg.translateLanguage);
+        }
+        setPrivacyAcked(isAiPrivacyAccepted(cfg.endpointHost, cfg.isLocalEndpoint));
+        setConfigLoaded(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPrivacyAcked(isAiPrivacyAccepted());
+        setConfigLoaded(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!configLoaded) return;
+    if (config && (config.keyringError || !config.configured || !config.enabled)) {
+      setLoading(false);
+      return;
+    }
     if (!privacyAcked) {
       setLoading(false);
       return;
     }
+
     let cancelled = false;
+    const requestId = nextAiRequestId("sel-tr");
+    activeReqRef.current = requestId;
     setLoading(true);
     setError("");
-    translateText(text, "auto", targetLang)
+    setErrorKind(null);
+    setTranslated("");
+    setResolvedLang("");
+
+    AIService.translateText({
+      requestId,
+      text,
+      fromLang: "auto",
+      toLang: targetLang,
+      autoFlip: !manualLangSelected,
+    })
       .then((result) => {
-        if (!cancelled) setTranslated(result.translated);
+        if (cancelled) return;
+        setTranslated(result.translated);
+        setResolvedLang(result.targetLang || targetLang);
       })
       .catch((err) => {
-        if (!cancelled) setError(String(err));
+        if (cancelled) return;
+        const classified = classifyAiError(err);
+        if (classified.kind !== "cancelled") {
+          setErrorKind(classified.kind);
+          setError(classified.message);
+        }
       })
       .finally(() => {
+        if (activeReqRef.current === requestId) activeReqRef.current = null;
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
-  }, [text, targetLang, privacyAcked]);
+
+    return () => {
+      cancelled = true;
+      void AIService.cancel({ requestId }).catch(() => {});
+    };
+  }, [config, configLoaded, manualLangSelected, privacyAcked, targetLang, text]);
+
+  function handleTargetLangChange(next: string) {
+    setManualLangSelected(true);
+    setTargetLang(next);
+    profileLocalStorage.setItem(TARGET_LANG_STORAGE_KEY, next);
+  }
 
   function handleAcceptPrivacy() {
-    profileLocalStorage.setItem("gomail-translate-privacy-ack", "1");
+    acceptAiPrivacy(config?.endpointHost);
     setPrivacyAcked(true);
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(translated);
+    void navigator.clipboard.writeText(translated);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const left = Math.max(12, Math.min(position.x, window.innerWidth - 356));
+  const top = Math.max(12, Math.min(position.y + 10, window.innerHeight - 240));
+
+  const showKeyring = configLoaded && (config?.keyringError || errorKind === "keyring");
+  const showUnconfigured = configLoaded && ((config && !config.configured && !config.keyringError) || errorKind === "unconfigured");
+  const showDisabled = configLoaded && ((config && config.configured && !config.enabled) || errorKind === "disabled");
+
+  const flippedLangOpt =
+    resolvedLang && resolvedLang !== targetLang
+      ? AI_LANGUAGE_OPTIONS.find((o) => o.code === resolvedLang)
+      : null;
+
   return (
     <div
-      style={{
-        position: "fixed",
-        left: Math.min(position.x, window.innerWidth - 340),
-        top: Math.min(position.y + 10, window.innerHeight - 200),
-        width: "320px",
-        padding: "12px",
-        borderRadius: "8px",
-        border: "1px solid var(--color-border)",
-        backgroundColor: "var(--color-bg)",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        zIndex: 1000,
-        color: "var(--color-text-primary)",
-      }}
+      className="translate-popover"
+      data-gomail-overlay="true"
+      role="dialog"
+      aria-label={t("translate.title")}
+      style={{ left, top }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Header with target lang selector */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-secondary)", textTransform: "uppercase", flex: 1 }}>
-          {t("translate.title")}
-        </span>
+      <div className="translate-popover-header">
+        <span className="translate-popover-title">{t("translate.title")}</span>
         <select
+          className="ai-summary-select"
+          aria-label={t("ai.translateDefaultLang")}
           value={targetLang}
           onChange={(e) => handleTargetLangChange(e.target.value)}
-          style={{
-            fontSize: "11px",
-            padding: "2px 4px",
-            border: "1px solid var(--color-border)",
-            borderRadius: "4px",
-            backgroundColor: "var(--color-bg)",
-            color: "var(--color-text-primary)",
-          }}
         >
-          <option value="zh">{t("languages.chinese", "Chinese")}</option>
-          <option value="en">{t("languages.english", "English")}</option>
-          <option value="ja">{t("languages.japanese", "Japanese")}</option>
-          <option value="ko">{t("languages.korean", "Korean")}</option>
-          <option value="fr">{t("languages.french", "French")}</option>
-          <option value="de">{t("languages.german", "German")}</option>
-          <option value="es">{t("languages.spanish", "Spanish")}</option>
+          {AI_LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.code} value={option.code}>
+              {t(option.labelKey)}
+            </option>
+          ))}
         </select>
         <button
+          type="button"
+          className="ai-summary-icon-btn"
           onClick={onClose}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "2px",
-            color: "var(--color-text-secondary)",
-            display: "flex",
-            alignItems: "center",
-          }}
+          aria-label={t("common.close", "Close")}
         >
           <X size={14} />
         </button>
       </div>
 
-      {/* Privacy notice for first-time use */}
-      {!privacyAcked ? (
-        <div style={{ fontSize: "13px", lineHeight: 1.5, padding: "8px 0" }}>
-          <p style={{ margin: "0 0 8px", color: "var(--color-warning, #e67e22)" }}>
-            {t(
-              "translate.privacyNotice",
-              "Translation will send the selected text to a third-party translation service. Your email content will leave this device.",
+      {showKeyring || showUnconfigured || showDisabled ? (
+        <div className="ai-inline-notice">
+          <div>
+            <strong>
+              {showKeyring
+                ? t("ai.keyringLocked")
+                : showDisabled
+                  ? t("ai.disabledTitle")
+                  : t("ai.unconfiguredTitle")}
+            </strong>
+            {!showKeyring && (
+              <div>{showDisabled ? t("ai.disabledDesc") : t("ai.unconfiguredDesc")}</div>
             )}
-          </p>
+          </div>
           <button
-            onClick={handleAcceptPrivacy}
-            style={{
-              padding: "6px 14px",
-              border: "1px solid var(--color-border)",
-              borderRadius: "4px",
-              backgroundColor: "var(--color-accent, #3b82f6)",
-              color: "#fff",
-              fontSize: "12px",
-              cursor: "pointer",
+            type="button"
+            className="ai-push-btn ai-push-btn--primary"
+            onClick={() => {
+              onClose();
+              openAiSettings();
             }}
           >
-            {t("translate.acceptAndContinue", "I understand, continue")}
+            <Settings size={12} />
+            {t("ai.openSettings")}
           </button>
         </div>
-      ) : /* Content */
-      loading ? (
-        <div style={{ fontSize: "13px", color: "var(--color-text-secondary)", padding: "8px 0" }}>
+      ) : !privacyAcked && configLoaded ? (
+        <div className="ai-inline-notice">
+          <span>
+            {config?.endpointHost
+              ? t("ai.privacyNoticeHost", { host: config.endpointHost })
+              : t("translate.privacyNotice")}
+          </span>
+          <button type="button" className="ai-push-btn ai-push-btn--primary" onClick={handleAcceptPrivacy}>
+            {t("translate.acceptAndContinue")}
+          </button>
+        </div>
+      ) : loading ? (
+        <div role="status" aria-live="polite" style={{ fontSize: "13px", color: "var(--color-text-secondary)", padding: "8px 0" }}>
           {t("common.translating")}
         </div>
       ) : error ? (
-        <div style={{ fontSize: "13px", color: "#ef4444", padding: "8px 0" }}>
-          {error}
+        <div role="alert" className="ai-inline-notice">
+          <span>{error}</span>
         </div>
       ) : (
         <div>
-          <div style={{ fontSize: "13px", lineHeight: "1.5", marginBottom: "8px" }}>
-            {translated}
+          <div className="translate-popover-body">{translated}</div>
+          <div className="translate-popover-footer">
+            <span className="ai-summary-note">
+              {flippedLangOpt ? t("ai.autoFlippedHint", { lang: t(flippedLangOpt.labelKey) }) : ""}
+            </span>
+            <button type="button" className="ai-push-btn" onClick={handleCopy}>
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? t("common.copied") : t("common.copy")}
+            </button>
           </div>
-          <button
-            onClick={handleCopy}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "4px 8px",
-              border: "1px solid var(--color-border)",
-              borderRadius: "4px",
-              backgroundColor: "transparent",
-              color: "var(--color-text-secondary)",
-              fontSize: "11px",
-              cursor: "pointer",
-            }}
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? t("common.copied") : t("common.copy")}
-          </button>
         </div>
       )}
     </div>

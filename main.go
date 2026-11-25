@@ -29,6 +29,7 @@ var trustChanged = mygo.NewEvent[app.SenderRequest]("mail:trusted-senders-change
 var updateProgress = mygo.NewEvent[desktop.UpdateProgress]("app:update-progress")
 var updateStatus = mygo.NewEvent[desktop.UpdateStatus]("app:update-status")
 var openUpdates = mygo.NewEvent[struct{}]("app:open-updates")
+var aiStream = mygo.NewEvent[app.AIStreamEvent]("ai:stream")
 
 // Shared with the isolated packaged selftest, which replaces the URL opener
 // before the page is created and exercises this same lifecycle controller.
@@ -55,6 +56,7 @@ func main() {
 	runtime.OnFoldersChanged = func(event app.AccountRequest) { _ = foldersChanged.Broadcast(event) }
 	runtime.OnAccountChanged = func(event app.AccountRequest) { _ = accountChanged.Broadcast(event) }
 	runtime.OnTrustChanged = func(event app.SenderRequest) { _ = trustChanged.Broadcast(event) }
+	runtime.OnAIStream = func(event app.AIStreamEvent) { _ = aiStream.Broadcast(event) }
 	lifecycle := desktop.NewLifecycle()
 	windowService := &desktop.AppService{Lifecycle: lifecycle, OpenURL: mygo.Shell.OpenExternal}
 	desktopAppService = windowService
@@ -64,7 +66,7 @@ func main() {
 	updateService := desktop.NewUpdateService(ctx, "duanyongcheng/gomail", os.Getenv("GOMAIL_SELFTEST") == "1")
 	updateService.OnStatus = func(st desktop.UpdateStatus) { _ = updateStatus.Broadcast(st) }
 	updateService.OnProgress = func(p desktop.UpdateProgress) { _ = updateProgress.Broadcast(p) }
-	mygo.Bind(&app.MicrosoftService{Runtime: runtime}, &app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, fileService, windowService, updateService)
+	mygo.Bind(&app.MicrosoftService{Runtime: runtime}, &app.AccountService{Runtime: runtime}, &app.FolderService{Runtime: runtime}, &app.GmailLabelService{Runtime: runtime}, &app.TrustService{Runtime: runtime}, &app.MessageService{Runtime: runtime}, &app.ThreadService{Runtime: runtime}, &app.SearchService{Runtime: runtime}, &app.SyncService{Runtime: runtime}, &app.PendingOpsService{Runtime: runtime}, &app.AttachmentService{Runtime: runtime}, &app.ComposeService{Runtime: runtime}, &app.OutboxService{Runtime: runtime}, &app.AIService{Runtime: runtime}, fileService, windowService, updateService)
 	var workers sync.WaitGroup
 	var db *store.DB
 	var logFile *desktop.RotatingLog

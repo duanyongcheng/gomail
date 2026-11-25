@@ -20,11 +20,17 @@ describe("UI store availability", () => {
     expect(useUIStore.getState().activeView).toBe("inbox");
     expect(useUIStore.getState().pendingContactId).toBeNull();
   });
-  it.each(["rules", "translation", "ai", "cloudSync", "unknown"])("does not restore unsupported settings tab %s", async (tab) => {
+  it.each(["rules", "translation", "cloudSync", "unknown"])("does not restore unsupported settings tab %s", async (tab) => {
     sessionStorage.setItem("gomail-settings-tab", tab);
     vi.resetModules();
     const { useUIStore: restored } = await import("../../src/stores/ui.store");
     expect(restored.getState().settingsTab).toBe("accounts");
+  });
+  it("restores the implemented ai settings tab", async () => {
+    sessionStorage.setItem("gomail-settings-tab", "ai");
+    vi.resetModules();
+    const { useUIStore: restored } = await import("../../src/stores/ui.store");
+    expect(restored.getState().settingsTab).toBe("ai");
   });
   it("restores the implemented proxy settings tab", async () => {
     sessionStorage.setItem("gomail-settings-tab", "proxy");

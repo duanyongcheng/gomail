@@ -3,7 +3,7 @@ import { openExternalLink } from "@/lib/external-links";
 import { openMailtoUrl } from "@/app/useMailtoOpen";
 import { sanitizeHtml, reapplyInlineStyles } from "@/lib/sanitizeHtml";
 import { messageThemeContentCss, type MessageTheme } from "@/lib/messageThemes";
-import { SOURCE_ECHO_CSS } from "@/lib/sourceEcho";
+import { SOURCE_ECHO_CSS, TRANSLATED_ONLY_CLASS } from "@/lib/sourceEcho";
 
 interface ShadowDomEmailProps {
   html: string;
@@ -14,6 +14,8 @@ interface ShadowDomEmailProps {
    * sanitizer and the link handling are untouched by it.
    */
   theme?: MessageTheme | null;
+  /** When true, hides original text of translated blocks to show translated-only prose. */
+  translatedOnly?: boolean;
 }
 
 /**
@@ -141,7 +143,7 @@ export function adoptShadowSheet(shadow: ShadowRoot, css: string): boolean {
   }
 }
 
-export function ShadowDomEmail({ html, className, theme }: ShadowDomEmailProps) {
+export function ShadowDomEmail({ html, className, theme, translatedOnly = false }: ShadowDomEmailProps) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   // The shadow body must be ready before paint; otherwise the reader can flash
@@ -154,11 +156,14 @@ export function ShadowDomEmail({ html, className, theme }: ShadowDomEmailProps) 
     const css = shadowEmailCss(theme);
     const safeHtml = sanitizeHtml(html);
     const adopted = adoptShadowSheet(shadow, css);
+    const contentClass = translatedOnly
+      ? `gomail-email-content ${TRANSLATED_ONLY_CLASS}`
+      : "gomail-email-content";
 
     shadow.innerHTML = adopted
-      ? `<div class="gomail-email-content">${safeHtml}</div>`
+      ? `<div class="${contentClass}">${safeHtml}</div>`
       : `<style>${css}</style>
-      <div class="gomail-email-content">${safeHtml}</div>`;
+      <div class="${contentClass}">${safeHtml}</div>`;
 
     // The message's own `style` attributes are refused by the same CSP that
     // killed the `<style>` element, so what they carry has to be handed back
@@ -191,7 +196,7 @@ export function ShadowDomEmail({ html, className, theme }: ShadowDomEmailProps) 
       shadow.removeEventListener("click", handleClick);
       shadow.removeEventListener("auxclick", handleClick);
     };
-  }, [html, theme]);
+  }, [html, theme, translatedOnly]);
 
   return (
     <div

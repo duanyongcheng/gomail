@@ -12,6 +12,7 @@ import SnoozePopover from "../features/inbox/SnoozePopover";
 import { ShadowDomEmail } from "./ShadowDomEmail";
 import TranslatePopover from "../features/translate/TranslatePopover";
 import BilingualView from "../features/translate/BilingualView";
+import TranslationBar from "../features/translate/TranslationBar";
 import AiSummaryCard from "../features/ai/AiSummaryCard";
 import MessageActionToolbar from "./MessageActionToolbar";
 import { useMessageLoader } from "@/hooks/useMessageLoader";
@@ -96,11 +97,22 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   }, [messageId]);
   const {
     bilingualMode,
+    displayMode,
+    setDisplayMode,
+    targetLang,
+    setTargetLang,
     bilingualResult,
     bilingualLoading,
+    progress,
     bilingualError,
     bilingualWarning,
+    configIssue,
+    needsPrivacyAck,
+    endpointHost,
+    acceptPrivacyAndTranslate,
     handleBilingualToggle,
+    handleRetranslate,
+    handleStopTranslation,
     resetBilingual,
   } = useBilingualTranslation(messageId, rendered, message);
 
@@ -233,7 +245,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
   useEffect(() => {
     const onTranslate = () => openTranslateForSelection();
     const onBilingual = () => { if (isFeatureAvailable("translation")) void handleBilingualToggle(); };
-    const onSummarize = () => { if (isFeatureAvailable("ai")) setShowAiSummary((visible) => !visible); };
+    const onSummarize = () => { if (isFeatureAvailable("aiSummary")) setShowAiSummary((visible) => !visible); };
     document.addEventListener("gomail:translate-selection", onTranslate);
     document.addEventListener("gomail:toggle-bilingual", onBilingual);
     document.addEventListener("gomail:ai-summarize", onSummarize);
@@ -364,10 +376,10 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
       </button>
       <button
         className="message-detail-icon-button"
-        disabled={!isFeatureAvailable("ai")}
-        onClick={() => { if (isFeatureAvailable("ai")) setShowAiSummary((visible) => !visible); }}
+        disabled={!isFeatureAvailable("aiSummary")}
+        onClick={() => { if (isFeatureAvailable("aiSummary")) setShowAiSummary((visible) => !visible); }}
         aria-pressed={showAiSummary}
-        title={isFeatureAvailable("ai") ? t("ai.summarize") : unavailableReason()}
+        title={isFeatureAvailable("aiSummary") ? t("ai.summarize") : unavailableReason()}
         aria-label={t("ai.summarize")}
       >
         <Sparkles size={16} />
@@ -454,13 +466,49 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
       error={trust.error}
     />
   ) : null;
-  const summaryNode = isFeatureAvailable("ai") && showAiSummary ? (
+  const summaryNode = isFeatureAvailable("aiSummary") && showAiSummary ? (
     <AiSummaryCard messageId={messageId} onClose={() => setShowAiSummary(false)} />
   ) : null;
+  const translationBarNode = isFeatureAvailable("translation") && bilingualMode ? (
+    <TranslationBar
+      displayMode={displayMode}
+      onDisplayModeChange={setDisplayMode}
+      targetLang={targetLang}
+      onTargetLangChange={setTargetLang}
+      loading={bilingualLoading}
+      progress={progress}
+      cached={bilingualResult?.cached}
+      model={bilingualResult?.model}
+      warning={bilingualWarning}
+      configIssue={configIssue}
+      needsPrivacyAck={needsPrivacyAck}
+      endpointHost={endpointHost}
+      onAcceptPrivacy={acceptPrivacyAndTranslate}
+      onRetranslate={handleRetranslate}
+      onStop={handleStopTranslation}
+      onClose={() => void handleBilingualToggle()}
+    />
+  ) : null;
+  const translatedSubject =
+    bilingualMode && displayMode !== "original" ? bilingualResult?.translatedSubject : undefined;
   const titleNode = (
-    <h2 className="message-detail-title">
-      {message.subject || t("inbox.noSubject", "(no subject)")}
-    </h2>
+    <div style={{ gridArea: "title", minWidth: 0 }}>
+      <h2 className="message-detail-title">
+        {displayMode === "translated" && translatedSubject
+          ? translatedSubject
+          : (message.subject || t("inbox.noSubject", "(no subject)"))}
+      </h2>
+      {translatedSubject && (
+        <div
+          className="message-detail-translated-subject"
+          aria-label={t("ai.translatedSubject")}
+        >
+          {displayMode === "translated"
+            ? (message.subject || t("inbox.noSubject", "(no subject)"))
+            : translatedSubject}
+        </div>
+      )}
+    </div>
   );
   const bodyNode = (
     <div
@@ -491,68 +539,28 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
           padding: "var(--msg-surface-padding)",
         }}
       >
-        {bilingualMode && bilingualLoading ? (
-          <div style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>{t("common.translating", "Translating...")}</div>
-        ) : bilingualMode && bilingualResult ? (
-          <>
-            {bilingualWarning && (
-              <div
-                role="status"
-                style={{
-                  fontSize: "12px",
-                  color: "var(--color-warning, #e67e22)",
-                  marginBottom: "10px",
-                }}
-              >
-                {t(
-                  "common.translationIncomplete",
-                  "Some content could not be translated ({{done}}/{{total}}).",
-                  { done: bilingualWarning.done, total: bilingualWarning.total },
-                )}
-              </div>
-            )}
-            {(bilingualResult as TranslateResult & { _isHtml?: boolean })._isHtml ? (
-              <ShadowDomEmail html={bilingualResult.translated} theme={theme} />
-            ) : (
-              <BilingualView segments={bilingualResult.segments ?? []} />
-            )}
-          </>
-        ) : bilingualMode ? (
-          <>
-            <div
-              role="alert"
-              style={{
-                fontSize: "12px",
-                lineHeight: 1.5,
-                color: "var(--color-error, #dc2626)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "6px",
-                padding: "8px 10px",
-                marginBottom: "12px",
-              }}
-            >
-              {bilingualErrorReason(bilingualError)}
-            </div>
-            {/* The mail itself stays readable — a failed translation must not hide it. */}
-            {rendered && rendered.html ? (
-              <ShadowDomEmail html={rendered.html} theme={theme} />
-            ) : (
-              <pre
-                className="message-body-text"
-                style={{
-                  fontSize: "var(--msg-body-size)",
-                  lineHeight: "var(--msg-body-line-height)" as CSSProperties["lineHeight"],
-                  color: "var(--msg-body-color)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  margin: 0,
-                  fontFamily: "var(--msg-body-font)",
-                }}
-              >
-                {message.body_text}
-              </pre>
-            )}
-          </>
+        {bilingualMode && displayMode !== "original" && bilingualError && (
+          <div
+            role="alert"
+            className="ai-inline-notice"
+            style={{ marginBottom: "14px" }}
+          >
+            <span>{bilingualErrorReason(bilingualError)}</span>
+          </div>
+        )}
+        {bilingualMode && displayMode !== "original" && bilingualResult ? (
+          (bilingualResult as TranslateResult & { _isHtml?: boolean })._isHtml ? (
+            <ShadowDomEmail
+              html={bilingualResult.translated}
+              theme={theme}
+              translatedOnly={displayMode === "translated"}
+            />
+          ) : (
+            <BilingualView
+              segments={bilingualResult.segments ?? []}
+              displayMode={displayMode === "translated" ? "translated" : "bilingual"}
+            />
+          )
         ) : rendered && rendered.html ? (
           <ShadowDomEmail html={rendered.html} theme={theme} />
         ) : (
@@ -618,6 +626,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
                   the choice to load it sits next to what it would change. */}
               {privacyNode}
               {summaryNode}
+              {translationBarNode}
               {bodyNode}
               {attachmentNode}
             </article>
@@ -655,6 +664,7 @@ export default function MessageDetail({ messageId, onBack, folderRole }: Props) 
             <div className="message-detail-reading">
               {privacyNode}
               {summaryNode}
+              {translationBarNode}
 
               {bodyNode}
 

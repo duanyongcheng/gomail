@@ -1,15 +1,14 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getAiConfig, listAiModels, saveAiConfig, testAiConnection } from "../../lib/api";
-import type { AiApiMode, AiProviderType } from "../../lib/api";
+import { AIService, type AIConfigView } from "@/mygo";
+import { AI_LANGUAGE_OPTIONS, AI_PRESETS, isLoopbackEndpoint, isRemoteHttpEndpoint } from "@/lib/ai";
+import { extractErrorMessage } from "@/lib/extractErrorMessage";
 import { useToastStore } from "@/stores/toast.store";
-import { extractErrorMessage } from "../../lib/extractErrorMessage";
 import ModelPicker from "./ModelPicker";
 
-const PROVIDER_OPTIONS: { value: AiProviderType; labelKey: string }[] = [
-  { value: "openai_compatible", labelKey: "ai.providerOpenAi" },
-  { value: "generic", labelKey: "ai.providerGeneric" },
-];
+const fieldStyle: React.CSSProperties = {
+  marginBottom: "12px",
+};
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -21,114 +20,145 @@ const labelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "8px 10px",
+  padding: "7px 10px",
   fontSize: "13px",
-  border: "1px solid var(--color-border)",
-  borderRadius: "6px",
-  background: "var(--color-bg-secondary)",
-  color: "var(--color-text-primary)",
   boxSizing: "border-box",
 };
 
-const fieldGroupStyle: React.CSSProperties = {
-  marginBottom: "14px",
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: "8px 18px",
-  fontSize: "13px",
-  fontWeight: 500,
-  border: "none",
-  borderRadius: "6px",
-  cursor: "pointer",
+const gridTwoCol: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "12px",
 };
 
 /**
- * Settings for the AI assistant.
+ * Unified AI & Translation settings (Clarity inset-group grammar).
  *
- * Mirrors the translate tab's "provider + dynamic fields + save/test" pattern,
- * but reads and writes its own config (`ai_get_config` / `ai_save_config`).
- * Saving here never touches the translation engine, and vice versa.
+ * One encrypted provider config drives both AI email summaries (single message
+ * and thread) and AI translation (bilingual reading, translated-only, subject,
+ * and selection popover), with optional task-level model overrides.
  */
 export default function AiTab() {
   const { t } = useTranslation();
-  const [providerType, setProviderType] = useState<AiProviderType>("openai_compatible");
-  const [isEnabled, setIsEnabled] = useState(false);
-
-  const [endpoint, setEndpoint] = useState("");
+  const [loaded, setLoaded] = useState<AIConfigView | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [preset, setPreset] = useState("openai");
+  const [provider, setProvider] = useState<"openai_compatible" | "anthropic">("openai_compatible");
+  const [endpoint, setEndpoint] = useState("https://api.openai.com/v1");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("");
-  const [mode, setMode] = useState<AiApiMode>("completions");
+  const [clearSavedKey, setClearSavedKey] = useState(false);
+  const [model, setModel] = useState("gpt-4o-mini");
+  const [apiMode, setApiMode] = useState<"completions" | "responses">("completions");
+  const [proxyMode, setProxyMode] = useState<"inherit" | "disabled">("inherit");
+  const [allowInsecureHttp, setAllowInsecureHttp] = useState(false);
 
-  const [promptParam, setPromptParam] = useState("prompt");
-  const [resultPath, setResultPath] = useState("text");
+  const [summaryLanguage, setSummaryLanguage] = useState("");
+  const [summaryStyle, setSummaryStyle] = useState<"standard" | "concise">("standard");
+  const [summaryModel, setSummaryModel] = useState("");
+
+  const [translateLanguage, setTranslateLanguage] = useState("");
+  const [translateDisplayMode, setTranslateDisplayMode] = useState<"bilingual" | "translated">("bilingual");
+  const [translateModel, setTranslateModel] = useState("");
 
   const [statusMsg, setStatusMsg] = useState("");
   const [statusType, setStatusType] = useState<"success" | "error" | "">("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
+
+  function applyConfigView(cfg: AIConfigView) {
+    setLoaded(cfg);
+    setEnabled(cfg.enabled);
+    setPreset(cfg.preset || "openai");
+    setProvider(cfg.provider === "anthropic" ? "anthropic" : "openai_compatible");
+    setEndpoint(cfg.endpoint || (cfg.configured ? "" : "https://api.openai.com/v1"));
+    setApiKey("");
+    setClearSavedKey(false);
+    setModel(cfg.model || "");
+    setApiMode(cfg.apiMode === "responses" ? "responses" : "completions");
+    setProxyMode(cfg.proxyMode === "disabled" ? "disabled" : "inherit");
+    setAllowInsecureHttp(Boolean(cfg.allowInsecureHttp));
+    setSummaryLanguage(cfg.summaryLanguage || "");
+    setSummaryStyle(cfg.summaryStyle === "concise" ? "concise" : "standard");
+    setSummaryModel(cfg.summaryModel || "");
+    setTranslateLanguage(cfg.translateLanguage || "");
+    setTranslateDisplayMode(cfg.translateDisplayMode === "translated" ? "translated" : "bilingual");
+    setTranslateModel(cfg.translateModel || "");
+  }
 
   useEffect(() => {
-    void loadConfig();
+    let active = true;
+    void AIService.getConfig({})
+      .then((cfg) => {
+        if (active && cfg) applyConfigView(cfg);
+      })
+      .catch((err) => {
+        console.error("Failed to load AI config:", err);
+      });
+    return () => { active = false; };
   }, []);
 
-  async function loadConfig() {
-    try {
-      const cfg = await getAiConfig();
-      if (!cfg) return;
-
-      setProviderType(cfg.provider_type as AiProviderType);
-      setIsEnabled(cfg.is_enabled);
-
-      const parsed = JSON.parse(cfg.config) as Record<string, unknown>;
-      setEndpoint((parsed.endpoint as string) || "");
-      setApiKey((parsed.api_key as string) || "");
-      setModel((parsed.model as string) || "");
-      if (parsed.mode === "completions" || parsed.mode === "responses") {
-        setMode(parsed.mode);
-      }
-      setPromptParam((parsed.prompt_param as string) || "prompt");
-      setResultPath((parsed.result_path as string) || "text");
-    } catch (err) {
-      console.error("Failed to load AI config:", err);
+  function handleSelectPreset(presetId: string) {
+    setPreset(presetId);
+    const chosen = AI_PRESETS.find((item) => item.id === presetId);
+    if (!chosen) return;
+    setProvider(chosen.provider);
+    if (chosen.endpoint) setEndpoint(chosen.endpoint);
+    if (chosen.defaultModel) setModel(chosen.defaultModel);
+    setApiMode(chosen.apiMode);
+    if (chosen.local) {
+      setProxyMode("disabled");
     }
   }
 
-  function buildConfigJson(): string {
-    if (providerType === "generic") {
-      return JSON.stringify({
-        type: "generic",
-        endpoint,
-        api_key: apiKey || null,
-        model: model || null,
-        prompt_param: promptParam,
-        result_path: resultPath,
-      });
-    }
-    return JSON.stringify({
-      type: "openai_compatible",
-      endpoint,
-      api_key: apiKey,
-      model,
-      mode,
-    });
+  function keepExistingKey(): boolean {
+    return !clearSavedKey && apiKey.trim() === "" && Boolean(loaded?.hasApiKey);
+  }
+
+  function buildTestPayload() {
+    return {
+      provider,
+      endpoint: endpoint.trim(),
+      apiKey: clearSavedKey ? "" : apiKey.trim(),
+      keepExistingKey: keepExistingKey(),
+      model: model.trim(),
+      apiMode,
+      proxyMode,
+      allowInsecureHttp,
+    };
   }
 
   async function handleSave() {
     setSaving(true);
     setStatusMsg("");
     try {
-      await saveAiConfig(providerType, buildConfigJson(), isEnabled);
+      const updated = await AIService.saveConfig({
+        enabled,
+        provider,
+        preset,
+        endpoint: endpoint.trim(),
+        apiKey: clearSavedKey ? "" : apiKey.trim(),
+        keepExistingKey: keepExistingKey(),
+        model: model.trim(),
+        apiMode,
+        proxyMode,
+        allowInsecureHttp,
+        summaryLanguage,
+        summaryStyle,
+        summaryModel: summaryModel.trim(),
+        translateLanguage,
+        translateDisplayMode,
+        translateModel: translateModel.trim(),
+      });
+      applyConfigView(updated);
       setStatusMsg(t("ai.configSaved"));
       setStatusType("success");
     } catch (err: unknown) {
       const errMsg = extractErrorMessage(err);
       setStatusMsg(t("ai.saveFailed", { error: errMsg }));
       setStatusType("error");
-      useToastStore.getState().addToast({
-        message: t("ai.saveFailed", { error: errMsg }),
-        type: "error",
-      });
+      useToastStore.getState().addToast({ message: t("ai.saveFailed", { error: errMsg }), type: "error" });
     } finally {
       setSaving(false);
     }
@@ -138,100 +168,133 @@ export default function AiTab() {
     setTesting(true);
     setStatusMsg("");
     try {
-      const result = await testAiConnection(buildConfigJson());
-      setStatusMsg(t("ai.connectionOk", { result }));
+      const result = await AIService.testConnection(buildTestPayload());
+      setStatusMsg(t("ai.connectionOk", { result: result.message || `${result.model} (${result.latencyMs} ms)` }));
       setStatusType("success");
     } catch (err: unknown) {
       const errMsg = extractErrorMessage(err);
       setStatusMsg(t("ai.testFailed", { error: errMsg }));
       setStatusType("error");
-      useToastStore.getState().addToast({
-        message: t("ai.testFailed", { error: errMsg }),
-        type: "error",
-      });
+      useToastStore.getState().addToast({ message: t("ai.testFailed", { error: errMsg }), type: "error" });
     } finally {
       setTesting(false);
     }
   }
 
-  function renderProviderFields() {
-    if (providerType === "generic") {
-      return (
-        <>
-          <div style={fieldGroupStyle}>
-            <label htmlFor="ai-generic-endpoint" style={labelStyle}>{t("ai.endpoint")}</label>
-            <input
-              id="ai-generic-endpoint"
-              name="ai_generic_endpoint"
-              type="url"
-              style={inputStyle}
-              value={endpoint}
-              onChange={(e) => setEndpoint(e.target.value)}
-              placeholder="https://api.example.com/generate"
-              autoComplete="off"
-            />
-          </div>
-          <div style={fieldGroupStyle}>
-            <label htmlFor="ai-generic-api-key" style={labelStyle}>{t("translate.apiKeyOptional")}</label>
-            <input
-              id="ai-generic-api-key"
-              name="ai_generic_api_key"
-              style={inputStyle}
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              autoComplete="current-password"
-            />
-          </div>
-          <div style={fieldGroupStyle}>
-            <label htmlFor="ai-generic-model" style={labelStyle}>{t("ai.modelOptional")}</label>
-            <input
-              id="ai-generic-model"
-              name="ai_generic_model"
-              style={inputStyle}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="local-model"
-              autoComplete="off"
-            />
-            <p style={{ fontSize: "11.5px", lineHeight: 1.5, color: "var(--color-text-secondary)", margin: "4px 0 0" }}>
-              {t(
-                "settings.modelManualOnly",
-                "This provider has no standard model list, so the name is typed by hand.",
-              )}
-            </p>
-          </div>
-          <div style={fieldGroupStyle}>
-            <label htmlFor="ai-generic-prompt-param" style={labelStyle}>{t("ai.promptParam")}</label>
-            <input
-              id="ai-generic-prompt-param"
-              name="ai_generic_prompt_param"
-              style={inputStyle}
-              value={promptParam}
-              onChange={(e) => setPromptParam(e.target.value)}
-              placeholder="prompt"
-              autoComplete="off"
-            />
-          </div>
-          <div style={fieldGroupStyle}>
-            <label htmlFor="ai-generic-result-path" style={labelStyle}>{t("ai.resultPath")}</label>
-            <input
-              id="ai-generic-result-path"
-              name="ai_generic_result_path"
-              style={inputStyle}
-              value={resultPath}
-              onChange={(e) => setResultPath(e.target.value)}
-              placeholder="data.reply"
-              autoComplete="off"
-            />
-          </div>
-        </>
-      );
+  async function handleClearConfig() {
+    setClearing(true);
+    setStatusMsg("");
+    try {
+      const cleared = await AIService.clearConfig({});
+      applyConfigView(cleared);
+      setStatusMsg(t("ai.configCleared", "AI configuration cleared."));
+      setStatusType("success");
+    } catch (err: unknown) {
+      const errMsg = extractErrorMessage(err);
+      setStatusMsg(t("ai.saveFailed", { error: errMsg }));
+      setStatusType("error");
+    } finally {
+      setClearing(false);
     }
+  }
 
-    return (
-      <>
-        <div style={fieldGroupStyle}>
+  async function handleClearCache() {
+    setClearingCache(true);
+    setStatusMsg("");
+    try {
+      const res = await AIService.clearCache({});
+      const refreshed = await AIService.getConfig({});
+      setLoaded(refreshed);
+      setStatusMsg(t("ai.cacheCleared", { count: res.deleted }));
+      setStatusType("success");
+    } catch (err: unknown) {
+      const errMsg = extractErrorMessage(err);
+      setStatusMsg(errMsg);
+      setStatusType("error");
+    } finally {
+      setClearingCache(false);
+    }
+  }
+
+  const isLocal = isLoopbackEndpoint(endpoint);
+  const showInsecureOption = allowInsecureHttp || isRemoteHttpEndpoint(endpoint);
+
+  return (
+    <div>
+      <p className="settings-section-desc" style={{ marginBottom: "16px" }}>
+        {t("ai.unifiedDesc")}
+      </p>
+
+      {loaded?.keyringError && (
+        <div role="alert" className="settings-callout settings-callout--signal" style={{ marginBottom: "16px" }}>
+          {t("ai.keyringLocked")}
+        </div>
+      )}
+
+      {/* 1. Model Service */}
+      <fieldset style={{ marginBottom: "16px" }}>
+        <legend>{t("ai.serviceSection")}</legend>
+
+        <label htmlFor="ai-enabled" className="settings-checkbox-row" style={{ marginBottom: "14px" }}>
+          <input
+            id="ai-enabled"
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
+          <span>{t("ai.enableAll")}</span>
+        </label>
+
+        <div style={fieldStyle}>
+          <span style={labelStyle}>{t("ai.preset")}</span>
+          <div className="settings-choice-grid" style={{ gap: "6px" }}>
+            {AI_PRESETS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`settings-button${preset === item.id ? " settings-button--primary" : ""}`}
+                aria-pressed={preset === item.id}
+                onClick={() => handleSelectPreset(item.id)}
+              >
+                {t(item.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={gridTwoCol}>
+          <div style={fieldStyle}>
+            <label htmlFor="ai-provider" style={labelStyle}>{t("translate.provider")}</label>
+            <select
+              id="ai-provider"
+              name="ai_provider"
+              style={inputStyle}
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as "openai_compatible" | "anthropic")}
+            >
+              <option value="openai_compatible">{t("ai.providerOpenAi")}</option>
+              <option value="anthropic">{t("ai.providerAnthropic")}</option>
+            </select>
+          </div>
+
+          {provider === "openai_compatible" && (
+            <div style={fieldStyle}>
+              <label htmlFor="ai-mode" style={labelStyle}>{t("translate.mode")}</label>
+              <select
+                id="ai-mode"
+                name="ai_mode"
+                style={inputStyle}
+                value={apiMode}
+                onChange={(e) => setApiMode(e.target.value as "completions" | "responses")}
+              >
+                <option value="completions">{t("translate.modeCompletions")}</option>
+                <option value="responses">{t("translate.modeResponses")}</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        <div style={fieldStyle}>
           <label htmlFor="ai-endpoint" style={labelStyle}>{t("ai.endpoint")}</label>
           <input
             id="ai-endpoint"
@@ -240,107 +303,208 @@ export default function AiTab() {
             style={inputStyle}
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
-            placeholder="https://api.openai.com"
+            placeholder="https://api.openai.com/v1"
             autoComplete="off"
           />
+          {isLocal && (
+            <p className="settings-section-desc" style={{ marginTop: "6px", marginBottom: 0 }}>
+              {t("ai.localDirectHint")}
+            </p>
+          )}
+          {showInsecureOption && (
+            <label htmlFor="ai-allow-http" className="settings-checkbox-row" style={{ marginTop: "8px", fontSize: "12px" }}>
+              <input
+                id="ai-allow-http"
+                type="checkbox"
+                checked={allowInsecureHttp}
+                onChange={(e) => setAllowInsecureHttp(e.target.checked)}
+              />
+              <span>{t("ai.allowInsecureHttp")}</span>
+            </label>
+          )}
         </div>
-        <div style={fieldGroupStyle}>
+
+        <div style={fieldStyle}>
           <label htmlFor="ai-api-key" style={labelStyle}>{t("translate.apiKey")}</label>
           <input
             id="ai-api-key"
             name="ai_api_key"
-            style={inputStyle}
             type="password"
+            style={inputStyle}
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              if (e.target.value) setClearSavedKey(false);
+            }}
+            placeholder={
+              loaded?.hasApiKey && !clearSavedKey
+                ? t("ai.apiKeySavedPlaceholder", { masked: loaded.maskedApiKey || "••••" })
+                : t("ai.apiKeyPlaceholder")
+            }
             autoComplete="current-password"
           />
+          {loaded?.hasApiKey && (
+            <label htmlFor="ai-clear-key" className="settings-checkbox-row" style={{ marginTop: "6px", fontSize: "12px" }}>
+              <input
+                id="ai-clear-key"
+                type="checkbox"
+                checked={clearSavedKey}
+                onChange={(e) => {
+                  setClearSavedKey(e.target.checked);
+                  if (e.target.checked) setApiKey("");
+                }}
+              />
+              <span>{t("ai.clearApiKey")}</span>
+            </label>
+          )}
         </div>
-        <div style={fieldGroupStyle}>
+
+        <div style={fieldStyle}>
           <ModelPicker
             id="ai-model"
             name="ai_model"
             label={t("translate.model")}
             value={model}
             onChange={setModel}
-            fetchModels={() => listAiModels(buildConfigJson())}
-            cacheKey={endpoint}
+            fetchModels={() => AIService.listModels(buildTestPayload())}
+            cacheKey={`${provider}:${endpoint}`}
             placeholder="gpt-4o-mini"
           />
         </div>
-        <div style={fieldGroupStyle}>
-          <label htmlFor="ai-mode" style={labelStyle}>{t("translate.mode")}</label>
+
+        <div style={{ marginBottom: 0 }}>
+          <label htmlFor="ai-proxy-mode" style={labelStyle}>{t("ai.proxyMode")}</label>
           <select
-            id="ai-mode"
-            name="ai_mode"
+            id="ai-proxy-mode"
+            name="ai_proxy_mode"
             style={inputStyle}
-            value={mode}
-            onChange={(e) => setMode(e.target.value as AiApiMode)}
+            value={proxyMode}
+            onChange={(e) => setProxyMode(e.target.value as "inherit" | "disabled")}
           >
-            <option value="completions">{t("translate.modeCompletions")}</option>
-            <option value="responses">{t("translate.modeResponses")}</option>
+            <option value="inherit">{t("ai.proxyInherit")}</option>
+            <option value="disabled">{t("ai.proxyDisabled")}</option>
           </select>
         </div>
-      </>
-    );
-  }
+      </fieldset>
 
-  return (
-    <div>
-      <h2 style={{ fontSize: "18px", fontWeight: 600, color: "var(--color-text-primary)", marginTop: 0, marginBottom: "20px" }}>
-        {t("ai.engineTitle")}
-      </h2>
+      {/* 2. Summary Preferences */}
+      <fieldset style={{ marginBottom: "16px" }}>
+        <legend>{t("ai.summarySection")}</legend>
+        <div style={gridTwoCol}>
+          <div style={fieldStyle}>
+            <label htmlFor="ai-summary-lang" style={labelStyle}>{t("ai.summaryDefaultLang")}</label>
+            <select
+              id="ai-summary-lang"
+              style={inputStyle}
+              value={summaryLanguage}
+              onChange={(e) => setSummaryLanguage(e.target.value)}
+            >
+              <option value="">{t("ai.followUiLang")}</option>
+              {AI_LANGUAGE_OPTIONS.map((opt) => (
+                <option key={opt.code} value={opt.code}>{t(opt.labelKey)}</option>
+              ))}
+            </select>
+          </div>
+          <div style={fieldStyle}>
+            <label htmlFor="ai-summary-style" style={labelStyle}>{t("ai.summaryStyle")}</label>
+            <select
+              id="ai-summary-style"
+              style={inputStyle}
+              value={summaryStyle}
+              onChange={(e) => setSummaryStyle(e.target.value as "standard" | "concise")}
+            >
+              <option value="standard">{t("ai.summaryStyleStandard")}</option>
+              <option value="concise">{t("ai.summaryStyleConcise")}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label htmlFor="ai-summary-model" style={labelStyle}>{t("ai.summaryModelOverride")}</label>
+          <input
+            id="ai-summary-model"
+            type="text"
+            style={inputStyle}
+            value={summaryModel}
+            onChange={(e) => setSummaryModel(e.target.value)}
+            placeholder={model || "gpt-4o-mini"}
+            autoComplete="off"
+          />
+        </div>
+      </fieldset>
 
-      <p style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--color-text-secondary)", marginTop: 0, marginBottom: "18px" }}>
-        {t("ai.isolationNote")}
-      </p>
+      {/* 3. Translation Preferences */}
+      <fieldset style={{ marginBottom: "16px" }}>
+        <legend>{t("ai.translateSection")}</legend>
+        <div style={gridTwoCol}>
+          <div style={fieldStyle}>
+            <label htmlFor="ai-translate-lang" style={labelStyle}>{t("ai.translateDefaultLang")}</label>
+            <select
+              id="ai-translate-lang"
+              style={inputStyle}
+              value={translateLanguage}
+              onChange={(e) => setTranslateLanguage(e.target.value)}
+            >
+              <option value="">{t("ai.followUiLang")}</option>
+              {AI_LANGUAGE_OPTIONS.map((opt) => (
+                <option key={opt.code} value={opt.code}>{t(opt.labelKey)}</option>
+              ))}
+            </select>
+          </div>
+          <div style={fieldStyle}>
+            <label htmlFor="ai-translate-mode" style={labelStyle}>{t("ai.translateDisplayMode")}</label>
+            <select
+              id="ai-translate-mode"
+              style={inputStyle}
+              value={translateDisplayMode}
+              onChange={(e) => setTranslateDisplayMode(e.target.value as "bilingual" | "translated")}
+            >
+              <option value="bilingual">{t("ai.modeBilingual")}</option>
+              <option value="translated">{t("ai.modeTranslated")}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label htmlFor="ai-translate-model" style={labelStyle}>{t("ai.translateModelOverride")}</label>
+          <input
+            id="ai-translate-model"
+            type="text"
+            style={inputStyle}
+            value={translateModel}
+            onChange={(e) => setTranslateModel(e.target.value)}
+            placeholder={model || "gpt-4o-mini"}
+            autoComplete="off"
+          />
+        </div>
+      </fieldset>
 
-      <div style={{ ...fieldGroupStyle, display: "flex", alignItems: "center", gap: "8px" }}>
-        <input
-          type="checkbox"
-          checked={isEnabled}
-          onChange={(e) => setIsEnabled(e.target.checked)}
-          id="ai-enabled"
-        />
-        <label htmlFor="ai-enabled" style={{ fontSize: "13px", color: "var(--color-text-primary)", cursor: "pointer" }}>
-          {t("ai.enableAi")}
-        </label>
-      </div>
-
-      <div style={fieldGroupStyle}>
-        <label htmlFor="ai-provider" style={labelStyle}>{t("translate.provider")}</label>
-        <select
-          id="ai-provider"
-          name="ai_provider"
-          style={inputStyle}
-          value={providerType}
-          onChange={(e) => setProviderType(e.target.value as AiProviderType)}
-        >
-          {PROVIDER_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {t(opt.labelKey)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {renderProviderFields()}
-
-      <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+      {/* Action buttons */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
         <button
-          style={{ ...buttonStyle, background: "var(--color-accent-fill)", color: "#fff", opacity: saving ? 0.6 : 1 }}
-          onClick={handleSave}
+          type="button"
+          className="settings-button settings-button--primary"
+          onClick={() => void handleSave()}
           disabled={saving}
         >
           {saving ? t("common.saving") : t("common.save")}
         </button>
         <button
-          style={{ ...buttonStyle, background: "var(--color-bg-hover)", color: "var(--color-text-primary)", opacity: testing ? 0.6 : 1 }}
-          onClick={handleTest}
+          type="button"
+          className="settings-button"
+          onClick={() => void handleTest()}
           disabled={testing}
         >
           {testing ? t("common.testing") : t("translate.testConnection")}
         </button>
+        {loaded?.configured && (
+          <button
+            type="button"
+            className="settings-button"
+            onClick={() => void handleClearConfig()}
+            disabled={clearing}
+          >
+            {t("ai.clearConfig")}
+          </button>
+        )}
       </div>
 
       {statusMsg && (
@@ -348,11 +512,32 @@ export default function AiTab() {
           role={statusType === "error" ? "alert" : "status"}
           aria-live="polite"
           className={`settings-callout${statusType === "error" ? " settings-callout--signal" : ""}`}
-          style={{ marginTop: "14px" }}
+          style={{ marginBottom: "16px" }}
         >
           {statusMsg}
         </div>
       )}
+
+      {/* 4. Local Cache */}
+      <fieldset>
+        <legend>{t("ai.cacheSection")}</legend>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+          <span style={{ fontSize: "12.5px", color: "var(--color-text-secondary)" }}>
+            {t("ai.cacheStats", {
+              summaries: loaded?.summaryCacheCount ?? 0,
+              translations: loaded?.translateCacheCount ?? 0,
+            })}
+          </span>
+          <button
+            type="button"
+            className="settings-button"
+            onClick={() => void handleClearCache()}
+            disabled={clearingCache || ((loaded?.summaryCacheCount ?? 0) + (loaded?.translateCacheCount ?? 0) === 0)}
+          >
+            {t("ai.clearCache")}
+          </button>
+        </div>
+      </fieldset>
     </div>
   );
 }

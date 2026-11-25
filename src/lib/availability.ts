@@ -4,7 +4,7 @@ import { commands } from "@/lib/platform/manifest";
 /** Product availability, not account authorization. Callers must also check account capabilities. */
 export type Feature =
   | "contacts" | "kanban" | "snooze" | "localLabels" | "templates"
-  | "ai" | "translation" | "advancedSearch" | "proxy" | "rules" | "backup"
+  | "ai" | "aiSummary" | "aiCompose" | "aiSettings" | "translation" | "advancedSearch" | "proxy" | "rules" | "backup"
   | "notifications" | "autostart" | "startHidden" | "accountReorder"
   | "imap" | "pop3" | "outlook" | "permanentDelete" | "backgroundImage"
   | "gmailLabels" | "gmailReconnect" | "localCompose" | "cloudDraftCopies"
@@ -22,7 +22,8 @@ const requirements: Partial<Record<Feature, readonly string[]>> = {
   snooze: ["list_snoozed", "snooze_message", "unsnooze_message"],
   localLabels: ["list_labels", "add_message_label", "remove_message_label"],
   templates: ["list_email_templates", "save_email_template", "delete_email_template"],
-  ai: ["ai_get_config", "ai_save_config", "ai_summarize_message"],
+  ai: ["ai_get_config", "ai_save_config", "ai_polish", "ai_proofread", "ai_help_write"],
+  aiCompose: ["ai_polish", "ai_proofread", "ai_help_write"],
   translation: ["get_translate_config", "save_translate_config", "translate_text"],
   advancedSearch: ["advanced_search"],
   proxy: ["get_global_proxy", "update_global_proxy"],
@@ -42,12 +43,15 @@ const requirements: Partial<Record<Feature, readonly string[]>> = {
 export function isFeatureAvailable(feature: Feature): boolean {
   switch (feature) {
     // These production services use generated bindings, not legacy invoke names:
-    // GmailLabelService, AccountService reconnect/network, ComposeService.cloud and MicrosoftService.
+    // GmailLabelService, AccountService reconnect/network, ComposeService.cloud, MicrosoftService and AIService.
     case "gmailLabels":
     case "gmailReconnect":
     case "cloudDraftCopies":
     case "proxy":
     case "outlook":
+    case "aiSummary":
+    case "aiSettings":
+    case "translation":
       return true;
     // Gmail modify access deliberately cannot permanently delete messages.
     // Startup-hidden/tray lifecycle is not implemented.
@@ -72,15 +76,17 @@ export function isViewAvailable(view: string): boolean {
   return views.has(view) && (!viewFeatures[view] || isFeatureAvailable(viewFeatures[view]));
 }
 
-const tabFeatures: Record<string, Feature> = { proxy: "proxy", rules: "rules", translation: "translation", ai: "ai", cloudSync: "backup" };
-const tabs = new Set(["accounts", "general", "proxy", "appearance", "privacy", "rules", "remoteWrites", "translation", "ai", "shortcuts", "cloudSync", "about"]);
+const tabFeatures: Record<string, Feature> = { proxy: "proxy", rules: "rules", ai: "aiSettings", cloudSync: "backup" };
+const tabs = new Set(["accounts", "general", "proxy", "appearance", "privacy", "rules", "remoteWrites", "ai", "shortcuts", "cloudSync", "about"]);
 export function isSettingsTabAvailable(tab: string): boolean {
   return tabs.has(tab) && (!tabFeatures[tab] || isFeatureAvailable(tabFeatures[tab]));
 }
 
 const actionFeatures: Record<string, Feature> = {
   "toggle-view-kanban": "kanban", "open-cloud-settings": "backup", "toggle-notifications": "notifications",
-  "translate-selection": "translation", "toggle-bilingual": "translation", "summarize-message": "ai",
+  "translate-selection": "translation", "toggle-bilingual": "translation", "summarize-message": "aiSummary",
+  "mail:summarize": "aiSummary", "mail:toggle-bilingual": "translation", "mail:translate-selection": "translation",
+  "nav:ai-settings": "aiSettings",
   "nav:kanban": "kanban", "nav:contacts": "contacts", "nav:snoozed": "snooze", "nav:cloud-settings": "backup",
   "mail:add-to-kanban": "kanban", "settings:toggle-notifications": "notifications",
   "mail:compose": "localCompose", "compose-new": "localCompose", "reply": "localCompose", "reply-all": "localCompose", "forward": "localCompose",

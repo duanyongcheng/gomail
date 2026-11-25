@@ -37,27 +37,23 @@ export default function SelectionActionPopover({
     setCopied(true);
   }
 
-  const left = Math.min(position.x, window.innerWidth - 260);
-  const top = Math.min(position.y + 10, window.innerHeight - 120);
+  const left = Math.max(12, Math.min(position.x, window.innerWidth - 280));
+  const top = Math.max(12, Math.min(position.y + 10, window.innerHeight - 120));
+  const translationAvailable = isFeatureAvailable("translation");
 
   return (
     <div
+      className="selection-action-popover"
+      data-gomail-overlay="true"
       role="toolbar"
       aria-label={t("selection.actions", "Selected text actions")}
       style={{
-        position: "fixed",
         left,
         top,
         display: "flex",
         alignItems: "center",
         gap: "4px",
-        padding: "6px",
-        borderRadius: "8px",
-        border: "1px solid var(--color-border)",
-        backgroundColor: "var(--color-bg)",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        zIndex: 1000,
-        color: "var(--color-text-primary)",
+        padding: "5px 6px",
       }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -74,6 +70,18 @@ export default function SelectionActionPopover({
         {copied ? <Check size={14} /> : <Copy size={14} />}
         <span>{copied ? t("common.copied", "Copied") : t("common.copy", "Copy")}</span>
       </button>
+
+      {translationAvailable && (
+        <button
+          onClick={() => onTranslate(text, position)}
+          aria-label={t("selection.translateSelectedText", "Translate selected text")}
+          title={t("selection.translateSelectedText", "Translate selected text")}
+          style={secondaryActionStyle}
+        >
+          <Languages size={14} />
+          <span>{t("selection.translate", "Translate")}</span>
+        </button>
+      )}
 
       <div style={{ position: "relative" }}>
         <button
@@ -101,17 +109,18 @@ export default function SelectionActionPopover({
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             }}
           >
-            <button
-              role="menuitem"
-              disabled={!isFeatureAvailable("translation")}
-              title={isFeatureAvailable("translation") ? undefined : unavailableReason()}
-              onClick={() => { if (isFeatureAvailable("translation")) onTranslate(text, position); }}
-              aria-label={t("selection.translateSelectedText", "Translate selected text")}
-              style={menuButtonStyle}
-            >
-              <Languages size={14} />
-              <span>{t("selection.translate", "Translate")}</span>
-            </button>
+            {!translationAvailable && (
+              <button
+                role="menuitem"
+                disabled
+                title={unavailableReason()}
+                aria-label={t("selection.translateSelectedText", "Translate selected text")}
+                style={menuButtonStyle}
+              >
+                <Languages size={14} />
+                <span>{t("selection.translate", "Translate")}</span>
+              </button>
+            )}
             <button
               role="menuitem"
               onClick={() => onSearch(text)}
@@ -171,6 +180,20 @@ const primaryButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontSize: "12px",
   fontWeight: 600,
+};
+
+const secondaryActionStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "5px",
+  padding: "5px 9px",
+  border: "none",
+  borderRadius: "6px",
+  backgroundColor: "var(--color-bg-secondary)",
+  color: "var(--color-text-primary)",
+  cursor: "pointer",
+  fontSize: "12px",
+  fontWeight: 500,
 };
 
 const iconButtonStyle: React.CSSProperties = {
