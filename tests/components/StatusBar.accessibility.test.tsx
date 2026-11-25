@@ -163,4 +163,33 @@ describe("StatusBar accessibility", () => {
 
     expect(mocks.uiState.setKeepRunningInBackground).toHaveBeenCalledWith(true);
   });
+
+  it("keeps primary status and action controls on a dedicated top row above secondary detail", () => {
+    mocks.uiState.syncStatus = "syncing";
+    mocks.uiState.realtimeStatusByAccount = {
+      "account-1": {
+        account_id: "account-1",
+        mode: "polling",
+        provider: "gmail",
+        message: "20 messages waiting for download",
+      },
+    };
+
+    const { container } = render(<StatusBar />);
+
+    const mainRow = container.querySelector(".app-statusbar-main");
+    const actions = container.querySelector(".app-statusbar-actions");
+    const detail = container.querySelector(".app-statusbar-detail");
+    const syncButton = screen.getByRole("button", { name: "Stop sync" });
+    const bgButton = screen.getByRole("button", { name: "Keep running in background on close" });
+
+    expect(mainRow).toBeTruthy();
+    expect(actions?.contains(syncButton)).toBe(true);
+    expect(actions?.contains(bgButton)).toBe(true);
+    expect(syncButton.className).toContain("app-statusbar-sync-btn--active");
+    expect(syncButton.querySelector(".app-statusbar-sync-icon--spinning")).toBeTruthy();
+    expect(detail?.textContent).toBe("20 messages waiting for download");
+    expect(mainRow?.contains(detail!)).toBe(false);
+    expect(detail?.className).toContain("app-statusbar-detail--attention");
+  });
 });

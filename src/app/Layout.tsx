@@ -23,6 +23,7 @@ import { useCloseToBackground } from "./useCloseToBackground";
 import { useTrayI18n } from "./useTrayI18n";
 import { useMailtoOpen } from "./useMailtoOpen";
 import { useAutoUpdateCheck } from "./useAutoUpdateCheck";
+import { usePreventChromeRightClickSelection } from "./usePreventChromeRightClickSelection";
 import AppBackground from "./AppBackground";
 
 const loadSettingsView = () => import("../features/settings/SettingsView");
@@ -108,6 +109,7 @@ export default function Layout() {
   useTrayI18n();
   useMailtoOpen();
   useAutoUpdateCheck();
+  usePreventChromeRightClickSelection();
 
   // Re-register commands when language changes
   useEffect(() => {

@@ -19,6 +19,10 @@ import MarkAllReadButton from "./MarkAllReadButton";
 import { folderIcon, folderLabel } from "./folderIcon";
 import { useReorderAccounts } from "../hooks/mutations";
 import { folderLeafName, unreadCountForFolder } from "../lib/folderAggregation";
+import {
+  clearSelectionWithin,
+  isSecondaryContextMouseDown,
+} from "../app/usePreventChromeRightClickSelection";
 import type { Account, Folder as FolderType } from "../lib/api";
 
 /**
@@ -362,11 +366,20 @@ export default function SidebarAccountList({
         type="button"
         className="sidebar-row sidebar-row--nested"
         onClick={() => onFolderSelect(folder.id, group.id)}
+        onMouseDown={(event) => {
+          // macOS WebKit selects the word under the pointer on secondary press
+          // before `contextmenu` fires; prevent default so opening the folder
+          // menu never leaves the row label highlighted.
+          if (isSecondaryContextMouseDown(event)) {
+            event.preventDefault();
+          }
+        }}
         onContextMenu={(event) => {
           if (!onFolderContextMenu) return;
           // The native menu would cover the app's own, and on a folder row it
           // offers nothing this app can honour anyway.
           event.preventDefault();
+          clearSelectionWithin(event.currentTarget);
           onFolderContextMenu(folder, group, { x: event.clientX, y: event.clientY });
         }}
         aria-current={isActive ? "page" : undefined}

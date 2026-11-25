@@ -120,6 +120,8 @@
   min-height: 0;
   border-right: 1px solid var(--color-border);
   background: var(--color-sidebar-bg);
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 [data-ui-theme] .sidebar {
@@ -492,19 +494,21 @@
 }
 
 /* ── Status footer ───────────────────────────────────────────────────────────
- * Sync state, connection and queued writes read as one quiet line at the foot
- * of the sidebar. It never sets the column's width: the sidebar does. */
+ * Two-tier footer at the foot of the sidebar: a fixed single-line top row for
+ * sync state and trailing controls (so toggling between "Ready" and "Syncing"
+ * never wraps icons onto an orphan line), a quiet indented detail caption
+ * underneath for download/connection context, and a separate stack for beacons
+ * and update pills. It never sets the column's width: the sidebar does. */
 .app-statusbar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   flex-shrink: 0;
-  gap: 4px 8px;
+  gap: 2px;
   box-sizing: border-box;
   width: 0;
   min-width: 100%;
   min-height: 38px;
-  padding: 7px 10px 9px 18px;
+  padding: 8px 10px 9px 18px;
   border-top: 1px solid color-mix(in srgb, var(--color-text-primary) 7%, transparent);
   background: transparent;
   color: var(--color-text-tertiary);
@@ -513,18 +517,29 @@
   font-variant-numeric: tabular-nums;
 }
 
-.app-statusbar > .truncate {
+.app-statusbar-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
-  max-width: 100%;
+  min-height: 22px;
 }
 
 .app-statusbar-primary {
   display: inline-flex;
   align-items: center;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 6px;
   color: var(--color-text-secondary);
+  font-size: 11.5px;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.app-statusbar-primary--offline {
+  color: var(--color-signal-text);
 }
 
 .app-statusbar-primary::before {
@@ -536,9 +551,17 @@
   background: var(--color-success);
 }
 
+.app-statusbar[data-sync="syncing"] .app-statusbar-primary {
+  color: var(--color-text-primary);
+}
+
 .app-statusbar[data-sync="syncing"] .app-statusbar-primary::before {
   background: var(--color-accent);
   animation: status-pulse 1.4s var(--ui-motion-ease) infinite;
+}
+
+.app-statusbar[data-sync="error"] .app-statusbar-primary {
+  color: var(--color-signal-text);
 }
 
 .app-statusbar[data-sync="error"] .app-statusbar-primary::before {
@@ -555,12 +578,45 @@
   50% { opacity: 0.35; }
 }
 
+.app-statusbar-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+/* Secondary activity line (e.g. deferred download count or connection mode),
+   indented to sit directly under the primary status label past the 6px dot. */
+.app-statusbar-detail {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding-left: 12px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.app-statusbar-detail--attention {
+  color: var(--color-signal-text);
+  font-weight: 500;
+}
+
+.app-statusbar-extras {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
 .app-statusbar-beacon {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   max-width: 100%;
-  padding: 1px 7px;
+  padding: 2px 7px;
   border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
@@ -587,6 +643,7 @@
   border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--color-text-tertiary);
+  cursor: pointer;
   transition: background-color var(--ui-motion-fast) var(--ui-motion-ease),
     color var(--ui-motion-fast) var(--ui-motion-ease);
 }
@@ -596,14 +653,34 @@
   color: var(--color-text-primary);
 }
 
-.app-statusbar-icon-btn[aria-pressed="true"] {
+.app-statusbar-icon-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.app-statusbar-icon-btn[aria-pressed="true"],
+.app-statusbar-sync-btn--active {
   color: var(--color-accent);
+}
+
+.app-statusbar-sync-icon--spinning {
+  animation: spin 1s linear infinite;
+}
+
+.app-statusbar-notify-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 22px;
+  color: var(--color-text-tertiary);
 }
 
 .app-statusbar-update-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  max-width: 100%;
   height: 20px;
   padding: 0 8px;
   border: 0;
@@ -625,17 +702,29 @@
 
 /* Folded rail: the dot and the sync control, nothing that needs words. */
 .app-sidebar-column:has(.sidebar--collapsed) .app-statusbar {
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 0;
   padding: 8px 0 10px;
 }
 
-.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar > :not(.app-statusbar-primary, .app-statusbar-icon-btn) {
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-main {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-detail,
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-extras,
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-bg-btn,
+.app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-notify-icon {
   display: none;
 }
 
 .app-sidebar-column:has(.sidebar--collapsed) .app-statusbar-primary {
+  flex: none;
+  gap: 0;
   font-size: 0;
 }
 
@@ -744,7 +833,27 @@
     gap: 0;
   }
 
-  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar > :not(.app-statusbar-primary, .app-statusbar-icon-btn) {
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar {
+    align-items: center;
+    padding: 8px 0 10px;
+  }
+
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar-main {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar-primary {
+    flex: none;
+    gap: 0;
+    font-size: 0;
+  }
+
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar-detail,
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar-extras,
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar-bg-btn,
+  [data-ui-theme] .app-shell-content:has(.settings-workspace) .app-statusbar-notify-icon {
     display: none;
   }
 }
@@ -760,7 +869,8 @@
     transition: none;
   }
 
-  .app-statusbar[data-sync="syncing"] .app-statusbar-primary::before {
+  .app-statusbar[data-sync="syncing"] .app-statusbar-primary::before,
+  .app-statusbar-sync-icon--spinning {
     animation: none;
   }
 }

@@ -93,6 +93,14 @@ option {
   color: var(--color-text-primary);
 }
 
+/* Native controls and source-list navigation should not highlight text on
+   click, drag, or macOS WebKit right-click. */
+button,
+.sidebar {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 [data-theme="dark"] input,
 [data-theme="dark"] textarea,
 [data-theme="dark"] select,
@@ -1720,6 +1728,8 @@ textarea:focus-visible {
   cursor: pointer;
   font-size: 12px;
   line-height: 1;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .batch-select-control span {

@@ -314,6 +314,8 @@
   color: var(--color-text-primary);
   font-weight: 400;
   cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
