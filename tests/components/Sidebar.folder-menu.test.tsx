@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -217,6 +217,57 @@ describe("Sidebar folder context menu", () => {
     const notPrevented = fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
 
     expect(notPrevented).toBe(false);
+  });
+
+  it("prevents right-click mousedown from highlighting the folder label or menu items", () => {
+    renderSidebar();
+
+    const row = screen.getByTestId("folder-row-folder-inbox");
+    const rightDown = createEvent.mouseDown(row, { button: 2 });
+    const leftDown = createEvent.mouseDown(row, { button: 0 });
+    fireEvent(row, rightDown);
+    fireEvent(row, leftDown);
+
+    expect(rightDown.defaultPrevented).toBe(true);
+    expect(leftDown.defaultPrevented).toBe(false);
+
+    const menu = openFolderMenu("folder-inbox");
+    const menuRightDown = createEvent.mouseDown(menu, { button: 2 });
+    fireEvent(menu, menuRightDown);
+    expect(menuRightDown.defaultPrevented).toBe(true);
+  });
+
+  it("clears any selection trapped inside the folder row while keeping reader selection intact", () => {
+    renderSidebar();
+
+    const row = screen.getByTestId("folder-row-folder-inbox");
+    const labelNode = row.querySelector(".sidebar-row-label")!.firstChild!;
+    const removeAllRanges = vi.fn();
+    const getSelectionSpy = vi.spyOn(window, "getSelection").mockReturnValue({
+      rangeCount: 1,
+      isCollapsed: false,
+      anchorNode: labelNode,
+      focusNode: labelNode,
+      removeAllRanges,
+    } as unknown as Selection);
+
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+    expect(removeAllRanges).toHaveBeenCalledTimes(1);
+
+    removeAllRanges.mockClear();
+    const readerNode = document.createTextNode("Selected mail text");
+    getSelectionSpy.mockReturnValue({
+      rangeCount: 1,
+      isCollapsed: false,
+      anchorNode: readerNode,
+      focusNode: readerNode,
+      removeAllRanges,
+    } as unknown as Selection);
+
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+    expect(removeAllRanges).not.toHaveBeenCalled();
+
+    getSelectionSpy.mockRestore();
   });
 
   it("marks the whole folder read and refreshes the unread views", async () => {

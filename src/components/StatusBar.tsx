@@ -218,66 +218,100 @@ export default function StatusBar() {
       ? t("status.remoteWritesPending", "{{count}} remote writes pending", { count: pendingRemoteWrites })
       : t("status.remoteWritesQueued", "{{count}} remote writes queued", { count: pendingRemoteWrites });
 
+  const isRealtimeAttention = Boolean(
+    realtimeStatus?.message ||
+    realtimeStatus?.mode === "error" ||
+    realtimeStatus?.mode === "auth_required" ||
+    realtimeStatus?.mode === "backoff",
+  );
+  const showPendingBeacon = networkStatus !== "offline" && pendingRemoteWrites > 0;
+  const hasExtras = showPendingBeacon || Boolean(lastMailError) || showUpdateReminder;
+
   return (
     <footer
       className="app-statusbar"
       data-network={networkStatus}
       data-sync={syncStatus}
     >
-      {networkStatus === "offline" ? (
+      <div className="app-statusbar-main">
+        {networkStatus === "offline" ? (
+          <span
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="app-statusbar-primary app-statusbar-primary--offline"
+          >
+            <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="1" y1="1" x2="23" y2="23" />
+              <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+              <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+              <path d="M10.71 5.05A16 16 0 0 1 22.56 9" />
+              <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+              <line x1="12" y1="20" x2="12.01" y2="20" />
+            </svg>
+            <span className="truncate">{t("status.offline", "Offline")}</span>
+          </span>
+        ) : (
+          <span className="app-statusbar-primary" role="status" aria-live="polite" aria-atomic="true">
+            <span className="truncate">{syncText}</span>
+          </span>
+        )}
+
+        <div className="app-statusbar-actions">
+          {networkStatus !== "offline" && (
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={!activeAccountId}
+              title={syncStatus === "syncing" ? t("status.stopSync") : t("status.syncNow")}
+              aria-label={syncStatus === "syncing" ? t("status.stopSync") : t("status.syncNow")}
+              className={`app-statusbar-icon-btn app-statusbar-sync-btn${syncStatus === "syncing" ? " app-statusbar-sync-btn--active" : ""}`}
+            >
+              <RefreshCw
+                aria-hidden="true"
+                size={13}
+                className={syncStatus === "syncing" ? "app-statusbar-sync-icon--spinning" : undefined}
+              />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setKeepRunningInBackground(!keepRunningInBackground)}
+            aria-label={backgroundLabel}
+            aria-pressed={keepRunningInBackground}
+            title={backgroundLabel}
+            className="app-statusbar-icon-btn app-statusbar-bg-btn"
+          >
+            <AppWindow aria-hidden="true" size={13} />
+          </button>
+          {isFeatureAvailable("notifications") && notificationsEnabled && (
+            <span className="app-statusbar-notify-icon" aria-hidden="true">
+              <svg focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {networkStatus !== "offline" && realtimeStatusText && (
         <span
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="app-statusbar-primary flex items-center gap-1"
-          style={{ color: "var(--color-signal-text)" }}
+          aria-label={realtimeStatusText}
+          className={`app-statusbar-detail truncate${isRealtimeAttention ? " app-statusbar-detail--attention" : ""}`}
+          title={realtimeStatus?.message ?? realtimeStatusText}
         >
-          <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="1" y1="1" x2="23" y2="23" />
-            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
-            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
-            <path d="M10.71 5.05A16 16 0 0 1 22.56 9" />
-            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
-            <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-            <line x1="12" y1="20" x2="12.01" y2="20" />
-          </svg>
-          {t("status.offline", "Offline")}
+          {realtimeStatusText}
         </span>
-      ) : (
-        <>
-          <span className="app-statusbar-primary" role="status" aria-live="polite" aria-atomic="true">{syncText}</span>
-          {realtimeStatusText && (
-            <span
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              aria-label={realtimeStatusText}
-              className="truncate"
-              title={realtimeStatus?.message ?? realtimeStatusText}
-              style={{ maxWidth: "180px" }}
-            >
-              {realtimeStatusText}
-            </span>
-          )}
-          <button
-            onClick={handleSync}
-            disabled={!activeAccountId}
-            title={syncStatus === "syncing" ? t("status.stopSync") : t("status.syncNow")}
-            aria-label={syncStatus === "syncing" ? t("status.stopSync") : t("status.syncNow")}
-            className="app-statusbar-icon-btn"
-            style={{
-              opacity: activeAccountId ? 1 : 0.4,
-            }}
-          >
-            <RefreshCw
-              aria-hidden="true"
-              size={13}
-              style={{
-                animation: syncStatus === "syncing" ? "spin 1s linear infinite" : "none",
-              }}
-            />
-          </button>
-          {pendingRemoteWrites > 0 && (
+      )}
+
+      {hasExtras && (
+        <div className="app-statusbar-extras">
+          {showPendingBeacon && (
             <span
               role={failedRemoteWrites > 0 ? "alert" : "status"}
               aria-live={failedRemoteWrites > 0 ? "assertive" : "polite"}
@@ -289,73 +323,56 @@ export default function StatusBar() {
               <span className="truncate">{pendingRemoteText}</span>
             </span>
           )}
-        </>
-      )}
 
-      {lastMailError && (
-        <span
-          role="alert"
-          aria-live="assertive"
-          aria-atomic="true"
-          className="app-statusbar-beacon app-statusbar-beacon--signal truncate"
-        >
-          {lastMailError}
-        </span>
-      )}
+          {lastMailError && (
+            <span
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+              className="app-statusbar-beacon app-statusbar-beacon--signal truncate"
+              title={lastMailError}
+            >
+              <span className="truncate">{lastMailError}</span>
+            </span>
+          )}
 
-      <span className="ml-auto flex items-center gap-1">
-        {showUpdateReminder && (
-          <button
-            type="button"
-            className="app-statusbar-update-pill"
-            onClick={() => {
-              const ui = useUIStore.getState();
-              ui.setSettingsTab("about");
-              ui.setActiveView("settings");
-            }}
-            title={
-              updateState === "installed" && updateInstalledVersion
-                ? t("about.restartReady", "Version v{{version}} is ready to install on restart", { version: updateInstalledVersion })
-                : updateState === "downloading"
-                  ? t("about.downloadingProgress", "Downloading update ({{percent}}%)", { percent: updatePercent })
-                  : t("about.newVersion", "New version available: {{version}}", { version: `v${updateAvailableVersion ?? ""}` })
-            }
-          >
-            {updateState === "installed" ? (
-              <>
-                <RotateCw aria-hidden="true" size={11} />
-                <span>{t("about.statusRestart", "Restart for v{{version}}", { version: updateInstalledVersion ?? "" })}</span>
-              </>
-            ) : updateState === "downloading" ? (
-              <>
-                <Download aria-hidden="true" size={11} />
-                <span>{t("about.statusUpdating", "Updating {{percent}}%", { percent: updatePercent })}</span>
-              </>
-            ) : (
-              <>
-                <ArrowUpCircle aria-hidden="true" size={11} />
-                <span>{t("about.statusAvailable", "Update v{{version}}", { version: updateAvailableVersion ?? "" })}</span>
-              </>
-            )}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setKeepRunningInBackground(!keepRunningInBackground)}
-          aria-label={backgroundLabel}
-          aria-pressed={keepRunningInBackground}
-          title={backgroundLabel}
-          className="app-statusbar-icon-btn"
-        >
-          <AppWindow aria-hidden="true" size={13} />
-        </button>
-        {isFeatureAvailable("notifications") && notificationsEnabled && (
-          <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-        )}
-      </span>
+          {showUpdateReminder && (
+            <button
+              type="button"
+              className="app-statusbar-update-pill"
+              onClick={() => {
+                const ui = useUIStore.getState();
+                ui.setSettingsTab("about");
+                ui.setActiveView("settings");
+              }}
+              title={
+                updateState === "installed" && updateInstalledVersion
+                  ? t("about.restartReady", "Version v{{version}} is ready to install on restart", { version: updateInstalledVersion })
+                  : updateState === "downloading"
+                    ? t("about.downloadingProgress", "Downloading update ({{percent}}%)", { percent: updatePercent })
+                    : t("about.newVersion", "New version available: {{version}}", { version: `v${updateAvailableVersion ?? ""}` })
+              }
+            >
+              {updateState === "installed" ? (
+                <>
+                  <RotateCw aria-hidden="true" size={11} />
+                  <span className="truncate">{t("about.statusRestart", "Restart for v{{version}}", { version: updateInstalledVersion ?? "" })}</span>
+                </>
+              ) : updateState === "downloading" ? (
+                <>
+                  <Download aria-hidden="true" size={11} />
+                  <span className="truncate">{t("about.statusUpdating", "Updating {{percent}}%", { percent: updatePercent })}</span>
+                </>
+              ) : (
+                <>
+                  <ArrowUpCircle aria-hidden="true" size={11} />
+                  <span className="truncate">{t("about.statusAvailable", "Update v{{version}}", { version: updateAvailableVersion ?? "" })}</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
     </footer>
   );
 }

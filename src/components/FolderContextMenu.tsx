@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AlertTriangle, Loader, MailOpen, RefreshCw, Trash2 } from "lucide-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { isFeatureAvailable, unavailableReason } from "@/lib/availability";
+import { isSecondaryContextMouseDown } from "@/app/usePreventChromeRightClickSelection";
 
 /**
  * One row of the folder menu.
@@ -153,6 +154,11 @@ export default function FolderContextMenu({
       aria-label={label}
       aria-busy={busy}
       data-testid="folder-context-menu"
+      onMouseDown={(event) => {
+        if (isSecondaryContextMouseDown(event)) {
+          event.preventDefault();
+        }
+      }}
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={handleKeyDown}
       style={{

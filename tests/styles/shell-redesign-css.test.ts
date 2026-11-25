@@ -14,7 +14,10 @@ describe("theme shell styling", () => {
     expect(css).toContain('[data-ui-theme] .sidebar-account-row[data-selected="true"]');
     expect(css).toContain('[data-ui-theme] .sidebar-row[data-selected="true"]');
     // The status footer never widens the column: the sidebar sets its width.
-    expect(css).toMatch(/\.app-statusbar\s*\{[^}]*width:\s*0;[^}]*min-width:\s*100%/);
+    expect(css).toMatch(/\.app-statusbar\s*\{[^}]*flex-direction:\s*column;[^}]*width:\s*0;[^}]*min-width:\s*100%/);
+    expect(css).toMatch(/\.app-statusbar-main\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between/);
+    expect(css).toMatch(/\.app-statusbar-detail\s*\{[^}]*padding-left:\s*12px/);
+    expect(css).toMatch(/\.app-statusbar-sync-icon--spinning\s*\{[^}]*animation:\s*spin/);
   });
 
   it("keeps the traffic lights clear and lets every toolbar row drag the window on macOS", () => {

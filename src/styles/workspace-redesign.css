@@ -20,6 +20,8 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .settings-navigation-tab {
@@ -257,6 +259,8 @@
   line-height: 1.5;
   color: var(--color-text-primary);
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .settings-checkbox-row + .settings-checkbox-row {
@@ -851,6 +855,8 @@
   margin: 0 8px;
   border-radius: 8px;
   background: transparent;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
@@ -889,6 +895,8 @@
   border-radius: 0;
   background: transparent;
   cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color var(--ui-motion-fast) var(--ui-motion-ease);
 }
 
@@ -963,6 +971,8 @@
   max-height: 340px;
   overflow-y: auto;
   padding: 6px;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .command-palette-item {
@@ -1146,6 +1156,8 @@
   box-shadow: var(--ui-shadow-md);
   z-index: 1200;
   color: var(--color-text-primary);
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 [data-theme="dark"] .folder-menu-surface {
