@@ -52,7 +52,7 @@ describe("SelectionActionPopover", () => {
     expect(await screen.findByRole("button", { name: "Copied selected text" })).toBeTruthy();
   });
 
-  it("keeps unavailable actions explained and disabled in the secondary menu", () => {
+  it("promotes translate to the primary toolbar while keeping unavailable actions disabled in the secondary menu", () => {
     const onTranslate = vi.fn();
     const onSearch = vi.fn();
     const onCreateRule = vi.fn();
@@ -69,7 +69,11 @@ describe("SelectionActionPopover", () => {
       />,
     );
 
-    expect(screen.queryByRole("menuitem", { name: "Translate selected text" })).toBeNull();
+    const translateButton = screen.getByRole("button", { name: "Translate selected text" }) as HTMLButtonElement;
+    expect(translateButton.disabled).toBe(false);
+    fireEvent.click(translateButton);
+    expect(onTranslate).toHaveBeenCalledWith("selected email text", { x: 100, y: 120 });
+
     expect(screen.queryByRole("menuitem", { name: "Search selected text" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Create rule from selected text" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Add selected text as kanban note" })).toBeNull();
@@ -77,17 +81,11 @@ describe("SelectionActionPopover", () => {
     fireEvent.click(screen.getByRole("button", { name: "More selected-text actions" }));
 
     expect(screen.getByRole("menuitem", { name: "Search selected text" })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Create rule from selected text" })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Add selected text as kanban note" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("menuitem", { name: "Translate selected text" }));
-
-    for (const label of ["Translate selected text", "Create rule from selected text", "Add selected text as kanban note"]) {
+    for (const label of ["Create rule from selected text", "Add selected text as kanban note"]) {
       const button = screen.getByRole("menuitem", { name: label }) as HTMLButtonElement;
       expect(button.disabled).toBe(true);
       expect(button.title).toMatch(/not available/);
     }
-    expect(onTranslate).not.toHaveBeenCalled();
     expect(onSearch).not.toHaveBeenCalled();
     expect(onCreateRule).not.toHaveBeenCalled();
     expect(onAddToKanbanNote).not.toHaveBeenCalled();

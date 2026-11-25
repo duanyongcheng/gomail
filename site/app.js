@@ -1,7 +1,7 @@
 (() => {
   const REPO_URL = "https://github.com/duanyongcheng/gomail";
   const RELEASES_LATEST = `${REPO_URL}/releases/latest`;
-  const DEFAULT_VERSION = "v0.4.1";
+  const DEFAULT_VERSION = "v0.5.0";
 
   const PLATFORMS = {
     "macos-arm64": {

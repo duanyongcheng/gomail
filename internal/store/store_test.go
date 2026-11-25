@@ -237,7 +237,7 @@ func checkLegacySchema(t *testing.T, db *sql.DB) {
 	rows, err := db.Query(`SELECT type,name,tbl_name,sql FROM sqlite_master
  WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL
  AND tbl_name NOT LIKE 'message_search%' AND name NOT LIKE 'trg_message_search_%'
- AND tbl_name NOT IN ('provider_checkpoints','provider_mappings','network_settings','google_oauth_settings') AND name != 'protocol_mailbox_identity'
+ AND tbl_name NOT IN ('provider_checkpoints','provider_mappings','network_settings','google_oauth_settings','ai_settings','message_ai_cache') AND name != 'protocol_mailbox_identity'
  AND tbl_name NOT IN ('gmail_backfill_pending','gmail_message_failures','mail_op_sequence','compose_drafts','compose_attachments','compose_draft_attachments', 'outbox','message_threads','gmail_label_changes','email_signatures','gmail_draft_copies')
  ORDER BY type,name`)
 	if err != nil {

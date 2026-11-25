@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/duanyongcheng/gomail/internal/ai"
 	"github.com/duanyongcheng/gomail/internal/crypto"
 	"github.com/duanyongcheng/gomail/internal/domain"
 	"github.com/duanyongcheng/gomail/internal/googleapi"
@@ -34,6 +35,7 @@ type Runtime struct {
 	OnFoldersChanged     func(AccountRequest)
 	OnTrustChanged       func(SenderRequest)
 	OnAccountChanged     func(AccountRequest)
+	OnAIStream           func(AIStreamEvent)
 	// Dependencies are overridden only by isolated local fixtures.
 	Authorize         func(context.Context, *oauth2.Config, *http.Client, func(string) error) (*oauth2.Token, error)
 	GmailAPIBase      string
@@ -60,6 +62,10 @@ type Runtime struct {
 	globalProxy       *mailnet.Proxy
 	googleOAuth       *storedGoogleOAuth
 	googleOAuthLocked bool
+	aiConfig          *ai.Config
+	aiConfigLocked    bool
+	aiCancelMu        sync.Mutex
+	aiCancels         map[string]context.CancelFunc
 }
 
 type SyncComplete struct {
@@ -68,7 +74,7 @@ type SyncComplete struct {
 }
 
 func New(ctx context.Context, db *store.DB, keyring crypto.Keyring, open func(string) error) *Runtime {
-	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, Authorize: oauth.Authorize, GmailAPIBase: googleapi.APIBase, providers: map[string]domain.Transport{}, connections: map[string]*accountConnection{}, pendingWake: make(chan struct{}, 1), outboxWake: make(chan struct{}, 1)}
+	r := &Runtime{DB: db, Context: ctx, Keyring: keyring, OpenBrowser: open, Authorize: oauth.Authorize, GmailAPIBase: googleapi.APIBase, providers: map[string]domain.Transport{}, connections: map[string]*accountConnection{}, pendingWake: make(chan struct{}, 1), outboxWake: make(chan struct{}, 1), aiCancels: map[string]context.CancelFunc{}}
 	r.Scheduler = newScheduler(r)
 	return r
 }

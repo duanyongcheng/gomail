@@ -13,9 +13,23 @@ vi.mock("../../src/stores/compose.store", () => ({ useComposeStore: { getState: 
 vi.mock("../../src/components/AttachmentList", () => ({ default: () => <div>Attachments</div> }));
 
 vi.mock("react-i18next", () => ({
+  initReactI18next: {
+    type: "3rdParty",
+    init: vi.fn(),
+  },
   useTranslation: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
   }),
+}));
+
+vi.mock("@/mygo", () => ({
+  AIService: {
+    getConfig: vi.fn().mockResolvedValue({ configured: false, enabled: false, endpointHost: "", isLocalEndpoint: false, keyringError: false }),
+    getTranslationCache: vi.fn().mockResolvedValue({ found: false, subject: "", segments: {}, model: "", generatedAt: 0 }),
+    translateBatch: vi.fn(),
+    saveTranslationCache: vi.fn(),
+    cancel: vi.fn().mockResolvedValue({}),
+  },
 }));
 
 vi.mock("../../src/lib/api", () => ({

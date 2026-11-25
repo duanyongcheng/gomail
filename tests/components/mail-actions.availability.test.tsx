@@ -19,7 +19,14 @@ import { useUIStore } from "@/stores/ui.store";
 import { useConfirmStore } from "@/stores/confirm.store";
 
 // Production components -> API -> real command table. Only the native RPC boundary is synthetic.
-vi.mock("@/mygo", () => ({ MessageService: { archive: vi.fn(), delete: vi.fn(), restore: vi.fn(), batchDelete: vi.fn(), rendered: vi.fn(), get: vi.fn(), flags: vi.fn() } }));
+vi.mock("@/mygo", () => ({
+  MessageService: { archive: vi.fn(), delete: vi.fn(), restore: vi.fn(), batchDelete: vi.fn(), rendered: vi.fn(), get: vi.fn(), flags: vi.fn() },
+  AIService: {
+    getConfig: vi.fn().mockResolvedValue({ configured: false, enabled: false, endpointHost: "", isLocalEndpoint: false, keyringError: false }),
+    cancel: vi.fn().mockResolvedValue({}),
+  },
+  events: { aiStream: { on: vi.fn(() => () => {}) } },
+}));
 vi.mock("@/lib/i18n", () => ({ default: { t: (key: string, fallback?: string) => fallback ?? key } }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, fallback?: string | { defaultValue?: string }) => typeof fallback === "string" ? fallback : fallback?.defaultValue ?? key }) }));
 vi.mock("@tanstack/react-virtual", () => ({ useVirtualizer: ({ count }: { count: number }) => ({ getTotalSize: () => count * 76, getVirtualItems: () => Array.from({ length: count }, (_, index) => ({ index, key: index, start: index * 76 })), measureElement: vi.fn(), measure: vi.fn(), scrollToIndex: vi.fn() }) }));
@@ -100,17 +107,15 @@ it("row actions used by inbox and starred keep archive but cannot add Kanban car
   await waitFor(() => expect(MessageService.archive).toHaveBeenCalledExactlyOnceWith({ messageId: "m" }));
 });
 
-it("real detail guards direct AI/translation events without pending command calls", async () => {
+it("real detail keeps snooze disabled while enabling AI summary and bilingual translation without legacy stubs", async () => {
   const invoke = vi.spyOn(platform, "invoke");
   mount(<MessageDetail messageId="m" onBack={vi.fn()} />);
   await screen.findByRole("region", { name: "Message body" });
-  for (const name of ["Snooze message", "Toggle bilingual view", "ai.summarize"]) {
-    const button = screen.getByRole("button", { name });
-    expect(button).toBeDisabled(); fireEvent.click(button);
-  }
-  await act(async () => {
-    for (const event of ["gomail:translate-selection", "gomail:toggle-bilingual", "gomail:ai-summarize"]) document.dispatchEvent(new CustomEvent(event));
-  });
+  const snooze = screen.getByRole("button", { name: "Snooze message" });
+  expect(snooze).toBeDisabled();
+  fireEvent.click(snooze);
+  expect(screen.getByRole("button", { name: "Toggle bilingual view" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "ai.summarize" })).toBeEnabled();
   expect(invoke.mock.calls.map(([name]) => name)).toEqual(["get_message", "get_rendered_html"]);
   expect(screen.queryByText("ai.summaryTitle")).toBeNull();
 });

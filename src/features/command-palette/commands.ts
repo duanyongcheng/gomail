@@ -127,7 +127,38 @@ export function buildCommands(t: (key: string, defaultValue: string) => string):
         }
       },
     },
+    {
+      id: "mail:summarize",
+      name: t("commands.summarizeMessage", "Summarize current message with AI"),
+      shortcut: "Ctrl+Shift+S",
+      category: t("commands.mail", "Mail"),
+      execute: () => document.dispatchEvent(new CustomEvent("gomail:ai-summarize")),
+    },
+    {
+      id: "mail:toggle-bilingual",
+      name: t("commands.toggleBilingual", "Translate current message with AI"),
+      shortcut: "Ctrl+Shift+T",
+      category: t("commands.mail", "Mail"),
+      execute: () => document.dispatchEvent(new CustomEvent("gomail:toggle-bilingual")),
+    },
+    {
+      id: "mail:translate-selection",
+      name: t("commands.translateSelection", "Translate selected text with AI"),
+      shortcut: "T",
+      category: t("commands.mail", "Mail"),
+      execute: () => document.dispatchEvent(new CustomEvent("gomail:translate-selection")),
+    },
     // Settings
+    {
+      id: "nav:ai-settings",
+      name: t("commands.openAiSettings", "Open AI & Translation settings"),
+      category: t("commands.settings", "Settings"),
+      execute: () => {
+        const ui = useUIStore.getState();
+        ui.setSettingsTab("ai");
+        ui.setActiveView("settings");
+      },
+    },
     {
       id: "settings:toggle-notifications",
       name: t("commands.toggleNotifications", "Toggle Notifications"),

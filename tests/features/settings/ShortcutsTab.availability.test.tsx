@@ -10,10 +10,13 @@ describe("ShortcutsTab supported actions", () => {
     useShortcutStore.getState().resetToDefaults();
     useShortcutStore.getState().stopRecording();
   });
-  it("omits unavailable actions while retaining local shortcut editing", () => {
+  it("omits unavailable actions while retaining supported AI, translation, and local shortcut editing", () => {
     const { container } = render(<ShortcutsTab />);
-    for (const action of ["toggle-view-kanban", "open-cloud-settings", "toggle-notifications", "translate-selection", "toggle-bilingual", "summarize-message"]) {
+    for (const action of ["toggle-view-kanban", "open-cloud-settings", "toggle-notifications"]) {
       expect(container.querySelector(`[data-action="${action}"]`)).toBeNull();
+    }
+    for (const action of ["translate-selection", "toggle-bilingual", "summarize-message"]) {
+      expect(container.querySelector(`[data-action="${action}"]`)).not.toBeNull();
     }
     const row = container.querySelector('[data-action="open-search"]')!;
     fireEvent.click(row.querySelector("button")!);

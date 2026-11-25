@@ -12,12 +12,11 @@ import RulesTab from "./RulesTab";
 import PendingOpsTab from "./PendingOpsTab";
 import OutboxPanel from "../compose/OutboxPanel";
 import ShortcutsTab from "./ShortcutsTab";
-import TranslateTab from "./TranslateTab";
 import AiTab from "./AiTab";
 import PrivacyTab from "./PrivacyTab";
 import AboutTab from "./AboutTab";
 
-const TAB_IDS = ["accounts", "general", "proxy", "appearance", "privacy", "rules", "remoteWrites", "translation", "ai", "shortcuts", "cloudSync", "about"] as const;
+const TAB_IDS = ["accounts", "general", "proxy", "appearance", "privacy", "rules", "remoteWrites", "ai", "shortcuts", "cloudSync", "about"] as const;
 
 const TAB_LABEL_KEYS: Record<string, string> = {
   accounts: "settings.accounts",
@@ -27,8 +26,7 @@ const TAB_LABEL_KEYS: Record<string, string> = {
   privacy: "settings.privacy",
   rules: "settings.rules",
   remoteWrites: "settings.remoteWrites",
-  translation: "settings.translation",
-  ai: "settings.ai",
+  ai: "settings.aiAndTranslate",
   shortcuts: "settings.shortcuts",
   cloudSync: "settings.cloudSync",
   about: "settings.about",
@@ -136,7 +134,6 @@ export default function SettingsView() {
           {activeTab === "appearance" && <AppearanceTab />}
           {activeTab === "rules" && <RulesTab />}
           {activeTab === "remoteWrites" && <><OutboxPanel /><PendingOpsTab /></>}
-          {activeTab === "translation" && <TranslateTab />}
           {activeTab === "ai" && <AiTab />}
           {activeTab === "shortcuts" && <ShortcutsTab />}
           {activeTab === "privacy" && <PrivacyTab />}

@@ -6,7 +6,7 @@ import { useUIStore } from "../../src/stores/ui.store";
 import { useComposeStore } from "../../src/stores/compose.store";
 import { useConfirmStore } from "../../src/stores/confirm.store";
 
-const unsupported = ["toggle-view-kanban", "open-cloud-settings", "toggle-notifications", "translate-selection", "toggle-bilingual", "summarize-message"];
+const unsupported = ["toggle-view-kanban", "open-cloud-settings", "toggle-notifications"];
 
 describe("keyboard product availability", () => {
   beforeEach(() => {

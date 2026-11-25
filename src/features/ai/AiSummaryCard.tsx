@@ -1,81 +1,161 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronDown, ChevronRight, Copy, RefreshCw, Sparkles, X } from "lucide-react";
-import { aiSummarizeMessage } from "@/lib/api";
-import { extractErrorMessage } from "@/lib/extractErrorMessage";
-import { profileLocalStorage } from "@/lib/profileStorage";
-
-const LANGUAGE_OPTIONS = [
-  { code: "zh", labelKey: "languages.chinese" },
-  { code: "en", labelKey: "languages.english" },
-  { code: "ja", labelKey: "languages.japanese" },
-  { code: "ko", labelKey: "languages.korean" },
-  { code: "fr", labelKey: "languages.french" },
-  { code: "de", labelKey: "languages.german" },
-  { code: "es", labelKey: "languages.spanish" },
-] as const;
-
-const PRIVACY_ACK_KEY = "gomail-ai-privacy-ack";
+import { Check, ChevronDown, ChevronRight, Copy, RefreshCw, Settings, Sparkles, Square, X } from "lucide-react";
+import { AIService, events, type AIConfigView, type SummaryResult } from "@/mygo";
+import {
+  AI_LANGUAGE_OPTIONS,
+  acceptAiPrivacy,
+  classifyAiError,
+  formatSummaryForClipboard,
+  isAiPrivacyAccepted,
+  nextAiRequestId,
+  openAiSettings,
+  resolveUiLanguageOption,
+  type AiErrorKind,
+} from "@/lib/ai";
+import { useUIStore } from "@/stores/ui.store";
 
 interface Props {
-  messageId: string;
+  messageId?: string;
+  threadId?: string;
   onClose: () => void;
 }
 
-function defaultSummaryLanguage() {
-  const uiLang = profileLocalStorage.getItem("gomail-language") || "zh";
-  return LANGUAGE_OPTIONS.some((option) => option.code === uiLang) ? uiLang : "en";
-}
-
 /**
- * Collapsible summary panel for the message detail page.
- *
- * It never touches the message body — the summary lives in its own band above
- * the body — so reading a summary can't change what the mail says.
+ * Collapsible Clarity AI summary panel for single messages and conversation
+ * threads. Streams incremental tokens, renders structured TL;DR / Key Points /
+ * Action Items, respects local cache, and supports instant cancellation.
  */
-export default function AiSummaryCard({ messageId, onClose }: Props) {
+export default function AiSummaryCard({ messageId, threadId, onClose }: Props) {
   const { t } = useTranslation();
-  const [summary, setSummary] = useState("");
+  const uiLanguage = useUIStore((s) => s.language);
+  const isThread = Boolean(threadId && !messageId);
+  const targetKey = isThread ? `thread:${threadId}` : `msg:${messageId ?? ""}`;
+
+  const [config, setConfig] = useState<AIConfigView | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
+  const [summary, setSummary] = useState<SummaryResult | null>(null);
+  const [streamText, setStreamText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errorKind, setErrorKind] = useState<AiErrorKind | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [language, setLanguage] = useState(defaultSummaryLanguage);
-  const [privacyAcked, setPrivacyAcked] = useState(
-    () => profileLocalStorage.getItem(PRIVACY_ACK_KEY) === "1",
-  );
+  const [language, setLanguage] = useState(() => resolveUiLanguageOption(uiLanguage));
+  const [privacyAcked, setPrivacyAcked] = useState(false);
 
-  // Only the newest request may write state: switching language while a request
-  // is in flight must not let the old answer land.
-  const requestIdRef = useRef(0);
+  const activeRequestIdRef = useRef<string | null>(null);
+  const generationRef = useRef(0);
+
+  // Load AI config once so we can present friendly unconfigured guidance and host-specific privacy notice.
+  useEffect(() => {
+    let active = true;
+    void AIService.getConfig({})
+      .then((cfg) => {
+        if (!active) return;
+        setConfig(cfg);
+        if (cfg.summaryLanguage && AI_LANGUAGE_OPTIONS.some((o) => o.code === cfg.summaryLanguage)) {
+          setLanguage(cfg.summaryLanguage);
+        }
+        setPrivacyAcked(isAiPrivacyAccepted(cfg.endpointHost, cfg.isLocalEndpoint));
+        setConfigLoaded(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPrivacyAcked(isAiPrivacyAccepted());
+        setConfigLoaded(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  // Subscribe to backend streaming chunks.
+  useEffect(() => {
+    const unlisten = events?.aiStream?.on?.((ev) => {
+      if (!ev || ev.requestId !== activeRequestIdRef.current) return;
+      if (ev.delta) {
+        setStreamText((prev) => prev + ev.delta);
+      }
+    });
+    return () => {
+      if (typeof unlisten === "function") unlisten();
+    };
+  }, []);
+
+  const cancelInFlight = useCallback(() => {
+    const reqId = activeRequestIdRef.current;
+    if (reqId) {
+      activeRequestIdRef.current = null;
+      void AIService.cancel({ requestId: reqId }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => () => { cancelInFlight(); }, [cancelInFlight]);
 
   const run = useCallback(
-    async (targetLang: string) => {
-      const requestId = ++requestIdRef.current;
+    async (targetLang: string, forceRefresh = false) => {
+      cancelInFlight();
+      const gen = ++generationRef.current;
+      const requestId = nextAiRequestId(isThread ? "sum-thread" : "sum-msg");
+      activeRequestIdRef.current = requestId;
       setLoading(true);
-      setError("");
+      setErrorKind(null);
+      setErrorMsg("");
+      setStreamText("");
+      if (forceRefresh) setSummary(null);
+
       try {
-        const result = await aiSummarizeMessage(messageId, targetLang);
-        if (requestId !== requestIdRef.current) return;
-        setSummary(result.text);
+        const result = isThread
+          ? await AIService.summarizeThread({
+              requestId,
+              threadId: threadId!,
+              targetLang,
+              style: config?.summaryStyle ?? "",
+              forceRefresh,
+            })
+          : await AIService.summarizeMessage({
+              requestId,
+              messageId: messageId!,
+              targetLang,
+              style: config?.summaryStyle ?? "",
+              forceRefresh,
+            });
+        if (gen !== generationRef.current) return;
+        setSummary(result);
+        setStreamText("");
       } catch (err) {
-        if (requestId !== requestIdRef.current) return;
-        setError(extractErrorMessage(err));
+        if (gen !== generationRef.current) return;
+        const classified = classifyAiError(err);
+        if (classified.kind === "cancelled") {
+          setErrorKind("cancelled");
+          setErrorMsg("");
+        } else {
+          setErrorKind(classified.kind);
+          setErrorMsg(classified.message);
+        }
       } finally {
-        if (requestId === requestIdRef.current) setLoading(false);
+        if (activeRequestIdRef.current === requestId) {
+          activeRequestIdRef.current = null;
+        }
+        if (gen === generationRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [messageId],
+    [cancelInFlight, config?.summaryStyle, isThread, messageId, threadId],
   );
 
-  useEffect(() => {
-    if (!privacyAcked) return;
-    setSummary("");
-    void run(language);
-  }, [run, language, privacyAcked]);
+  const canRun =
+    configLoaded &&
+    privacyAcked &&
+    (!config || (!config.keyringError && config.configured && config.enabled));
 
-  // Clear the "copied" confirmation on unmount too, so the timer can't fire
-  // into a component that is already gone.
+  useEffect(() => {
+    if (!canRun) return;
+    if (!messageId && !threadId) return;
+    setSummary(null);
+    void run(language, false);
+  }, [canRun, language, messageId, run, targetKey, threadId]);
+
   useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(false), 1500);
@@ -83,163 +163,214 @@ export default function AiSummaryCard({ messageId, onClose }: Props) {
   }, [copied]);
 
   function handleAcceptPrivacy() {
-    profileLocalStorage.setItem(PRIVACY_ACK_KEY, "1");
+    acceptAiPrivacy(config?.endpointHost);
     setPrivacyAcked(true);
   }
 
+  function handleStop() {
+    cancelInFlight();
+    setLoading(false);
+    setErrorKind("cancelled");
+    setErrorMsg(t("ai.stopped"));
+  }
+
   async function handleCopy() {
-    await navigator.clipboard.writeText(summary);
+    const text = summary
+      ? formatSummaryForClipboard(summary, t("ai.actionItems"))
+      : streamText;
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
     setCopied(true);
   }
 
-  const iconButtonStyle: React.CSSProperties = {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: "2px",
-    display: "flex",
-    alignItems: "center",
-    color: "var(--color-text-secondary)",
-  };
+  const showKeyringError = configLoaded && (config?.keyringError || errorKind === "keyring");
+  const showUnconfigured = configLoaded && ((config && !config.configured && !config.keyringError) || errorKind === "unconfigured");
+  const showDisabled = configLoaded && ((config && config.configured && !config.enabled) || errorKind === "disabled");
 
   return (
-    <div
-      className="ai-summary-card"
-      style={{
-        flexShrink: 0,
-        margin: "12px 16px 0",
-        border: "1px solid var(--color-border)",
-        borderRadius: "8px",
-        background: "var(--color-bg-secondary)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 10px" }}>
+    <section className="ai-summary-card" aria-label={isThread ? t("ai.threadSummaryTitle") : t("ai.summaryTitle")}>
+      <div className="ai-summary-header">
         <button
           type="button"
+          className="ai-summary-icon-btn"
           onClick={() => setCollapsed((v) => !v)}
           aria-expanded={!collapsed}
           aria-label={collapsed ? t("ai.expand") : t("ai.collapse")}
           title={collapsed ? t("ai.expand") : t("ai.collapse")}
-          style={iconButtonStyle}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
         </button>
         <Sparkles size={14} style={{ color: "var(--color-accent)", flexShrink: 0 }} />
-        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-          {t("ai.summaryTitle")}
+        <span className="ai-summary-title">
+          {isThread ? t("ai.threadSummaryTitle") : t("ai.summaryTitle")}
         </span>
-        <select
-          aria-label={t("ai.summaryLanguage")}
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          style={{
-            marginLeft: "auto",
-            fontSize: "11px",
-            padding: "2px 4px",
-            border: "1px solid var(--color-border)",
-            borderRadius: "4px",
-            backgroundColor: "var(--color-bg)",
-            color: "var(--color-text-primary)",
-          }}
-        >
-          {LANGUAGE_OPTIONS.map((option) => (
-            <option key={option.code} value={option.code}>
-              {t(option.labelKey)}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={() => void run(language)}
-          disabled={loading || !privacyAcked}
-          aria-label={t("ai.regenerate")}
-          title={t("ai.regenerate")}
-          style={{ ...iconButtonStyle, opacity: loading ? 0.5 : 1 }}
-        >
-          <RefreshCw size={14} />
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("ai.close")}
-          title={t("ai.close")}
-          style={iconButtonStyle}
-        >
-          <X size={14} />
-        </button>
+        <span className="ai-summary-meta">
+          {summary?.cached && <span className="ai-summary-badge">{t("ai.cachedBadge")}</span>}
+          {summary?.model && <span>{summary.model}</span>}
+        </span>
+
+        <div className="ai-summary-controls">
+          <select
+            className="ai-summary-select"
+            aria-label={t("ai.summaryLanguage")}
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+          >
+            {AI_LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.code} value={option.code}>
+                {t(option.labelKey)}
+              </option>
+            ))}
+          </select>
+
+          {loading ? (
+            <button
+              type="button"
+              className="ai-push-btn"
+              onClick={handleStop}
+              aria-label={t("ai.stop")}
+              title={t("ai.stop")}
+            >
+              <Square size={11} />
+              {t("ai.stop")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="ai-summary-icon-btn"
+              onClick={() => void run(language, true)}
+              disabled={!canRun}
+              aria-label={t("ai.regenerate")}
+              title={t("ai.regenerate")}
+            >
+              <RefreshCw size={14} />
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="ai-summary-icon-btn"
+            onClick={() => { cancelInFlight(); onClose(); }}
+            aria-label={t("ai.close")}
+            title={t("ai.close")}
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
 
       {!collapsed && (
-        <div style={{ padding: "0 12px 10px", fontSize: "13px", lineHeight: 1.65, color: "var(--color-text-primary)" }}>
-          {!privacyAcked ? (
-            <div>
-              <p style={{ margin: "0 0 8px", fontSize: "12px", color: "var(--color-warning, #e67e22)" }}>
-                {t("ai.privacyNotice")}
-              </p>
-              <button
-                type="button"
-                onClick={handleAcceptPrivacy}
-                style={{
-                  padding: "5px 12px",
-                  border: "none",
-                  borderRadius: "4px",
-                  background: "var(--color-accent-fill)",
-                  color: "#fff",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                }}
-              >
+        <div className="ai-summary-body">
+          {showKeyringError ? (
+            <div role="alert" className="ai-inline-notice">
+              <span>{t("ai.keyringLocked")}</span>
+              <button type="button" className="ai-push-btn ai-push-btn--primary" onClick={openAiSettings}>
+                <Settings size={12} />
+                {t("ai.openSettings")}
+              </button>
+            </div>
+          ) : showUnconfigured ? (
+            <div role="status" className="ai-inline-notice">
+              <div>
+                <strong>{t("ai.unconfiguredTitle")}</strong>
+                <div>{t("ai.unconfiguredDesc")}</div>
+              </div>
+              <button type="button" className="ai-push-btn ai-push-btn--primary" onClick={openAiSettings}>
+                <Settings size={12} />
+                {t("ai.openSettings")}
+              </button>
+            </div>
+          ) : showDisabled ? (
+            <div role="status" className="ai-inline-notice">
+              <div>
+                <strong>{t("ai.disabledTitle")}</strong>
+                <div>{t("ai.disabledDesc")}</div>
+              </div>
+              <button type="button" className="ai-push-btn ai-push-btn--primary" onClick={openAiSettings}>
+                <Settings size={12} />
+                {t("ai.openSettings")}
+              </button>
+            </div>
+          ) : !privacyAcked && configLoaded ? (
+            <div className="ai-inline-notice">
+              <span>
+                {config?.endpointHost
+                  ? t("ai.privacyNoticeHost", { host: config.endpointHost })
+                  : t("ai.privacyNotice")}
+              </span>
+              <button type="button" className="ai-push-btn ai-push-btn--primary" onClick={handleAcceptPrivacy}>
                 {t("translate.acceptAndContinue")}
               </button>
             </div>
           ) : loading ? (
-            <div role="status" aria-live="polite" style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
-              {t("ai.summarizing")}
+            <div>
+              {streamText ? (
+                <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{streamText}</div>
+              ) : (
+                <div role="status" aria-live="polite" style={{ color: "var(--color-text-secondary)" }}>
+                  {t("ai.summarizing")}
+                </div>
+              )}
             </div>
-          ) : error ? (
-            <div role="alert" style={{ color: "#dc3545", fontSize: "13px" }}>
-              <div>{t("ai.summaryFailed")}</div>
-              <div style={{ fontSize: "12px", marginTop: "2px" }}>{error}</div>
+          ) : errorKind && errorKind !== "cancelled" ? (
+            <div role="alert" className="ai-inline-notice">
+              <div>
+                <strong>{t("ai.summaryFailed")}</strong>
+                <div>{errorMsg}</div>
+              </div>
+              <button type="button" className="ai-push-btn" onClick={() => void run(language, true)}>
+                <RefreshCw size={12} />
+                {t("ai.retry")}
+              </button>
+            </div>
+          ) : errorKind === "cancelled" && !summary ? (
+            <div role="status" style={{ color: "var(--color-text-secondary)", fontSize: "12.5px" }}>
+              {streamText && (
+                <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--color-text-primary)", marginBottom: "8px" }}>
+                  {streamText}
+                </div>
+              )}
+              <span>{t("ai.stopped")}</span>
             </div>
           ) : summary ? (
             <>
-              <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                {summary.split("\n").map((line, i) => {
-                  const bullet = /^\s*[-*]\s+/.test(line);
-                  return (
-                    <div
-                      key={i}
-                      style={bullet ? { paddingLeft: "14px", textIndent: "-14px" } : undefined}
-                    >
-                      {bullet ? `\u2022 ${line.replace(/^\s*[-*]\s+/, "")}` : line}
-                    </div>
-                  );
-                })}
+              {summary.tldr && <p className="ai-summary-tldr">{summary.tldr}</p>}
+              {summary.key_points && summary.key_points.length > 0 && (
+                <ul className="ai-summary-points">
+                  {summary.key_points.map((point, index) => (
+                    <li key={index}>{point}</li>
+                  ))}
+                </ul>
+              )}
+              {!summary.tldr && (!summary.key_points || summary.key_points.length === 0) && summary.raw_text && (
+                <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{summary.raw_text}</div>
+              )}
+              {summary.action_items && summary.action_items.length > 0 && (
+                <div className="ai-summary-actions-block">
+                  <div className="ai-summary-actions-label">{t("ai.actionItems")}</div>
+                  <ul className="ai-summary-action-list">
+                    {summary.action_items.map((item, index) => (
+                      <li key={index} className="ai-summary-action-item">
+                        <span>• {item.text}</span>
+                        {item.due && <span className="ai-summary-due">{item.due}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="ai-summary-footer">
+                <span className="ai-summary-note">
+                  {summary.truncated ? t("ai.truncatedNotice") : config?.isLocalEndpoint ? t("ai.privacyNoticeLocal", { host: config.endpointHost }) : ""}
+                </span>
+                <button type="button" className="ai-push-btn" onClick={() => void handleCopy()}>
+                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                  {copied ? t("ai.copied") : t("ai.copy")}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => void handleCopy()}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  marginTop: "8px",
-                  padding: "4px 8px",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "4px",
-                  background: "transparent",
-                  color: "var(--color-text-secondary)",
-                  fontSize: "11px",
-                  cursor: "pointer",
-                }}
-              >
-                {copied ? <Check size={12} /> : <Copy size={12} />}
-                {copied ? t("ai.copied") : t("ai.copy")}
-              </button>
             </>
           ) : null}
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -19,6 +19,7 @@ vi.mock("react-i18next", () => ({
         "settings.rules": "Rules",
         "settings.remoteWrites": "Remote Writes",
         "settings.translation": "Translation",
+        "settings.aiAndTranslate": "AI & Translation",
         "settings.shortcuts": "Shortcuts",
         "settings.cloudSync": "Settings Backup",
         "settings.about": "About",
@@ -59,6 +60,10 @@ vi.mock("../../../src/features/settings/ShortcutsTab", () => ({
 
 vi.mock("../../../src/features/settings/TranslateTab", () => ({
   default: () => <div>Translation panel</div>,
+}));
+
+vi.mock("../../../src/features/settings/AiTab", () => ({
+  default: () => <div>AI panel</div>,
 }));
 
 vi.mock("../../../src/features/settings/PrivacyTab", () => ({
@@ -104,7 +109,7 @@ describe("SettingsView", () => {
     expect(screen.getByText("Proxy panel")).toBeTruthy();
   });
 
-  it.each(["rules", "translation", "ai", "cloudSync"] as const)("guards restored %s settings before mounting", (settingsTab) => {
+  it.each(["rules", "translation", "cloudSync"] as const)("guards restored %s settings before mounting", (settingsTab) => {
     useUIStore.setState({ settingsTab });
     render(<SettingsView />);
     expect(screen.getByText("Accounts panel")).toBeTruthy();
@@ -112,6 +117,13 @@ describe("SettingsView", () => {
     expect(screen.queryByText("Proxy panel")).toBeNull();
     expect(screen.queryByText("Rules panel")).toBeNull();
     expect(screen.queryByText("Cloud sync panel")).toBeNull();
+  });
+
+  it("opens and restores the unified AI & Translation settings tab", () => {
+    useUIStore.setState({ settingsTab: "ai" });
+    render(<SettingsView />);
+    expect(screen.getByText("AI panel")).toBeTruthy();
+    expect(useUIStore.getState().settingsTab).toBe("ai");
   });
 
   it("restores the implemented proxy tab", () => {

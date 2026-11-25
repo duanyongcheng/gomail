@@ -54,6 +54,9 @@ func (db *DB) DeleteAccount(ctx context.Context, id string) error {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM pending_mail_ops WHERE account_id=?", id); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, "DELETE FROM message_ai_cache WHERE account_id=?", id); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE compose_attachments SET released=1 WHERE id IN
 			(SELECT r.attachment_id FROM compose_draft_attachments r JOIN compose_drafts d ON d.id=r.draft_id WHERE d.account_id=?)`, id); err != nil {
 			return err

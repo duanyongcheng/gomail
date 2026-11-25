@@ -1,17 +1,35 @@
 interface Props {
   segments: { source: string; target: string }[];
+  displayMode?: "bilingual" | "translated";
 }
 
 /**
- * Paragraph-aligned bilingual reading view: the translation carries the flow of
- * the message and the original sits underneath it in muted type, so a reader can
- * check a sentence without leaving the translated paragraph.
- *
- * Pairs whose translation came back identical to the source are dropped — a
- * translator correctly leaves proper nouns, numbers and URLs alone, and printing
- * those twice only adds noise.
+ * Paragraph-aligned bilingual (or translated-only) reading view for plain-text
+ * emails, styled to match GoMail's Clarity reader typography.
  */
-export default function BilingualView({ segments }: Props) {
+export default function BilingualView({ segments, displayMode = "bilingual" }: Props) {
+  if (displayMode === "translated") {
+    return (
+      <div>
+        {segments.map((segment, index) => (
+          <p
+            key={index}
+            style={{
+              margin: "0 0 12px",
+              fontSize: "14px",
+              lineHeight: 1.7,
+              color: "var(--color-text-primary)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {segment.target || segment.source}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
   const pairs = segments.filter(
     (segment) =>
       segment.target.trim() !== "" && segment.source.trim() !== segment.target.trim(),

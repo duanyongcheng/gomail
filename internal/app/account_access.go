@@ -49,8 +49,12 @@ func (r *Runtime) restoreAccounts() error {
 	if err != nil {
 		return err
 	}
+	aiRaw, err := r.DB.AISettings(r.Context)
+	if err != nil {
+		return err
+	}
 	var keyErr error
-	if has || len(oauthRaw) > 0 {
+	if has || len(oauthRaw) > 0 || len(aiRaw) > 0 {
 		if r.Keyring == nil {
 			keyErr = errors.New("Account keyring unavailable")
 		} else {
@@ -78,6 +82,17 @@ func (r *Runtime) restoreAccounts() error {
 	} else {
 		r.googleOAuth = nil
 		r.googleOAuthLocked = false
+	}
+	if len(aiRaw) > 0 {
+		if keyErr != nil {
+			r.aiConfig = nil
+			r.aiConfigLocked = true
+		} else {
+			_ = r.decryptAIConfigLocked(aiRaw)
+		}
+	} else {
+		r.aiConfig = nil
+		r.aiConfigLocked = false
 	}
 	cfg := r.googleOAuthConfigLocked()
 	for _, a := range accounts {

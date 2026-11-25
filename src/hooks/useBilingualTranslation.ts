@@ -1,28 +1,42 @@
-import { useState } from "react";
-import { translateText } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AIService, type AIConfigView, type TranslateItem } from "@/mygo";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import type { Message, RenderedHtml, TranslateResult } from "@/lib/api";
-import { extractErrorMessage } from "@/lib/extractErrorMessage";
 import { useUIStore } from "@/stores/ui.store";
-import { SOURCE_ECHO_CLASS } from "@/lib/sourceEcho";
+import {
+  BILINGUAL_TRANSLATION_CLASS,
+  TRANSLATED_BLOCK_CLASS,
+} from "@/lib/sourceEcho";
+import {
+  AI_LANGUAGE_OPTIONS,
+  acceptAiPrivacy,
+  classifyAiError,
+  computeContentHash,
+  isAiPrivacyAccepted,
+  nextAiRequestId,
+  resolveUiLanguageOption,
+} from "@/lib/ai";
 
-// Translation cache: avoids re-translating on toggle or revisit (capped at 20 entries)
-const translationCache = new Map<string, TranslateResult & { _isHtml?: boolean }>();
-const TRANSLATION_CACHE_MAX = 20;
-const CHUNK_SIZE = 30; // Max text nodes per translation request
+const MAX_ITEMS_PER_BATCH = 15;
+const MAX_CHARS_PER_BATCH = 2000;
+const BATCH_CONCURRENCY = 2;
 
-/** The separator a batch is joined with; mirrors `llm.rs`'s `SEPARATOR`. */
-const SEPARATOR = "⸻";
+const SKIP_TAGS = new Set([
+  "STYLE", "SCRIPT", "TITLE", "NOSCRIPT", "TEXTAREA", "PRE", "CODE", "SVG", "MATH",
+]);
 
-/**
- * Paragraphs shorter than this keep their translation but do not get the source
- * echoed underneath. Button labels, link captions and names are fragments rather
- * than paragraphs, and mirroring every one of them drowns a newsletter in noise.
- */
-const SOURCE_ECHO_MIN_CHARS = 16;
+const SEMANTIC_BLOCK_TAGS = new Set([
+  "P", "LI", "H1", "H2", "H3", "H4", "H5", "H6",
+  "BLOCKQUOTE", "FIGCAPTION", "DT", "DD", "SUMMARY", "CAPTION", "ADDRESS",
+]);
 
-/** Elements whose text is code, not prose, and must never reach a translator. */
-const UNTRANSLATABLE_TAGS = new Set(["STYLE", "SCRIPT", "TITLE", "NOSCRIPT", "TEXTAREA"]);
+const CONTAINER_BLOCK_TAGS = new Set([
+  "DIV", "TD", "TH", "ARTICLE", "SECTION", "HEADER", "FOOTER", "MAIN", "ASIDE", "CENTER",
+]);
+
+const ALL_BLOCK_TAGS = new Set([...SEMANTIC_BLOCK_TAGS, ...CONTAINER_BLOCK_TAGS, "UL", "OL", "TABLE", "TR", "TBODY", "THEAD", "TFOOT", "DL"]);
+
+export type TranslationDisplayMode = "bilingual" | "translated" | "original";
 
 export type BilingualErrorCode = "failed" | "empty" | "unchanged" | "noText";
 
@@ -37,14 +51,18 @@ export interface BilingualWarning {
   total: number;
 }
 
-type AnnotatedResult = TranslateResult & { _isHtml?: boolean };
+export interface TranslationProgress {
+  done: number;
+  total: number;
+}
 
-/**
- * Raised when the engine answered but the answer is unusable. Carrying a code
- * instead of only a message lets the message view explain the failure in the
- * reader's language, and lets "the engine returned the source unchanged" be
- * told apart from "the engine returned nothing at all".
- */
+export interface AnnotatedTranslationResult extends TranslateResult {
+  _isHtml?: boolean;
+  translatedSubject?: string;
+  model?: string;
+  cached?: boolean;
+}
+
 class BilingualFailure extends Error {
   code: BilingualErrorCode;
   detail?: string;
@@ -57,146 +75,153 @@ class BilingualFailure extends Error {
   }
 }
 
-function isBilingualFailure(error: unknown): error is BilingualFailure {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { name?: string }).name === "BilingualFailure"
-  );
+function isProseWorthTranslating(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 2) return false;
+  // Skip bare URLs or bare email addresses.
+  if (/^https?:\/\/\S+$/i.test(trimmed)) return false;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return false;
+  // Require at least 2 letter / CJK characters (avoid pure numbers, dates, punctuation).
+  const letters = trimmed.match(/[\p{L}]/gu);
+  return (letters?.length ?? 0) >= 2;
 }
 
-function toBilingualError(error: unknown): BilingualError {
-  if (isBilingualFailure(error)) return { code: error.code, detail: error.detail };
-  return { code: "failed", detail: extractErrorMessage(error) };
+function normalizeBlockText(el: Element): string {
+  return (el.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
-function isUntranslatableTextNode(node: Text): boolean {
-  const parent = node.parentElement;
-  if (!parent) return true;
-  return UNTRANSLATABLE_TAGS.has(parent.tagName.toUpperCase());
-}
-
-function collectTextNodes(doc: Document): Text[] {
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-  const nodes: Text[] = [];
-  let current: Node | null;
-  while ((current = walker.nextNode())) {
-    const text = current as Text;
-    if (!text.textContent?.trim()) continue;
-    if (isUntranslatableTextNode(text)) continue;
-    nodes.push(text);
+function hasSkipAncestor(el: Element): boolean {
+  let cur: Element | null = el;
+  while (cur) {
+    if (SKIP_TAGS.has(cur.tagName)) return true;
+    if (cur.classList.contains("blocked-image") || cur.classList.contains(BILINGUAL_TRANSLATION_CLASS)) return true;
+    cur = cur.parentElement;
   }
-  return nodes;
+  return false;
 }
 
-/**
- * Tags that start a new block of prose. Used to work out where one paragraph
- * ends and the next begins, since the markup has no other way of saying so.
- */
-const BLOCK_TAGS = new Set([
-  "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "BODY", "CAPTION", "CENTER",
-  "DD", "DETAILS", "DIV", "DL", "DT", "FIELDSET", "FIGCAPTION", "FIGURE",
-  "FOOTER", "FORM", "H1", "H2", "H3", "H4", "H5", "H6", "HEADER", "LI",
-  "MAIN", "NAV", "OL", "P", "PRE", "SECTION", "SUMMARY", "TABLE", "TBODY",
-  "TD", "TFOOT", "TH", "THEAD", "TR", "UL",
-]);
-
-/** The block a text node belongs to — its nearest block-level ancestor. */
-function paragraphOf(node: Text): Element | null {
-  let element = node.parentElement;
-  while (element) {
-    if (BLOCK_TAGS.has(element.tagName)) return element;
-    element = element.parentElement;
+function hasTranslatableChildBlock(el: Element): boolean {
+  for (const child of Array.from(el.children)) {
+    if (SKIP_TAGS.has(child.tagName)) continue;
+    if (ALL_BLOCK_TAGS.has(child.tagName)) {
+      if (isProseWorthTranslating(normalizeBlockText(child))) return true;
+    }
+    if (hasTranslatableChildBlock(child)) return true;
   }
-  return null;
+  return false;
 }
 
 /**
- * Group the text nodes by the paragraph they sit in.
+ * Collect leaf semantic prose blocks from a sanitized HTML document.
  *
- * This is what the echo is keyed on, and it has to be the paragraph rather than
- * the node. A single sentence like "We noticed you haven't viewed the report
- * <strong>Skye Jia</strong> shared with you" arrives as several text nodes, and
- * one read.ai newsletter produced eleven of them; echoing each node put the
- * English into the middle of the sentence, once per fragment, which is exactly
- * the "translation and original on one line" reading this was meant to fix.
+ * Translating complete semantic blocks instead of isolated DOM Text nodes
+ * preserves natural sentence grammar across inline `<strong>` / `<a>` tags,
+ * keeps links clickable, and enables instant Bilingual / Translated-only toggles.
  */
-function groupByParagraph(nodes: Text[]): Map<Element, Text[]> {
-  const groups = new Map<Element, Text[]>();
-  for (const node of nodes) {
-    const paragraph = paragraphOf(node);
-    if (!paragraph) continue;
-    const group = groups.get(paragraph);
-    if (group) group.push(node);
-    else groups.set(paragraph, [node]);
+function collectTranslatableBlocks(doc: Document): Element[] {
+  const blocks: Element[] = [];
+  const visited = new Set<Element>();
+
+  function walk(node: Element) {
+    if (SKIP_TAGS.has(node.tagName)) return;
+    if (node.classList.contains("blocked-image") || node.classList.contains(BILINGUAL_TRANSLATION_CLASS)) return;
+
+    const isSemantic = SEMANTIC_BLOCK_TAGS.has(node.tagName);
+    const isContainer = CONTAINER_BLOCK_TAGS.has(node.tagName);
+    const hasChildBlocks = hasTranslatableChildBlock(node);
+
+    if ((isSemantic || isContainer) && !hasChildBlocks) {
+      const text = normalizeBlockText(node);
+      if (isProseWorthTranslating(text) && !visited.has(node)) {
+        visited.add(node);
+        blocks.push(node);
+      }
+      return;
+    }
+
+    for (const child of Array.from(node.children)) {
+      walk(child);
+    }
   }
-  return groups;
+
+  if (doc.body) {
+    walk(doc.body);
+    // Fallback: body with loose direct text nodes and no block wrappers.
+    if (blocks.length === 0 && !hasSkipAncestor(doc.body)) {
+      const bodyText = normalizeBlockText(doc.body);
+      if (isProseWorthTranslating(bodyText)) {
+        blocks.push(doc.body);
+      }
+    }
+  }
+  return blocks;
+}
+
+function buildBatches(items: TranslateItem[]): TranslateItem[][] {
+  const batches: TranslateItem[][] = [];
+  let current: TranslateItem[] = [];
+  let charCount = 0;
+
+  for (const item of items) {
+    const len = item.text.length;
+    if (current.length > 0 && (current.length >= MAX_ITEMS_PER_BATCH || charCount + len > MAX_CHARS_PER_BATCH)) {
+      batches.push(current);
+      current = [];
+      charCount = 0;
+    }
+    current.push(item);
+    charCount += len;
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+function renderTranslatedHtmlSnapshot(
+  cleanHtml: string,
+  translations: Map<string, string>,
+): { html: string; assigned: number; changed: number; total: number } {
+  const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
+  const blocks = collectTranslatableBlocks(doc);
+  let assigned = 0;
+  let changed = 0;
+
+  blocks.forEach((block, index) => {
+    const id = String(index);
+    const translated = translations.get(id)?.trim();
+    if (!translated) return;
+    assigned += 1;
+    const original = normalizeBlockText(block);
+    if (translated === original) return;
+    changed += 1;
+    block.classList.add(TRANSLATED_BLOCK_CLASS);
+    const span = doc.createElement("span");
+    span.setAttribute("class", BILINGUAL_TRANSLATION_CLASS);
+    span.textContent = translated;
+    block.appendChild(span);
+  });
+
+  return {
+    html: sanitizeHtml(doc.body.innerHTML),
+    assigned,
+    changed,
+    total: blocks.length,
+  };
+}
+
+function splitPlainParagraphs(text: string): string[] {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
 }
 
 /**
- * Match an engine's reply to the fragments it was sent for.
- *
- * The batch is joined with a separator, so a reply that still carries separators
- * is positional: part *n* answers fragment *n*. An engine that stops early
- * therefore leaves the tail unanswered rather than mis-paired, which is the
- * legitimate "partial" case and is passed straight through.
- *
- * What must never happen is pairing a merged reply positionally. A translator
- * handed a sentence that arrived split by `<strong>` will naturally translate
- * it as one sentence, and then the reply has a single part for several
- * fragments. Writing that part into fragment 0, and the following parts into
- * the fragments after it, shifts everything by one and leaves a fragment
- * holding a whole sentence the engine wrote — which is how a reader ended up
- * with the translation and the original running on from each other.
- *
- * So a single part for several fragments is only accepted via a line split that
- * accounts for every fragment, or when there is exactly one fragment to begin
- * with (nothing to shift against). Otherwise this returns nothing: those
- * fragments keep the sender's own words and the run is reported as partial. A
- * mis-paired reply is unrecoverable; a missing one is one toggle away from
- * being retried.
- */
-function pairWithFragments(parts: string[], reply: string, wanted: number): string[] {
-  // A reply that still carries separators is positional: the engine answers in
-  // order and may stop early, which leaves the tail unanswered rather than
-  // mis-paired. Stopping early is the legitimate "partial" case.
-  if (parts.length > 1) return parts;
-  // One part for several fragments means the separators are gone and the
-  // fragments were merged into a single answer. Pairing that into the first
-  // fragment is precisely the corruption this guards against.
-  const byLine = reply
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "" && line !== SEPARATOR);
-  if (byLine.length === wanted) return byLine;
-  // A single fragment cannot be mis-paired with anything, so a reflowed reply
-  // is still its translation.
-  if (wanted === 1 && reply.trim()) return [reply.trim()];
-  return [];
-}
-
-/**
- * Print the reader the paragraph they just read in the message's own words,
- * once, underneath the whole paragraph rather than after every fragment of it.
- *
- * The look comes from {@link SOURCE_ECHO_CSS} in the shadow root, never from an
- * inline `style`: see `lib/sourceEcho` for why that distinction is the whole
- * point of this function's output.
- */
-function echoSourceText(paragraph: Element, original: string) {
-  const holder = paragraph.ownerDocument.createElement("span");
-  holder.setAttribute("class", SOURCE_ECHO_CLASS);
-  holder.textContent = original;
-  paragraph.appendChild(holder);
-}
-
-/**
- * Translate the message into the reader's own language, or nothing at all.
- *
- * The target language is the language the app is displayed in: a reader whose
- * interface is Chinese is reading the message because it is not Chinese. Sending
- * the text back in the language it arrived in — which is what a hand-picked
- * "opposite" default used to do — makes the feature look broken.
+ * Immersive block-level AI email translation hook:
+ * - Translates both subject line and semantic HTML / plain-text blocks
+ * - Supports instant Bilingual / Translated-only / Original view switching
+ * - Persists results in GoMail's local SQLite AI cache for instant offline revisit
+ * - Supports mid-flight cancellation when stopping, switching language, or changing messages
  */
 export function useBilingualTranslation(
   messageId: string | null,
@@ -205,210 +230,404 @@ export function useBilingualTranslation(
 ) {
   const interfaceLanguage = useUIStore((state) => state.language);
   const [bilingualMode, setBilingualMode] = useState(false);
-  const [bilingualResult, setBilingualResult] = useState<AnnotatedResult | null>(null);
+  const [displayMode, setDisplayMode] = useState<TranslationDisplayMode>("bilingual");
+  const [targetLang, setTargetLangState] = useState(() => resolveUiLanguageOption(interfaceLanguage));
+  const [bilingualResult, setBilingualResult] = useState<AnnotatedTranslationResult | null>(null);
   const [bilingualLoading, setBilingualLoading] = useState(false);
+  const [progress, setProgress] = useState<TranslationProgress | null>(null);
   const [bilingualError, setBilingualError] = useState<BilingualError | null>(null);
   const [bilingualWarning, setBilingualWarning] = useState<BilingualWarning | null>(null);
+  const [configIssue, setConfigIssue] = useState<"unconfigured" | "disabled" | "keyring" | null>(null);
+  const [needsPrivacyAck, setNeedsPrivacyAck] = useState(false);
+  const [endpointHost, setEndpointHost] = useState("");
+  const [isLocalEndpoint, setIsLocalEndpoint] = useState(false);
 
-  async function translateHtml(html: string, targetLang: string): Promise<AnnotatedResult> {
-    const doc = new DOMParser().parseFromString(sanitizeHtml(html), "text/html");
-    const textNodes = collectTextNodes(doc);
-    if (textNodes.length === 0) throw new BilingualFailure("noText");
+  const generationRef = useRef(0);
+  const activeRequestIdsRef = useRef<Set<string>>(new Set());
+  const pendingOptionsRef = useRef<{ lang: string; forceRefresh: boolean } | null>(null);
 
-    // The paragraph the echo belongs to, and its original wording, both captured
-    // before anything is rewritten.
-    const paragraphs = groupByParagraph(textNodes);
-    const paragraphOriginals = new Map<Element, string>();
-    for (const [paragraph, nodes] of paragraphs) {
-      paragraphOriginals.set(
-        paragraph,
-        nodes.map((node) => node.textContent!.trim()).join(" "),
-      );
+  const cancelInFlight = useCallback(() => {
+    for (const reqId of activeRequestIdsRef.current) {
+      void AIService.cancel({ requestId: reqId }).catch(() => {});
     }
-    const rewritten = new Set<Text>();
-    const echoed = new Set<Element>();
+    activeRequestIdsRef.current.clear();
+  }, []);
 
-    const snapshot = (): AnnotatedResult => ({
-      translated: sanitizeHtml(doc.body.innerHTML),
-      segments: [],
-      _isHtml: true,
-    });
+  useEffect(() => () => { cancelInFlight(); }, [cancelInFlight]);
 
-    /**
-     * Give every rewritten paragraph its original back — once, after the whole
-     * paragraph. Run after each chunk so the progressive result reads the same
-     * as the final one; `echoed` keeps it from stacking up duplicates.
-     */
-    const attachEchoes = () => {
-      for (const [paragraph, nodes] of paragraphs) {
-        if (echoed.has(paragraph)) continue;
-        if (!nodes.some((node) => rewritten.has(node))) continue;
-        const original = paragraphOriginals.get(paragraph) ?? "";
-        if (original.length < SOURCE_ECHO_MIN_CHARS) continue;
-        echoSourceText(paragraph, original);
-        echoed.add(paragraph);
-      }
-    };
+  const executeTranslation = useCallback(
+    async (
+      chosenLang: string,
+      forceRefresh: boolean,
+      cfg: AIConfigView | null,
+    ) => {
+      if (!message || !messageId) return;
 
-    // Uses a unique separator so we can reliably split the response, with a
-    // checked fallback for services that reflow it away.
-    let assigned = 0;
-    let changed = 0;
-    // Set when a batch came back with text that could not be paired 1:1 with
-    // the fragments it was sent for.
-    let mispaired = false;
-
-    for (let start = 0; start < textNodes.length; start += CHUNK_SIZE) {
-      const chunk = textNodes.slice(start, start + CHUNK_SIZE);
-      const originals = chunk.map((node) => node.textContent!.trim());
-      const batch = originals.join(`\n${SEPARATOR}\n`);
-      const remote = await translateText(batch, "auto", targetLang);
-
-      const parts = remote.translated
-        .split(SEPARATOR)
-        .map((part) => part.trim())
-        .filter(Boolean);
-      const replacements = pairWithFragments(parts, remote.translated, chunk.length);
-      if (replacements.length === 0 && remote.translated.trim() !== "") {
-        mispaired = true;
+      cancelInFlight();
+      const gen = ++generationRef.current;
+      setBilingualMode(true);
+      setBilingualLoading(true);
+      setBilingualError(null);
+      setBilingualWarning(null);
+      setConfigIssue(null);
+      setNeedsPrivacyAck(false);
+      setProgress(null);
+      if (forceRefresh) {
+        setBilingualResult(null);
       }
 
-      const pairCount = Math.min(chunk.length, replacements.length);
-      for (let i = 0; i < pairCount; i++) {
-        const translated = replacements[i];
-        if (!translated) continue;
-        const node = chunk[i];
-        const original = originals[i];
-        node.textContent = translated;
-        assigned += 1;
-        if (translated === original) continue;
-        changed += 1;
-        rewritten.add(node);
+      const isHtml = Boolean(rendered && rendered.html);
+      const cleanHtml = isHtml ? sanitizeHtml(rendered!.html) : "";
+      const subject = message.subject?.trim() || "";
+      const items: TranslateItem[] = [];
+      let plainParagraphs: string[] = [];
+
+      if (subject && isProseWorthTranslating(subject)) {
+        items.push({ id: "subject", text: subject });
       }
-      attachEchoes();
-      // Show progressive results after each chunk
-      setBilingualResult(snapshot());
-    }
 
-    if (assigned === 0) {
-      // Text came back, it just never came back once per fragment. Saying
-      // "empty" here would send the reader looking for the wrong problem.
-      if (mispaired) {
-        throw new BilingualFailure(
-          "failed",
-          "the engine did not answer once per fragment",
-        );
+      if (isHtml) {
+        const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
+        const blocks = collectTranslatableBlocks(doc);
+        blocks.forEach((block, idx) => {
+          items.push({ id: String(idx), text: normalizeBlockText(block) });
+        });
+      } else {
+        const rawText =
+          message.body_text ||
+          new DOMParser().parseFromString(message.body_html_raw || "", "text/html").body.textContent ||
+          "";
+        plainParagraphs = splitPlainParagraphs(rawText);
+        plainParagraphs.forEach((para, idx) => {
+          if (isProseWorthTranslating(para)) {
+            items.push({ id: String(idx), text: para });
+          }
+        });
       }
-      throw new BilingualFailure("empty");
-    }
-    if (changed === 0) throw new BilingualFailure("unchanged");
 
-    const result = snapshot();
-    // Only an unanswered paragraph is worth warning about. A paragraph the
-    // engine translated back to itself was left alone on purpose — names,
-    // numbers, signatures — and saying so would be noise.
-    if (assigned < textNodes.length) {
-      setBilingualWarning({ code: "partial", done: assigned, total: textNodes.length });
-      // An incomplete run is not worth remembering: the next toggle retries it.
-      return result;
-    }
+      if (items.length === 0) {
+        setBilingualLoading(false);
+        setBilingualError({ code: "noText" });
+        return;
+      }
 
-    remember(cacheKey(targetLang), result);
-    return result;
-  }
+      const contentHash = computeContentHash(items.map((it) => `${it.id}:${it.text}`));
 
-  async function translateBodyText(
-    textToTranslate: string,
-    targetLang: string,
-  ): Promise<AnnotatedResult> {
-    if (!textToTranslate.trim()) throw new BilingualFailure("noText");
+      // 1. Check local SQLite cache unless explicitly re-translating.
+      if (!forceRefresh) {
+        try {
+          const cached = await AIService.getTranslationCache({
+            messageId,
+            targetLang: chosenLang,
+            contentHash,
+          });
+          if (gen !== generationRef.current) return;
+          if (cached?.found && cached.segments && Object.keys(cached.segments).length > 0) {
+            const map = new Map<string, string>(Object.entries(cached.segments));
+            if (isHtml) {
+              const snap = renderTranslatedHtmlSnapshot(cleanHtml, map);
+              setBilingualResult({
+                translated: snap.html,
+                segments: [],
+                _isHtml: true,
+                translatedSubject: cached.subject || undefined,
+                model: cached.model || undefined,
+                cached: true,
+              });
+            } else {
+              const segments = plainParagraphs.map((src, idx) => ({
+                source: src,
+                target: map.get(String(idx)) || src,
+              }));
+              setBilingualResult({
+                translated: segments.map((s) => s.target).join("\n\n"),
+                segments,
+                _isHtml: false,
+                translatedSubject: cached.subject || undefined,
+                model: cached.model || undefined,
+                cached: true,
+              });
+            }
+            setBilingualLoading(false);
+            return;
+          }
+        } catch {
+          // Cache miss or unavailable; continue to live translation.
+        }
+      }
 
-    const remote = await translateText(textToTranslate, "auto", targetLang);
-    if (!remote.translated.trim()) throw new BilingualFailure("empty");
-    if (remote.translated.trim() === textToTranslate.trim()) {
-      throw new BilingualFailure("unchanged");
-    }
+      // 2. Verify AI config and privacy consent before sending content.
+      let activeCfg = cfg;
+      if (!activeCfg) {
+        try {
+          activeCfg = await AIService.getConfig({});
+        } catch {
+          activeCfg = null;
+        }
+      }
+      if (gen !== generationRef.current) return;
 
-    // The engine pairs source and target lines; fall back to the whole body as a
-    // single paragraph when it reports no usable segments.
-    const segments =
-      remote.segments && remote.segments.length > 0
-        ? remote.segments
-        : [{ source: textToTranslate, target: remote.translated }];
+      if (activeCfg) {
+        setEndpointHost(activeCfg.endpointHost || "");
+        setIsLocalEndpoint(Boolean(activeCfg.isLocalEndpoint));
+        if (activeCfg.keyringError) {
+          setConfigIssue("keyring");
+          setBilingualLoading(false);
+          return;
+        }
+        if (!activeCfg.configured) {
+          setConfigIssue("unconfigured");
+          setBilingualLoading(false);
+          return;
+        }
+        if (!activeCfg.enabled) {
+          setConfigIssue("disabled");
+          setBilingualLoading(false);
+          return;
+        }
+        if (!isAiPrivacyAccepted(activeCfg.endpointHost, activeCfg.isLocalEndpoint)) {
+          pendingOptionsRef.current = { lang: chosenLang, forceRefresh };
+          setNeedsPrivacyAck(true);
+          setBilingualLoading(false);
+          return;
+        }
+      }
 
-    const result: AnnotatedResult = { ...remote, segments, _isHtml: false };
-    remember(cacheKey(targetLang), result);
-    return result;
-  }
+      // 3. Batch translate progressively with concurrency limit & cancellation.
+      const batches = buildBatches(items);
+      const translatedMap = new Map<string, string>();
+      let completedCount = 0;
+      let modelUsed = "";
+      let firstError: unknown = null;
+      const totalItems = items.length;
+      setProgress({ done: 0, total: totalItems });
 
-  function cacheKey(targetLang: string) {
-    return `${messageId}:${targetLang}`;
-  }
+      const emitProgressive = (cached = false) => {
+        const translatedSubject = translatedMap.get("subject");
+        if (isHtml) {
+          const snap = renderTranslatedHtmlSnapshot(cleanHtml, translatedMap);
+          setBilingualResult({
+            translated: snap.html,
+            segments: [],
+            _isHtml: true,
+            translatedSubject: translatedSubject && translatedSubject !== subject ? translatedSubject : undefined,
+            model: modelUsed || undefined,
+            cached,
+          });
+        } else {
+          const segments = plainParagraphs.map((src, idx) => ({
+            source: src,
+            target: translatedMap.get(String(idx)) || src,
+          }));
+          setBilingualResult({
+            translated: segments.map((s) => s.target).join("\n\n"),
+            segments,
+            _isHtml: false,
+            translatedSubject: translatedSubject && translatedSubject !== subject ? translatedSubject : undefined,
+            model: modelUsed || undefined,
+            cached,
+          });
+        }
+      };
 
-  function remember(key: string, result: AnnotatedResult) {
-    if (translationCache.size >= TRANSLATION_CACHE_MAX) {
-      translationCache.delete(translationCache.keys().next().value!);
-    }
-    translationCache.set(key, result);
-  }
+      let nextBatchIndex = 0;
+      const runWorker = async () => {
+        while (nextBatchIndex < batches.length) {
+          if (gen !== generationRef.current) return;
+          const idx = nextBatchIndex++;
+          const batch = batches[idx];
+          const requestId = nextAiRequestId(`tr-${idx}`);
+          activeRequestIdsRef.current.add(requestId);
+          try {
+            const res = await AIService.translateBatch({
+              requestId,
+              items: batch,
+              fromLang: "auto",
+              toLang: chosenLang,
+            });
+            if (gen !== generationRef.current) return;
+            if (res.model) modelUsed = res.model;
+            for (const item of res.items ?? []) {
+              if (item.text?.trim()) {
+                translatedMap.set(item.id, item.text.trim());
+              }
+            }
+            completedCount += batch.length;
+            setProgress({ done: Math.min(completedCount, totalItems), total: totalItems });
+            if (translatedMap.size > 0) {
+              emitProgressive(false);
+            }
+          } catch (err) {
+            if (gen !== generationRef.current) return;
+            const classified = classifyAiError(err);
+            if (classified.kind === "cancelled") {
+              return;
+            }
+            if (classified.kind === "unconfigured" || classified.kind === "disabled" || classified.kind === "keyring") {
+              setConfigIssue(classified.kind);
+              firstError = err;
+              return;
+            }
+            if (!firstError) firstError = err;
+          } finally {
+            activeRequestIdsRef.current.delete(requestId);
+          }
+        }
+      };
 
-  async function handleBilingualToggle() {
+      const workers = Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, () => runWorker());
+      await Promise.all(workers);
+
+      if (gen !== generationRef.current) return;
+      setBilingualLoading(false);
+      setProgress(null);
+
+      if (configIssue) return;
+
+      if (translatedMap.size === 0) {
+        if (firstError) {
+          const classified = classifyAiError(firstError);
+          if (classified.kind === "unconfigured" || classified.kind === "disabled" || classified.kind === "keyring") {
+            setConfigIssue(classified.kind);
+          } else if (classified.kind !== "cancelled") {
+            setBilingualError({ code: "failed", detail: classified.message });
+          }
+        } else {
+          setBilingualError({ code: "empty" });
+        }
+        return;
+      }
+
+      // Check whether anything actually changed vs original.
+      let changedCount = 0;
+      for (const item of items) {
+        const tr = translatedMap.get(item.id);
+        if (tr && tr !== item.text) changedCount += 1;
+      }
+      if (changedCount === 0) {
+        setBilingualResult(null);
+        setBilingualError({ code: "unchanged" });
+        return;
+      }
+
+      emitProgressive(false);
+
+      if (translatedMap.size < totalItems) {
+        setBilingualWarning({ code: "partial", done: translatedMap.size, total: totalItems });
+        return;
+      }
+
+      // Save full translation to local SQLite cache for offline reuse.
+      const segmentsRecord: Record<string, string> = {};
+      for (const [k, v] of translatedMap.entries()) {
+        if (k !== "subject") segmentsRecord[k] = v;
+      }
+      void AIService.saveTranslationCache({
+        messageId,
+        accountId: message.account_id || "",
+        targetLang: chosenLang,
+        contentHash,
+        model: modelUsed,
+        subject: translatedMap.get("subject") || "",
+        segments: segmentsRecord,
+      }).catch(() => {});
+    },
+    [cancelInFlight, configIssue, message, messageId, rendered],
+  );
+
+  const handleBilingualToggle = useCallback(async () => {
     if (bilingualMode) {
+      cancelInFlight();
+      generationRef.current += 1;
       setBilingualMode(false);
+      setBilingualLoading(false);
+      setProgress(null);
       return;
     }
     if (!message || !messageId) return;
 
-    const targetLang = interfaceLanguage;
-    const cached = translationCache.get(cacheKey(targetLang));
-    if (cached) {
-      setBilingualResult(cached);
-      setBilingualError(null);
-      setBilingualWarning(null);
-      setBilingualMode(true);
-      return;
-    }
-
-    setBilingualMode(true);
-    setBilingualLoading(true);
-    setBilingualError(null);
-    setBilingualWarning(null);
+    let cfg: AIConfigView | null = null;
     try {
-      const result =
-        rendered && rendered.html
-          ? await translateHtml(rendered.html, targetLang)
-          : await translateBodyText(
-              message.body_text ||
-                new DOMParser().parseFromString(message.body_html_raw || "", "text/html").body
-                  .textContent ||
-                "",
-              targetLang,
-            );
-      setBilingualResult(result);
-    } catch (err) {
-      console.error("Translation failed:", err);
-      setBilingualResult(null);
-      setBilingualError(toBilingualError(err));
-    } finally {
-      setBilingualLoading(false);
+      cfg = await AIService.getConfig({});
+    } catch {
+      cfg = null;
     }
-  }
 
-  /** Reset bilingual state (call when messageId changes) */
-  function resetBilingual() {
+    const defaultLang =
+      cfg?.translateLanguage && AI_LANGUAGE_OPTIONS.some((o) => o.code === cfg!.translateLanguage)
+        ? cfg.translateLanguage
+        : resolveUiLanguageOption(interfaceLanguage);
+    const defaultMode: TranslationDisplayMode =
+      cfg?.translateDisplayMode === "translated" ? "translated" : "bilingual";
+
+    setTargetLangState(defaultLang);
+    setDisplayMode(defaultMode);
+    await executeTranslation(defaultLang, false, cfg);
+  }, [bilingualMode, cancelInFlight, executeTranslation, interfaceLanguage, message, messageId]);
+
+  const setTargetLang = useCallback(
+    (nextLang: string) => {
+      setTargetLangState(nextLang);
+      if (bilingualMode) {
+        void executeTranslation(nextLang, false, null);
+      }
+    },
+    [bilingualMode, executeTranslation],
+  );
+
+  const handleRetranslate = useCallback(() => {
+    void executeTranslation(targetLang, true, null);
+  }, [executeTranslation, targetLang]);
+
+  const handleStopTranslation = useCallback(() => {
+    cancelInFlight();
+    generationRef.current += 1;
+    setBilingualLoading(false);
+    setProgress(null);
+  }, [cancelInFlight]);
+
+  const acceptPrivacyAndTranslate = useCallback(() => {
+    acceptAiPrivacy(endpointHost);
+    setNeedsPrivacyAck(false);
+    const pending = pendingOptionsRef.current ?? { lang: targetLang, forceRefresh: false };
+    pendingOptionsRef.current = null;
+    void executeTranslation(pending.lang, pending.forceRefresh, null);
+  }, [endpointHost, executeTranslation, targetLang]);
+
+  const resetBilingual = useCallback(() => {
+    cancelInFlight();
+    generationRef.current += 1;
     setBilingualMode(false);
     setBilingualResult(null);
+    setBilingualLoading(false);
+    setProgress(null);
     setBilingualError(null);
     setBilingualWarning(null);
-  }
+    setConfigIssue(null);
+    setNeedsPrivacyAck(false);
+  }, [cancelInFlight]);
 
   return {
     bilingualMode,
+    displayMode,
+    setDisplayMode,
+    targetLang,
+    setTargetLang,
     bilingualResult,
     bilingualLoading,
+    progress,
     bilingualError,
     bilingualWarning,
+    configIssue,
+    needsPrivacyAck,
+    endpointHost,
+    isLocalEndpoint,
+    acceptPrivacyAndTranslate,
     handleBilingualToggle,
+    handleRetranslate,
+    handleStopTranslation,
     resetBilingual,
   };
 }
+
+export { BilingualFailure };

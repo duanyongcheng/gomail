@@ -4,6 +4,45 @@ import { call, event } from "mygo-runtime";
 
 // ---- Types ----
 
+export interface AIConfigView {
+  configured: boolean;
+  enabled: boolean;
+  provider: string;
+  preset: string;
+  endpoint: string;
+  endpointHost: string;
+  isLocalEndpoint: boolean;
+  hasApiKey: boolean;
+  maskedApiKey: string;
+  model: string;
+  apiMode: string;
+  proxyMode: string;
+  allowInsecureHttp: boolean;
+  summaryLanguage: string;
+  summaryStyle: string;
+  summaryModel: string;
+  translateLanguage: string;
+  translateDisplayMode: string;
+  translateModel: string;
+  keyringError: boolean;
+  summaryCacheCount: number;
+  translateCacheCount: number;
+}
+
+export interface AIStreamEvent {
+  requestId: string;
+  kind: string;
+  delta: string;
+  done: boolean;
+}
+
+export interface AITestResult {
+  ok: boolean;
+  latencyMs: number;
+  model: string;
+  message: string;
+}
+
 export interface Account {
   id: string;
   email: string;
@@ -31,6 +70,11 @@ export interface AccountNetworkRequest {
 
 export interface AccountRequest {
   accountId: string;
+}
+
+export interface ActionItem {
+  text: string;
+  due?: string;
 }
 
 export interface AddAccountRequest {
@@ -100,6 +144,24 @@ export interface BatchRequest {
   starred?: boolean;
 }
 
+export interface CachedTranslation {
+  found: boolean;
+  subject: string;
+  segments: Record<string, string>;
+  model: string;
+  generatedAt: number;
+}
+
+export interface CachedTranslationRequest {
+  messageId: string;
+  targetLang: string;
+  contentHash: string;
+}
+
+export interface CancelAIRequest {
+  requestId: string;
+}
+
 export interface Capabilities {
   folder_management: boolean;
   read: boolean;
@@ -110,6 +172,10 @@ export interface Capabilities {
 
 export interface CleanupComposeRequest {
   path: string;
+}
+
+export interface ClearAICacheResult {
+  deleted: number;
 }
 
 export interface ClosePreferenceRequest {
@@ -582,6 +648,25 @@ export interface SafeEndpoint {
   has_password: boolean;
 }
 
+export interface SaveAIConfigRequest {
+  enabled: boolean;
+  provider: string;
+  preset: string;
+  endpoint: string;
+  apiKey: string;
+  keepExistingKey: boolean;
+  model: string;
+  apiMode: string;
+  proxyMode: string;
+  allowInsecureHttp: boolean;
+  summaryLanguage: string;
+  summaryStyle: string;
+  summaryModel: string;
+  translateLanguage: string;
+  translateDisplayMode: string;
+  translateModel: string;
+}
+
 export interface SaveDraftRequest {
   accountId: string;
   to: string[];
@@ -612,6 +697,16 @@ export interface SaveProtocolRequest {
   revision: string;
   displayName: string;
   config: ProtocolConfig;
+}
+
+export interface SaveTranslationCacheRequest {
+  messageId: string;
+  accountId: string;
+  targetLang: string;
+  contentHash: string;
+  model: string;
+  subject: string;
+  segments: Record<string, string>;
 }
 
 export interface SearchHit {
@@ -664,6 +759,34 @@ export interface StartSyncRequest {
   pollIntervalSecs: number | null;
 }
 
+export interface SummarizeMessageRequest {
+  requestId: string;
+  messageId: string;
+  targetLang: string;
+  style: string;
+  forceRefresh: boolean;
+}
+
+export interface SummarizeThreadRequest {
+  requestId: string;
+  threadId: string;
+  targetLang: string;
+  style: string;
+  forceRefresh: boolean;
+}
+
+export interface SummaryResult {
+  tldr: string;
+  key_points: string[];
+  action_items: ActionItem[];
+  raw_text: string;
+  model: string;
+  target_lang: string;
+  cached: boolean;
+  truncated: boolean;
+  generated_at: number;
+}
+
 export interface SyncComplete {
   account_id: string;
   count: number;
@@ -687,6 +810,17 @@ export interface SyncResult {
 
 export interface SyncStarted {
   value: string;
+}
+
+export interface TestAIConfigRequest {
+  provider: string;
+  endpoint: string;
+  apiKey: string;
+  keepExistingKey: boolean;
+  model: string;
+  apiMode: string;
+  proxyMode: string;
+  allowInsecureHttp: boolean;
 }
 
 export interface ThreadRequest {
@@ -716,6 +850,39 @@ export interface ThreadsRequest {
 export interface Tracker {
   domain: string;
   tracker_type: string;
+}
+
+export interface TranslateBatchRequest {
+  requestId: string;
+  items: TranslateItem[];
+  fromLang: string;
+  toLang: string;
+}
+
+export interface TranslateBatchResult {
+  items: TranslateItem[];
+  translated: number;
+  total: number;
+  model: string;
+}
+
+export interface TranslateItem {
+  id: string;
+  text: string;
+}
+
+export interface TranslateTextRequest {
+  requestId: string;
+  text: string;
+  fromLang: string;
+  toLang: string;
+  autoFlip: boolean;
+}
+
+export interface TranslateTextResponse {
+  translated: string;
+  targetLang: string;
+  model: string;
 }
 
 export interface TriggerSyncRequest {
@@ -1136,6 +1303,48 @@ export const OutboxService = {
   },
 } as const;
 
+export const AIService = {
+  cancel(req: CancelAIRequest): Promise<Empty> {
+    return call("AIService.Cancel", req);
+  },
+  clearCache(arg0: Empty): Promise<ClearAICacheResult> {
+    return call("AIService.ClearCache", arg0);
+  },
+  clearConfig(arg0: Empty): Promise<AIConfigView> {
+    return call("AIService.ClearConfig", arg0);
+  },
+  getConfig(arg0: Empty): Promise<AIConfigView> {
+    return call("AIService.GetConfig", arg0);
+  },
+  getTranslationCache(req: CachedTranslationRequest): Promise<CachedTranslation> {
+    return call("AIService.GetTranslationCache", req);
+  },
+  listModels(req: TestAIConfigRequest): Promise<string[]> {
+    return call("AIService.ListModels", req);
+  },
+  saveConfig(req: SaveAIConfigRequest): Promise<AIConfigView> {
+    return call("AIService.SaveConfig", req);
+  },
+  saveTranslationCache(req: SaveTranslationCacheRequest): Promise<Empty> {
+    return call("AIService.SaveTranslationCache", req);
+  },
+  summarizeMessage(req: SummarizeMessageRequest): Promise<SummaryResult> {
+    return call("AIService.SummarizeMessage", req);
+  },
+  summarizeThread(req: SummarizeThreadRequest): Promise<SummaryResult> {
+    return call("AIService.SummarizeThread", req);
+  },
+  testConnection(req: TestAIConfigRequest): Promise<AITestResult> {
+    return call("AIService.TestConnection", req);
+  },
+  translateBatch(req: TranslateBatchRequest): Promise<TranslateBatchResult> {
+    return call("AIService.TranslateBatch", req);
+  },
+  translateText(req: TranslateTextRequest): Promise<TranslateTextResponse> {
+    return call("AIService.TranslateText", req);
+  },
+} as const;
+
 /**
  * FileService owns only native directory/dialog adaptation. Attachment lookup,
  * constrained reads and copying remain in the framework-independent core.
@@ -1220,4 +1429,5 @@ export const events = {
   appUpdateProgress: event<UpdateProgress>("app:update-progress"),
   appUpdateStatus: event<UpdateStatus>("app:update-status"),
   appOpenUpdates: event<{}>("app:open-updates"),
+  aiStream: event<AIStreamEvent>("ai:stream"),
 } as const;
